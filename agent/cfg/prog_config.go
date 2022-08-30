@@ -25,7 +25,10 @@ type progConfig struct {
 }
 func (pc *progConfig) clone() *progConfig {
 	rv := *pc
-	// TODO Need to deep copy
+
+	// Make deep copy of paths to indexing
+	copy(rv.IdxPaths, pc.IdxPaths)
+
 	return &rv
 }
 
