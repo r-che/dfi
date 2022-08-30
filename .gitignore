@@ -6,3 +6,4 @@ Makefile
 run.sh
 .lvimrc
 *TODO*
+go.sum

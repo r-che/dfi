@@ -1,7 +1,6 @@
 package cfg
 
 import (
-	//"fmt"
 	"strings"
 
 	"github.com/r-che/dfi/dbi"
@@ -34,7 +33,7 @@ func (pc *progConfig) clone() *progConfig {
 
 func (pc *progConfig) prepare() error {
 	// Prepare paths
-	pc.IdxPaths = strings.Split(",", pc.paths)
+	pc.IdxPaths = strings.Split(pc.paths, ",")
 
 	// Parsing completed successful
 	return nil
