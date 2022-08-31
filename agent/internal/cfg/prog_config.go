@@ -2,6 +2,7 @@ package cfg
 
 import (
 	"strings"
+	"time"
 
 	"github.com/r-che/dfi/dbi"
 )
@@ -15,8 +16,9 @@ type progConfig struct {
 	DBCfg		dbi.DBConfig
 
 	// Other options
-	LogFile	string	// Location of log file
-	Reindex	bool	// Do reindex on startup
+	LogFile		string	// Location of log file
+	Reindex		bool	// Do reindex on startup
+	FlushPeriod	time.Duration	// Period between flushing FS events to database
 
 	// Auxiliary options
 	Debug		bool

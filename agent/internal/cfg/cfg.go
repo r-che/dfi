@@ -1,6 +1,8 @@
 package cfg
 
 import (
+	"time"
+
 	"github.com/r-che/optsparser"
 )
 
@@ -24,6 +26,8 @@ func Init(name string) {
 	// Other options
 	p.AddString(`log-file|l`, `log file path`, &config.LogFile, "")
 	p.AddBool(`reindex|R`, `do reindex configured paths at startup`, &config.Reindex, false)
+	p.AddDuration(`flush-period|F`, `period between flushing FS events to database`, &config.FlushPeriod, 5 * time.Second)
+
 
 	// Auxiliary options
 	p.AddBool(`debug|d`, `enable debug logging`, &config.Debug, false)

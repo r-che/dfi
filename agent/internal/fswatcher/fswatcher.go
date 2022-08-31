@@ -2,24 +2,30 @@ package fswatcher
 
 import (
 	"fmt"
-	//"os"
+	"os"
 	"time"
 
 	"github.com/r-che/log"
 	"github.com/r-che/dfi/types"
+	"github.com/r-che/dfi/agent/internal/cfg"
 
 	fsn "github.com/fsnotify/fsnotify"
 )
 
 func New(watchPath string, done chan bool) error {
+	// Get configuration
+	c := cfg.Config()
+
+	// Create new FS watcher
 	watcher, err := fsn.NewWatcher()
 	if err != nil {
-		return fmt.Errorf("Cannot create watcher for %q: %v", watchPath, err)
+		return fmt.Errorf("(watcher:%s) Cannot create watcher: %v", watchPath, err)
 	}
 
+	// Add configured path to watching
 	if err = watcher.Add(watchPath); err != nil {
 		watcher.Close()
-		return fmt.Errorf("Cannot add watcher for %q: %v", watchPath, err)
+		return fmt.Errorf("(watcher:%s) Cannot add watcher: %v", watchPath, err)
 	}
 
 	// Run watcher for watchPath
@@ -28,22 +34,23 @@ func New(watchPath string, done chan bool) error {
 		events := map[string]*types.FSEvent{}
 
 		// Timer to flush cache to database
-		timer := time.Tick(time.Second * 5)	// TODO Need to be configurable
+		timer := time.Tick(c.FlushPeriod)
 
 		for {
 			select {
 			// Need to flush cache
 			case <-timer:
-				fmt.Println("Time to flush!")
 				if len(events) == 0 {
-					fmt.Println("No new events")
+					log.D("(watcher:%s) No new events", watchPath)
 					// No new events
 					continue
 				}
 
+				log.D("(watcher:%s) Flushing %d event(s)", watchPath, len(events))
+
 				// Flush collected events
 				if err := flushCached(events); err != nil {
-					log.F("Cannot flush cached items: %v", err)
+					log.F("(watcher:%s) Cannot flush cached items: %v", watchPath, err)
 				}
 				// Replace cache by new empty map
 				events = map[string]*types.FSEvent{}
@@ -51,7 +58,7 @@ func New(watchPath string, done chan bool) error {
 			// Some event
 			case event, ok := <-watcher.Events:
 				if !ok {
-					log.F("Filesystem events channel for path %q unexpectedly closed", watchPath)
+					log.F("(watcher:%s) Filesystem events channel unexpectedly closed", watchPath)
 				}
 
 				// Handle event
@@ -60,31 +67,36 @@ func New(watchPath string, done chan bool) error {
 			// Some error
 			case err, ok := <-watcher.Errors:
 				if !ok {
-					log.F("Errors channel for path %q unexpectedly closed", watchPath)
+					log.F("(watcher:%s) Errors channel unexpectedly closed", watchPath)
 				}
-				log.E("Filesystem events watcher for path %q returned error: %v", watchPath, err)
+				log.E("(watcher:%s) Filesystem events watcher returned error: %v", watchPath, err)
 
 			// Stop watching
 			case <-done:
 				watcher.Close()
-				log.D("Watching on %q finished", watchPath)
+				log.D("(watcher:%s) Watching stopped", watchPath)
 
 				// Flush collected events
-				if err := flushCached(events); err != nil {
-					log.F("Cannot flush cached items: %v", err)
+				if len(events) != 0 {
+					log.D("(watcher:%s) Flushing %d event(s) before termination", watchPath, len(events))
+
+					// Flush collected events
+					if err := flushCached(events); err != nil {
+						log.F("(watcher:%s) Cannot flush cached items: %v", watchPath, err)
+					}
 				}
 
 				// Notify that watcher finished
 				done <-true
 
-				log.I("Stoped watching on path %q due to request", watchPath)
+				log.I("Stopped watcher due to request for %q", watchPath)
 				return
 			}
 		}
 	}()
 
 	// Return no errors, success
-	log.I("Created filesystem events watcher for %q", watchPath)
+	log.I("Started filesystem events watcher for %q", watchPath)
 
 	return nil
 }
@@ -95,6 +107,21 @@ func handleEvent(watcher *fsn.Watcher, event *fsn.Event, events map[string]*type
 		// Create new entry
 		events[event.Name] = &types.FSEvent{Type: types.EvCreate}
 
+		// Check that the created object is a directory
+		fi, err := os.Stat(event.Name)
+		if err != nil {
+			log.W("Cannot stat() for created object %q: %v", event.Name, err)
+			return
+		}
+
+		if fi.IsDir() {
+			// Need to add watcher for newly created directory
+			if err = watcher.Add(event.Name); err != nil {
+				log.E("Cannot add watcher to directory %q: %v", event.Name, err)
+			} else {
+				log.I("Added watcher for %q", event.Name)
+			}
+		}
 	case event.Op & fsn.Write != 0:
 		// Update existing entry
 		events[event.Name] = &types.FSEvent{Type: types.EvWrite}
@@ -102,6 +129,8 @@ func handleEvent(watcher *fsn.Watcher, event *fsn.Event, events map[string]*type
 	case event.Op & (fsn.Remove | fsn.Rename) != 0:
 		// Remove existing entry
 		events[event.Name] = &types.FSEvent{Type: types.EvRemove}
+
+		// TODO Remove watcher if it is a directory
 	case event.Op & fsn.Chmod != 0:
 		// Nothing
 	default:
@@ -109,27 +138,6 @@ func handleEvent(watcher *fsn.Watcher, event *fsn.Event, events map[string]*type
 		log.W("Unknown event from fsnotify: %[1]v (%#[1]v)", event)
 		return
 	}
-	/*
-	//log.I("event: %v", event)
-	if event.Op & fsn.Write == fsn.Write {
-		//log.I("modified file: %#v", event.Name)
-	}
-
-	// Check that the file is a directory
-	fi, err := os.Stat(event.Name)
-	if err != nil {
-		//log.W("Cannot stat of file %q: %v", event.Name, err)
-		return
-	}
-	if fi.IsDir() {
-		log.I("Add watcher to %q", event.Name)
-		if err = watcher.Add(event.Name); err != nil {
-			log.E("Cannot add watcher to directory %q: %v", event.Name, err)
-		} else {
-			log.I("Added watcher to %q", event.Name)
-		}
-	}
-	*/
 }
 
 func flushCached(events map[string]*types.FSEvent) error {
