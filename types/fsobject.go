@@ -14,7 +14,7 @@ type FSObject struct {
 
 type eventType int
 const (
-	EvCreate	= iota
+	EvCreate	= eventType(iota)
 	EvWrite
 	EvRemove
 )

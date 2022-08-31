@@ -61,6 +61,7 @@ func initWatchers(paths []string) (chan bool, error) {
 }
 
 func waitEvents(doneChan chan bool) error {
+	fmt.Println("Press Enter to STOP")
 	fmt.Scanln()
 	// Send stop to all watchers
 	doneChan <-true
