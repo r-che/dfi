@@ -4,6 +4,7 @@ import (
 	"fmt"
 	stdLog "log"
 
+	"github.com/r-che/dfi/dbi"
 	"github.com/r-che/dfi/agent/internal/cfg"
 	"github.com/r-che/dfi/agent/internal/fswatcher"
 
@@ -33,11 +34,16 @@ func main() {
 	log.I("%s %s started", ProgNameLong, ProgVers)
 
 	log.I("Database host: %s, paths to indexing: %v", c.DBCfg.HostPort, c.IdxPaths)
+	// Channel to read information collected by watchers to send it to database
+	dbChan := make(chan []*dbi.DBOperation)
+
 	// Init watchers on all configured directories
-	doneChan, err := initWatchers(c.IdxPaths)
+	doneChan, err := initWatchers(c.IdxPaths, dbChan)
 	if err != nil {
 		log.F("Cannot initiate watchers on configured paths %v: %v", c.IdxPaths, err)
 	}
+
+	// TODO Need to start cleanup goroutine if --reindex set to remove stale records from DB
 
 	// Wait for external events (signals)
 	if err = waitEvents(doneChan); err != nil {
@@ -49,11 +55,11 @@ func main() {
 	log.Close()
 }
 
-func initWatchers(paths []string) (chan bool, error) {
+func initWatchers(paths []string, dbChan chan []*dbi.DBOperation) (chan bool, error) {
 	// Create channel to stop watchers
 	done := make(chan bool)
 	for _, path := range paths {
-		if err := fswatcher.New(path, done); err != nil {
+		if err := fswatcher.New(path, dbChan, done); err != nil {
 			return nil, err
 		}
 	}

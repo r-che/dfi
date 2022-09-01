@@ -27,6 +27,9 @@ func Init(name string) {
 	p.AddString(`log-file|l`, `log file path`, &config.LogFile, "")
 	p.AddBool(`reindex|R`, `do reindex configured paths at startup`, &config.Reindex, false)
 	p.AddDuration(`flush-period|F`, `period between flushing FS events to database`, &config.FlushPeriod, 5 * time.Second)
+	p.AddBool(`checksums|C`,
+		`calculate sha1 summs for all objects. WARNING: it can require huge disk load and take a long time`,
+		&config.CalcSums, false)
 
 
 	// Auxiliary options

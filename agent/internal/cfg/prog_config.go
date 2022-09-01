@@ -19,6 +19,7 @@ type progConfig struct {
 	LogFile		string	// Location of log file
 	Reindex		bool	// Do reindex on startup
 	FlushPeriod	time.Duration	// Period between flushing FS events to database
+	CalcSums	bool	// Caclculate checksums for regular files
 
 	// Auxiliary options
 	Debug		bool

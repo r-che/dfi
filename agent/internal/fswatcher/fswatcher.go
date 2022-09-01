@@ -16,7 +16,7 @@ import (
 	fsn "github.com/fsnotify/fsnotify"
 )
 
-func New(watchPath string, done chan bool) error {
+func New(watchPath string, dbChan chan []*dbi.DBOperation, done chan bool) error {
 	// Get configuration
 	c := cfg.Config()
 
@@ -74,7 +74,7 @@ func New(watchPath string, done chan bool) error {
 				log.D("(watcher:%s) Flushing %d event(s)", watchPath, len(events))
 
 				// Flush collected events
-				if err := flushCached(events); err != nil {
+				if err := flushCached(watchPath, events, dbChan); err != nil {
 					log.F("(watcher:%s) Cannot flush cached items: %v", watchPath, err)
 				}
 				// Replace cache by new empty map
@@ -97,7 +97,7 @@ func New(watchPath string, done chan bool) error {
 					log.D("(watcher:%s) Flushing %d event(s) before termination", watchPath, len(events))
 
 					// Flush collected events
-					if err := flushCached(events); err != nil {
+					if err := flushCached(watchPath, events, dbChan); err != nil {
 						log.F("(watcher:%s) Cannot flush cached items: %v", watchPath, err)
 					}
 				}
@@ -213,7 +213,7 @@ func scanDir(watcher *fsn.Watcher, dir string, events map[string]*types.FSEvent)
 	return nil
 }
 
-func flushCached(events map[string]*types.FSEvent) error {
+func flushCached(watchPath string, events map[string]*types.FSEvent, dbChan chan []*dbi.DBOperation) error {
 	// Make sorted list of paths
 	names := make([]string, 0, len(events))
 	for name := range events {
@@ -235,7 +235,8 @@ func flushCached(events map[string]*types.FSEvent) error {
 			case types.EvWrite:
 				oInfo, err := getObjectInfo(name)
 				if err != nil {
-					log.E("Cannot get information about object %q: %v - skip it", name, err)
+					log.E("(watcher:%s) Skip object %q due to an error in obtaining information about it: %v",
+						watchPath, name, err)
 					continue
 				}
 				// Append database operation
@@ -245,15 +246,42 @@ func flushCached(events map[string]*types.FSEvent) error {
 			case types.EvRemove:
 				dbOps = append(dbOps, &dbi.DBOperation{Op: dbi.Delete})
 			default:
-				panic(fmt.Sprintf("Unhandled FSEvent %v (%d) occurred on path %q", event.Type, event.Type, name))
+				panic(fmt.Sprintf("(watcher:%s) Unhandled FSEvent type %v (%d) occurred on path %q",
+					watchPath, event.Type, event.Type, name))
 		}
 	}
+
+	// TODO Send dbOps to database controller channel
+	log.D("(watcher:%s) Sending %d operations to DB controller\n", watchPath, len(dbOps))
 
 	// No errors
 	return nil
 }
 
 func getObjectInfo(name string) (*types.FSObject, error) {
-	// TODO Need to get file information to update data in DB
+	// Get agent configuration
+	c := cfg.Config()
+
+	// Get object information to update data in DB
+	oi, err := os.Stat(name)
+	if err != nil {
+		return nil, err
+	}
+	_=oi // TODO
+
+	// TODO Get real path of an object
+
+	// TODO Determine object type - regular file, directory, symbolic link, etc...
+
+
+	// TODO Number of hard links to the data of the object
+
+	// TODO Size of object in bytes
+
+	// TODO Get checksum but only if enabled
+	if c.CalcSums {
+		// TODO
+	}
+
 	return nil, nil
 }
