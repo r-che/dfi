@@ -17,6 +17,8 @@ require (
 	golang.org/x/sys v0.0.0-20220412211240-33da011f77ad // indirect
 )
 
-replace github.com/r-che/optsparser => ../optsparser
+//replace github.com/r-che/optsparser => ../optsparser
+replace github.com/r-che/optsparser => services-code.local/optsparser.git v0.1.0
 
-replace github.com/r-che/log => ../log
+//replace github.com/r-che/log => ../log
+replace github.com/r-che/log => services-code.local/log.git v0.1.0
