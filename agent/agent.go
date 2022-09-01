@@ -36,11 +36,12 @@ func main() {
 
 	// Channel to read information collected by watchers to send it to database
 	dbChan := make(chan []*dbi.DBOperation)
+	// TODO Need to replace doneChan by context.Context + sync.WaitGroup (as context parameter)
 	// Channel to stop watchers and DB controller
 	doneChan := make(chan bool)
 
 	// Init DB controller
-	err := initDB(&c.DBCfg, dbChan)
+	err := initDB(&c.DBCfg, dbChan, doneChan)
 	if err != nil {
 		log.F("Cannot initiate database controller: %v", err)
 	}
@@ -80,7 +81,8 @@ func initWatchers(paths []string, dbChan chan []*dbi.DBOperation, doneChan chan 
 func waitEvents(doneChan chan bool) error {
 	fmt.Println("Press Enter to STOP")
 	fmt.Scanln()
-	// Send stop to all watchers
+
+	// Send stop to all children goroutines
 	doneChan <-true
 
 	// Wait for signal processed
