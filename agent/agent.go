@@ -30,16 +30,23 @@ func main() {
 	log.Open(c.LogFile, ProgName, logFlags)
 	log.SetDebug(c.Debug)
 
-	// Starting
+	// Starting agent
 	log.I("%s %s started", ProgNameLong, ProgVers)
-
 	log.I("Database host: %s, paths to indexing: %v", c.DBCfg.HostPort, c.IdxPaths)
+
 	// Channel to read information collected by watchers to send it to database
 	dbChan := make(chan []*dbi.DBOperation)
+	// Channel to stop watchers and DB controller
+	doneChan := make(chan bool)
+
+	// Init DB controller
+	err := initDB(&c.DBCfg, dbChan)
+	if err != nil {
+		log.F("Cannot initiate database controller: %v", err)
+	}
 
 	// Init watchers on all configured directories
-	doneChan, err := initWatchers(c.IdxPaths, dbChan)
-	if err != nil {
+	if err = initWatchers(c.IdxPaths, dbChan, doneChan); err != nil {
 		log.F("Cannot initiate watchers on configured paths %v: %v", c.IdxPaths, err)
 	}
 
@@ -55,15 +62,19 @@ func main() {
 	log.Close()
 }
 
-func initWatchers(paths []string, dbChan chan []*dbi.DBOperation) (chan bool, error) {
-	// Create channel to stop watchers
-	done := make(chan bool)
+func initDB(dbc *dbi.DBConfig, dbChan chan []*dbi.DBOperation) error {
+	return nil
+}
+
+func initWatchers(paths []string, dbChan chan []*dbi.DBOperation, doneChan chan bool) error {
 	for _, path := range paths {
-		if err := fswatcher.New(path, dbChan, done); err != nil {
-			return nil, err
+		if err := fswatcher.New(path, dbChan, doneChan); err != nil {
+			return err
 		}
 	}
-	return done, nil
+
+	// OK
+	return nil
 }
 
 func waitEvents(doneChan chan bool) error {

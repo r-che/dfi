@@ -7,8 +7,7 @@ type FSObject struct {
 	FPath		string	// Found path
 	RPath		string	// Real object path
 	Type		string	// Regular file, directory, symbolic link, etc...
-	LinksNum	uint	// Number of hardlinks
-	Size		uint
+	Size		int64
 	CheckSum	[]byte
 }
 
@@ -30,3 +29,10 @@ func (et eventType) String() string {
 type FSEvent struct {
 	Type		eventType
 }
+
+type objType string
+const (
+	ObjRegular		=	"reg"
+	ObjDirectory	=	"dir"
+	ObjSymlink		=	"sym"
+)

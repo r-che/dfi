@@ -6,6 +6,7 @@ import (
 	"time"
 	"sort"
 	"path/filepath"
+	"io/fs"
 
 	"github.com/r-che/dfi/dbi"
 	"github.com/r-che/dfi/types"
@@ -19,6 +20,17 @@ import (
 func New(watchPath string, dbChan chan []*dbi.DBOperation, done chan bool) error {
 	// Get configuration
 	c := cfg.Config()
+
+	// Check that watchPath is not absolute
+	if !filepath.IsAbs(watchPath) {
+		absPath, err := filepath.Abs(watchPath)
+		if err != nil {
+			return fmt.Errorf("cannot convert non-absolue path %q to absolute form: %v", watchPath, err)
+		}
+
+		log.I("Converted non-absolute path %q to %q", watchPath, absPath)
+		watchPath = absPath
+	}
 
 	// Create new FS watcher
 	watcher, err := fsn.NewWatcher()
@@ -239,11 +251,19 @@ func flushCached(watchPath string, events map[string]*types.FSEvent, dbChan chan
 						watchPath, name, err)
 					continue
 				}
-				// Append database operation
+				// Check returned value for empty
+				if oInfo == nil {
+					// Unsupported object type, just skip it
+					log.D("(watcher:%s) Skip object %q due to unsupported type", watchPath, name)
+					continue
+				}
+
+				// Append a database operation
 				dbOps = append(dbOps, &dbi.DBOperation{Op: dbi.Update, ObjectInfo: oInfo})
 
 			// Object was removed from filesystem
 			case types.EvRemove:
+				// Append a database operation
 				dbOps = append(dbOps, &dbi.DBOperation{Op: dbi.Delete})
 			default:
 				panic(fmt.Sprintf("(watcher:%s) Unhandled FSEvent type %v (%d) occurred on path %q",
@@ -263,25 +283,44 @@ func getObjectInfo(name string) (*types.FSObject, error) {
 	c := cfg.Config()
 
 	// Get object information to update data in DB
-	oi, err := os.Stat(name)
+	oi, err := os.Lstat(name)
 	if err != nil {
 		return nil, err
 	}
-	_=oi // TODO
 
-	// TODO Get real path of an object
+	// Fill filesystem object
+	fso := types.FSObject {
+		Name:	oi.Name(),
+		FPath:	name,
+		Size:	oi.Size(),
+	}
 
-	// TODO Determine object type - regular file, directory, symbolic link, etc...
+	switch {
+		case oi.Mode() & fs.ModeSymlink != 0:
+			// Resolve symbolic link value
+			if fso.RPath, err = filepath.EvalSymlinks(name); err != nil {
+				return nil, fmt.Errorf("cannot resolve symbolic link object %q to real path: %v", name, err)
+			}
 
+			// Assign proper type
+			fso.Type = types.ObjSymlink
+			// Continue handling
+		case oi.IsDir():
+			// Assign proper type
+			fso.Type = types.ObjDirectory
+		case oi.Mode().IsRegular():
+			// Assign proper type
+			fso.Type = types.ObjRegular
+			// Continue handling
+		default:
+			// Unsupported filesystem object type
+			return nil, nil
+	}
 
-	// TODO Number of hard links to the data of the object
-
-	// TODO Size of object in bytes
-
-	// TODO Get checksum but only if enabled
+	// Get checksum but only if enabled
 	if c.CalcSums {
 		// TODO
 	}
 
-	return nil, nil
+	return &fso, nil
 }
