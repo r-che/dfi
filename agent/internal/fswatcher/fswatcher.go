@@ -19,7 +19,7 @@ import (
 	fsn "github.com/fsnotify/fsnotify"
 )
 
-func New(ctx context.Context, watchPath string, dbChan chan []*dbi.DBOperation) error {
+func New(ctx context.Context, watchPath string, dbChan chan<- []*dbi.DBOperation) error {
 	// Get configuration
 	c := cfg.Config()
 
@@ -231,7 +231,7 @@ func scanDir(watcher *fsn.Watcher, dir string, events map[string]*types.FSEvent)
 	return nil
 }
 
-func flushCached(watchPath string, events map[string]*types.FSEvent, dbChan chan []*dbi.DBOperation) error {
+func flushCached(watchPath string, events map[string]*types.FSEvent, dbChan chan<- []*dbi.DBOperation) error {
 	// Make sorted list of paths
 	names := make([]string, 0, len(events))
 	for name := range events {
@@ -277,8 +277,9 @@ func flushCached(watchPath string, events map[string]*types.FSEvent, dbChan chan
 		}
 	}
 
-	// TODO Send dbOps to database controller channel
 	log.D("(watcher:%s) Sending %d operations to DB controller\n", watchPath, len(dbOps))
+	// Send dbOps to database controller channel
+	dbChan <-dbOps
 
 	// No errors
 	return nil

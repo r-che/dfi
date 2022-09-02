@@ -79,26 +79,21 @@ func main() {
 	log.Close()
 }
 
-func initDB(ctx context.Context, dbc *dbi.DBConfig, dbChan chan []*dbi.DBOperation) error {
-	// Init database connector TODO
+func initDB(ctx context.Context, dbc *dbi.DBConfig, dbChan <-chan []*dbi.DBOperation) error {
+	// Init database connector
+	dbCtrl, err := dbi.InitController(ctx, dbc, dbChan)
+	if err != nil {
+		return err
+	}
 
-	log.I("Database controller started")
 	// Run database controller as goroutine
-	// TODO FIXME stub
-	go func() {
-		// Get waitgroup from context
-		wg := ctx.Value(types.CtxWGDBC).(*sync.WaitGroup)
+	go dbCtrl()
 
-		select {
-			case <-ctx.Done():
-				wg.Done()
-				log.I("Database controller finished")
-		}
-	}()
+	// OK
 	return nil
 }
 
-func initWatchers(ctx context.Context, paths []string, dbChan chan []*dbi.DBOperation) error {
+func initWatchers(ctx context.Context, paths []string, dbChan chan<- []*dbi.DBOperation) error {
 	for _, path := range paths {
 		if err := fswatcher.New(ctx, path, dbChan); err != nil {
 			return err

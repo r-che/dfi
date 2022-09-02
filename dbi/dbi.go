@@ -19,3 +19,5 @@ type DBOperation struct {
 	Op DBOperator
 	ObjectInfo *types.FSObject
 }
+
+type DBContrFunc func()
