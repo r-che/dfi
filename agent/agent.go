@@ -1,12 +1,15 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"sync"
 	stdLog "log"
 
-	"github.com/r-che/dfi/dbi"
 	"github.com/r-che/dfi/agent/internal/cfg"
 	"github.com/r-che/dfi/agent/internal/fswatcher"
+	"github.com/r-che/dfi/dbi"
+	"github.com/r-che/dfi/types"
 
 	"github.com/r-che/log"
 )
@@ -36,25 +39,38 @@ func main() {
 
 	// Channel to read information collected by watchers to send it to database
 	dbChan := make(chan []*dbi.DBOperation)
-	// TODO Need to replace doneChan by context.Context + sync.WaitGroup (as context parameter)
-	// Channel to stop watchers and DB controller
-	doneChan := make(chan bool)
 
+	// Wait group to synchronize finish of all watchers
+	wgW := sync.WaitGroup{}
+	// Waith group to synchronize database controller
+	wgC := sync.WaitGroup{}
+
+	// Context, to stop all watchers
+	ctxW, cancelW := context.WithCancel(context.Background())
+	ctxW = context.WithValue(ctxW, types.CtxWGWatchers, &wgW)
+	// Context to stop database controller
+	ctxC, cancelC := context.WithCancel(context.Background())
+	ctxC = context.WithValue(ctxC, types.CtxWGDBC, &wgC)
+
+	// Add database controller to wait group
+	wgC.Add(1)
 	// Init DB controller
-	err := initDB(&c.DBCfg, dbChan, doneChan)
+	err := initDB(ctxC, &c.DBCfg, dbChan)
 	if err != nil {
 		log.F("Cannot initiate database controller: %v", err)
 	}
 
+	// Add number of watchers to waitgroup
+	wgW.Add(len(c.IdxPaths))
 	// Init watchers on all configured directories
-	if err = initWatchers(c.IdxPaths, dbChan, doneChan); err != nil {
+	if err = initWatchers(ctxW, c.IdxPaths, dbChan); err != nil {
 		log.F("Cannot initiate watchers on configured paths %v: %v", c.IdxPaths, err)
 	}
 
 	// TODO Need to start cleanup goroutine if --reindex set to remove stale records from DB
 
 	// Wait for external events (signals)
-	if err = waitEvents(doneChan); err != nil {
+	if err = waitEvents(cancelW, &wgW, cancelC, &wgC); err != nil {
 		log.F("%v", err)
 	}
 
@@ -63,13 +79,28 @@ func main() {
 	log.Close()
 }
 
-func initDB(dbc *dbi.DBConfig, dbChan chan []*dbi.DBOperation) error {
+func initDB(ctx context.Context, dbc *dbi.DBConfig, dbChan chan []*dbi.DBOperation) error {
+	// Init database connector TODO
+
+	log.I("Database controller started")
+	// Run database controller as goroutine
+	// TODO FIXME stub
+	go func() {
+		// Get waitgroup from context
+		wg := ctx.Value(types.CtxWGDBC).(*sync.WaitGroup)
+
+		select {
+			case <-ctx.Done():
+				wg.Done()
+				log.I("Database controller finished")
+		}
+	}()
 	return nil
 }
 
-func initWatchers(paths []string, dbChan chan []*dbi.DBOperation, doneChan chan bool) error {
+func initWatchers(ctx context.Context, paths []string, dbChan chan []*dbi.DBOperation) error {
 	for _, path := range paths {
-		if err := fswatcher.New(path, dbChan, doneChan); err != nil {
+		if err := fswatcher.New(ctx, path, dbChan); err != nil {
 			return err
 		}
 	}
@@ -78,15 +109,21 @@ func initWatchers(paths []string, dbChan chan []*dbi.DBOperation, doneChan chan 
 	return nil
 }
 
-func waitEvents(doneChan chan bool) error {
+func waitEvents(cancelW context.CancelFunc, wgW *sync.WaitGroup, cancelC context.CancelFunc, wgC *sync.WaitGroup) error {
 	fmt.Println("Press Enter to STOP")
 	fmt.Scanln()
 
-	// Send stop to all children goroutines
-	doneChan <-true
+	log.D("Stopping all watchers...")
+	// Stop all watchers
+	cancelW()
+	// Wait for watcher finished
+	wgW.Wait()
 
-	// Wait for signal processed
-	<-doneChan
+	log.D("Stopping database controller...")
+	// Stop database controller
+	cancelC()
+	// Wait for database controller finished
+	wgC.Wait()
 
 	return nil
 }

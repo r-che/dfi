@@ -1,12 +1,14 @@
 package fswatcher
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"time"
 	"sort"
 	"path/filepath"
 	"io/fs"
+	"sync"
 
 	"github.com/r-che/dfi/dbi"
 	"github.com/r-che/dfi/types"
@@ -17,10 +19,11 @@ import (
 	fsn "github.com/fsnotify/fsnotify"
 )
 
-func New(watchPath string, dbChan chan []*dbi.DBOperation, done chan bool) error {
+func New(ctx context.Context, watchPath string, dbChan chan []*dbi.DBOperation) error {
 	// Get configuration
 	c := cfg.Config()
 
+	log.D("(watcher:%s) Starting...", watchPath)
 	// Check that watchPath is not absolute
 	if !filepath.IsAbs(watchPath) {
 		absPath, err := filepath.Abs(watchPath)
@@ -28,7 +31,7 @@ func New(watchPath string, dbChan chan []*dbi.DBOperation, done chan bool) error
 			return fmt.Errorf("cannot convert non-absolue path %q to absolute form: %v", watchPath, err)
 		}
 
-		log.I("Converted non-absolute path %q to %q", watchPath, absPath)
+		log.D("Converted non-absolute path %q to %q", watchPath, absPath)
 		watchPath = absPath
 	}
 
@@ -60,6 +63,8 @@ func New(watchPath string, dbChan chan []*dbi.DBOperation, done chan bool) error
 
 	// Run watcher for watchPath
 	go func() {
+		// Get waitgroup from context
+		wg := ctx.Value(types.CtxWGWatchers).(*sync.WaitGroup)
 
 		// Timer to flush cache to database
 		timer := time.Tick(c.FlushPeriod)
@@ -100,7 +105,7 @@ func New(watchPath string, dbChan chan []*dbi.DBOperation, done chan bool) error
 				log.E("(watcher:%s) Filesystem events watcher returned error: %v", watchPath, err)
 
 			// Stop watching
-			case <-done:
+			case <-ctx.Done():
 				watcher.Close()
 				log.D("(watcher:%s) Watching stopped", watchPath)
 
@@ -114,10 +119,11 @@ func New(watchPath string, dbChan chan []*dbi.DBOperation, done chan bool) error
 					}
 				}
 
-				// Notify that watcher finished
-				done <-true
-
 				log.I("Stopped watcher due to request for %q", watchPath)
+
+				// Decrease waitgroup conunter to notify main goroutine that this child finished
+				wg.Done()
+
 				return
 			}
 		}
@@ -212,7 +218,7 @@ func scanDir(watcher *fsn.Watcher, dir string, events map[string]*types.FSEvent)
 				continue
 			}
 
-			log.I("Added watcher for %q", objName)
+			log.D("Added watcher for %q", objName)
 
 			// Do recursively call to scan all directorie's subentries
 			if err = scanDir(watcher, objName, events); err != nil {
