@@ -16,8 +16,9 @@ type progConfig struct {
 	DBCfg		dbi.DBConfig
 
 	// Other options
-	LogFile		string	// Location of log file
-	Reindex		bool	// Do reindex on startup
+	Hostname	string	// Override real hostname
+	LogFile		string	// Set location of log file
+	Reindex		bool	// Start reindex on startup
 	FlushPeriod	time.Duration	// Period between flushing FS events to database
 	CalcSums	bool	// Caclculate checksums for regular files
 

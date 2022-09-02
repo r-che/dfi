@@ -2,9 +2,13 @@ package cfg
 
 import (
 	"time"
+	"os"
 
+	"github.com/r-che/log"
 	"github.com/r-che/optsparser"
 )
+
+const fallbackHostname = `BALLBACK-HOSTNAME`
 
 var config progConfig
 
@@ -16,6 +20,13 @@ func Init(name string) {
 		`dbhost`,
 	)
 
+	// Get real hostname
+	hostname, err := os.Hostname()
+	if err != nil {
+		log.E("Cannot get hostname of this host: %v - using the fallback value %q", err, fallbackHostname)
+		hostname = fallbackHostname
+	}
+
 	// Required options
 
 	// Paths for indexing
@@ -24,6 +35,7 @@ func Init(name string) {
 	p.AddString(`dbhost|D`, `database host or IP address and port in HOST:PORT format`, &config.DBCfg.HostPort, "")
 
 	// Other options
+	p.AddString(`hostname|H`, `override real hostname by provided value`, &config.Hostname, hostname)
 	p.AddString(`log-file|l`, `log file path`, &config.LogFile, "")
 	p.AddBool(`reindex|R`, `do reindex configured paths at startup`, &config.Reindex, false)
 	p.AddDuration(`flush-period|F`, `period between flushing FS events to database`, &config.FlushPeriod, 5 * time.Second)

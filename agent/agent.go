@@ -34,8 +34,8 @@ func main() {
 	log.SetDebug(c.Debug)
 
 	// Starting agent
-	log.I("%s %s started", ProgNameLong, ProgVers)
-	log.I("Database host: %s, paths to indexing: %v", c.DBCfg.HostPort, c.IdxPaths)
+	log.I("==== %s %s started ====", ProgNameLong, ProgVers)
+	log.I("Current hostname - %q database host - %q paths to indexing %v", c.Hostname, c.DBCfg.HostPort, c.IdxPaths)
 
 	// Channel to read information collected by watchers to send it to database
 	dbChan := make(chan []*dbi.DBOperation)
@@ -81,7 +81,7 @@ func main() {
 
 func initDB(ctx context.Context, dbc *dbi.DBConfig, dbChan <-chan []*dbi.DBOperation) error {
 	// Init database connector
-	dbCtrl, err := dbi.InitController(ctx, dbc, dbChan)
+	dbCtrl, err := dbi.InitController(ctx, cfg.Config().Hostname, dbc, dbChan)
 	if err != nil {
 		return err
 	}
