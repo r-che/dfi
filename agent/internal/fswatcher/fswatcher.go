@@ -270,7 +270,7 @@ func flushCached(watchPath string, events map[string]*types.FSEvent, dbChan chan
 			// Object was removed from filesystem
 			case types.EvRemove:
 				// Append a database operation
-				dbOps = append(dbOps, &dbi.DBOperation{Op: dbi.Delete})
+				dbOps = append(dbOps, &dbi.DBOperation{Op: dbi.Delete, ObjectInfo: &types.FSObject{FPath: name}})
 			default:
 				panic(fmt.Sprintf("(watcher:%s) Unhandled FSEvent type %v (%d) occurred on path %q",
 					watchPath, event.Type, event.Type, name))
