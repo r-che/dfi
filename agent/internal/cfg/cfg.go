@@ -45,6 +45,8 @@ func Init(name string) {
 	p.AddBool(`checksums|C`,
 		`calculate sha1 summs for all objects. WARNING: this may cause huge disk load and take a long time`,
 		&config.CalcSums, false)
+	p.AddInt64(`max-checksum-size|M`, `maximum size of the file in bytes, checksum of which will be calculated, 0 - no limits`,
+		&config.MaxSumSize, 0)
 
 
 	// Auxiliary options
