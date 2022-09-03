@@ -277,7 +277,7 @@ func flushCached(watchPath string, events map[string]*types.FSEvent, dbChan chan
 		}
 	}
 
-	log.D("(watcher:%s) Sending %d operations to DB controller\n", watchPath, len(dbOps))
+	log.I("(watcher:%s) Sending %d operations to DB controller\n", watchPath, len(dbOps))
 	// Send dbOps to database controller channel
 	dbChan <-dbOps
 
