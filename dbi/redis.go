@@ -3,6 +3,7 @@ package dbi
 
 import (
     "context"
+	"fmt"
 	"strconv"
 	"sync"
 
@@ -60,20 +61,48 @@ func InitController(ctx context.Context, hostname string, dbc *DBConfig, dbChan 
 
 func updateRedis(ctx context.Context, hostname string, rc *redis.Client, dbOps []*DBOperation) error {
 	// Update data in Redis
-	log.I("(Redis) Updating %d keys ...", len(dbOps))
+	log.I("(RedisCtrl) Processing %d keys ...", len(dbOps))
+
+	// List of keys to delete
+	delKeys := []string{}
+
+	updated, deleted := 0, int64(0)
+	defer func() {
+		log.I("(RedisCtrl) %d keys updated, %d keys deleted", updated, deleted)
+	}()
 
 	for _, op := range dbOps {
 		// Make key
 		key := ObjPrefix + hostname + ":" + op.ObjectInfo.FPath
-		log.D("(Redis) %v => %s\n", op.Op, key)
+		log.D("(RedisCtrl) %v => %s\n", op.Op, key)
 
-		res := rc.HSet(ctx, key, prepareValues(op.ObjectInfo))
-		if err := res.Err(); err != nil {
-			return err
+		switch op.Op {
+			case Update:
+				res := rc.HSet(ctx, key, prepareValues(op.ObjectInfo))
+				if err := res.Err(); err != nil {
+					return fmt.Errorf("HSET of key %q returned error: %v", key, err)
+				}
+				updated++
+			case Delete:
+				// Add key to delete list
+				delKeys = append(delKeys, key)
 		}
+
 	}
 
-	log.I("(Redis) Update finished")
+	// Check for keys to delete
+	if nDel := len(delKeys); nDel != 0 {
+		log.D("(RedisCtrl) Need to delete %d keys", nDel)
+
+		res := rc.Del(ctx, delKeys...)
+		if err := res.Err(); err != nil {
+			return fmt.Errorf("DEL operation failed: %v", err)
+		}
+
+		deleted = res.Val()
+
+		log.D("(RedisCtrl) Done deletion operation")
+	}
 
 	// OK
 	return nil
