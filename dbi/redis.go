@@ -23,29 +23,35 @@ func InitController(ctx context.Context, hostname string, dbc *DBConfig, dbChan 
         Password: dbc.Password,
         DB:       0,  // TODO Need to select DB from additional DB configuration
     })
+	// Separate context for redis client
+	ctxR, rCliStop := context.WithCancel(context.Background())
 
-	log.I("(Redis) Database controller created")
+	log.I("(RedisCtrl) Database controller created")
 
 	return func() {
 		// Get waitgroup from context
 		wg := ctx.Value(types.CtxWGDBC).(*sync.WaitGroup)
 
-		log.I("(Redis) Database controller started ")
+		log.I("(RedisCtrl) Database controller started ")
 
 		for {
 			select {
 				// Wait for set of values from watchers
 				case dbOps := <-dbChan:
 					// Process database operations
-					if err := updateRedis(ctx, hostname, rc, dbOps); err != nil {
-						log.E("(Redis) Update operations failed: %v", err)
+					if err := updateRedis(ctxR, hostname, rc, dbOps); err != nil {
+						log.E("(RedisCtrl) Update operations failed: %v", err)
 					}
 				// Wait for finish signal from context
 				case <-ctx.Done():
-					wg.Done()
-					log.I("(Redis) Database controller finished")
+					// Cancel Redis client
+					rCliStop()
 
-					// Exit from controller go
+					log.I("(RedisCtrl) Database controller finished")
+					// Signal that this goroutine is finished
+					wg.Done()
+
+					// Exit from controller goroutine
 					return
 			}
 		}
