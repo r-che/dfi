@@ -18,6 +18,7 @@ func Init(name string) {
 		// List of required options
 		`indexing-paths`,
 		`dbhost`,
+		`dbid`,
 	)
 
 	// Get real hostname
@@ -32,10 +33,12 @@ func Init(name string) {
 	// Paths for indexing
 	p.AddString(`indexing-paths|I`, `comma separated list of paths for indexing`, &config.paths, "")
 	// Database connection information
-	p.AddString(`dbhost|D`, `database host or IP address and port in HOST:PORT format`, &config.DBCfg.HostPort, "")
+	p.AddString(`dbhost|H`, `database host or IP address and port in HOST:PORT format`, &config.DBCfg.HostPort, "")
+	// Databace indentifier - name, number ans do on
+	p.AddString(`dbid|D`, `database identifier - name, number and so on`, &config.DBCfg.DBID, "")
 
 	// Other options
-	p.AddString(`hostname|H`, `override real hostname by provided value`, &config.Hostname, hostname)
+	p.AddString(`hostname`, `override real hostname by provided value`, &config.Hostname, hostname)
 	p.AddString(`log-file|l`, `log file path`, &config.LogFile, "")
 	p.AddBool(`reindex|R`, `do reindex configured paths at startup`, &config.Reindex, false)
 	p.AddDuration(`flush-period|F`, `period between flushing FS events to database`, &config.FlushPeriod, 5 * time.Second)

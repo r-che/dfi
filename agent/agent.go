@@ -35,7 +35,8 @@ func main() {
 
 	// Starting agent
 	log.I("==== %s %s started ====", ProgNameLong, ProgVers)
-	log.I("Current hostname - %q database host - %q paths to indexing %v", c.Hostname, c.DBCfg.HostPort, c.IdxPaths)
+	log.I("Current hostname - %q database host - %q database identifier - %s paths to indexing %v",
+		c.Hostname, c.DBCfg.HostPort, c.DBCfg.DBID, c.IdxPaths)
 
 	// Channel to read information collected by watchers to send it to database
 	dbChan := make(chan []*dbi.DBOperation)

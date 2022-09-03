@@ -9,10 +9,14 @@ import (
 
 // Standard database connection configuration
 type DBConfig struct {
+	// Connection information
 	HostPort	string
-
+	// Authentication
 	User		string
 	Password	string
+
+	// Database specific information
+	DBID		string	// Database identifier - name, number, etc...
 }
 
 // Supported operators on database

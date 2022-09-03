@@ -18,11 +18,16 @@ const (
 )
 
 func InitController(ctx context.Context, hostname string, dbc *DBConfig, dbChan <-chan []*DBOperation) (DBContrFunc, error) {
+	// Convert string representation of database identifier to numeric database index
+	dbid, err := strconv.ParseUint(dbc.DBID, 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("cannot convert database identifier value to unsigned integer: %v", err)
+	}
 	// Initialize Redis client
     rc := redis.NewClient(&redis.Options{
         Addr:     dbc.HostPort,
         Password: dbc.Password,
-        DB:       0,  // TODO Need to select DB from additional DB configuration
+        DB:       int(dbid),
     })
 	// Separate context for redis client
 	ctxR, rCliStop := context.WithCancel(context.Background())
