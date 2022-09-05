@@ -8,16 +8,23 @@ import (
 	"sync"
 
 	"github.com/r-che/dfi/types"
-	"github.com/r-che/log"
 
     "github.com/go-redis/redis/v8"
 )
 
 const (
+	redisLogID	=	"RedisCtrl"
 	ObjPrefix	=	"obj:"
 )
 
 func InitController(ctx context.Context, hostname string, dbc *DBConfig, dbChan <-chan []*DBOperation) (DBContrFunc, error) {
+	// Set Redis controller log identifier
+	var logIDSuff string
+	if v := ctx.Value(types.CtxLogIdSuff); v != nil {
+		logIDSuff = v.(string)
+	}
+	setLogID(redisLogID, logIDSuff)
+
 	// Convert string representation of database identifier to numeric database index
 	dbid, err := strconv.ParseUint(dbc.DBID, 10, 64)
 	if err != nil {
@@ -32,13 +39,13 @@ func InitController(ctx context.Context, hostname string, dbc *DBConfig, dbChan 
 	// Separate context for redis client
 	ctxR, rCliStop := context.WithCancel(context.Background())
 
-	log.I("(RedisCtrl) Database controller created")
+	logInf("Database controller created")
 
 	return func() {
 		// Get waitgroup from context
 		wg := ctx.Value(types.CtxWGDBC).(*sync.WaitGroup)
 
-		log.I("(RedisCtrl) Database controller started ")
+		logInf("Database controller started ")
 
 		for {
 			select {
@@ -46,14 +53,14 @@ func InitController(ctx context.Context, hostname string, dbc *DBConfig, dbChan 
 				case dbOps := <-dbChan:
 					// Process database operations
 					if err := updateRedis(ctxR, hostname, rc, dbOps); err != nil {
-						log.E("(RedisCtrl) Update operations failed: %v", err)
+						logErr("Update operations failed: %v", err)
 					}
 				// Wait for finish signal from context
 				case <-ctx.Done():
 					// Cancel Redis client
 					rCliStop()
 
-					log.I("(RedisCtrl) Database controller finished")
+					logInf("Database controller finished")
 					// Signal that this goroutine is finished
 					wg.Done()
 
@@ -66,20 +73,20 @@ func InitController(ctx context.Context, hostname string, dbc *DBConfig, dbChan 
 
 func updateRedis(ctx context.Context, hostname string, rc *redis.Client, dbOps []*DBOperation) error {
 	// Update data in Redis
-	log.I("(RedisCtrl) Processing %d keys ...", len(dbOps))
+	logInf("Processing %d keys ...", len(dbOps))
 
 	// List of keys to delete
 	delKeys := []string{}
 
 	updated, deleted := 0, int64(0)
 	defer func() {
-		log.I("(RedisCtrl) %d keys updated, %d keys deleted", updated, deleted)
+		logInf("%d keys updated, %d keys deleted", updated, deleted)
 	}()
 
 	for _, op := range dbOps {
 		// Make key
 		key := ObjPrefix + hostname + ":" + op.ObjectInfo.FPath
-		log.D("(RedisCtrl) %v => %s\n", op.Op, key)
+		logDbg("%v => %s\n", op.Op, key)
 
 		switch op.Op {
 			case Update:
@@ -92,12 +99,11 @@ func updateRedis(ctx context.Context, hostname string, rc *redis.Client, dbOps [
 				// Add key to delete list
 				delKeys = append(delKeys, key)
 		}
-
 	}
 
 	// Check for keys to delete
 	if nDel := len(delKeys); nDel != 0 {
-		log.D("(RedisCtrl) Need to delete %d keys", nDel)
+		logDbg("Need to delete %d keys", nDel)
 
 		res := rc.Del(ctx, delKeys...)
 		if err := res.Err(); err != nil {
@@ -106,7 +112,7 @@ func updateRedis(ctx context.Context, hostname string, rc *redis.Client, dbOps [
 
 		deleted = res.Val()
 
-		log.D("(RedisCtrl) Done deletion operation")
+		logDbg("Done deletion operation")
 	}
 
 	// OK

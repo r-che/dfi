@@ -56,7 +56,7 @@ func main() {
 	// Add database controller to wait group
 	wgC.Add(1)
 	// Init DB controller
-	err := initDB(ctxC, &c.DBCfg, dbChan)
+	err := initDB(ctxC, "", &c.DBCfg, dbChan)
 	if err != nil {
 		log.F("Cannot initiate database controller: %v", err)
 	}
