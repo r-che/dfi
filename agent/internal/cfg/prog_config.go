@@ -19,6 +19,7 @@ type progConfig struct {
 	Hostname	string	// Override real hostname
 	LogFile		string	// Set location of log file
 	Reindex		bool	// Start reindex on startup
+	Cleanup		bool	// Cleanup database
 	FlushPeriod	time.Duration	// Period between flushing FS events to database
 	CalcSums	bool	// Caclculate checksums for regular files
 	MaxSumSize	int64	// Maximum size of the file, checksum of which will be calculated
