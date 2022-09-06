@@ -7,6 +7,7 @@ import (
 	stdLog "log"
 
 	"github.com/r-che/dfi/agent/internal/cfg"
+//	"github.com/r-che/dfi/agent/internal/cleanup"
 	"github.com/r-che/dfi/agent/internal/fswatcher"
 	"github.com/r-che/dfi/dbi"
 	"github.com/r-che/dfi/types"
@@ -68,7 +69,12 @@ func main() {
 		log.F("Cannot initiate watchers on configured paths %v: %v", c.IdxPaths, err)
 	}
 
-	// TODO Need to start cleanup goroutine if --reindex set to remove stale records from DB
+	// Start cleanup if requested
+	if c.Cleanup {
+		// TODO
+		// wgC.Add(1)
+		// cleanup.Do(ctxC)
+	}
 
 	// Wait for external events (signals)
 	if err = waitEvents(cancelW, &wgW, cancelC, &wgC); err != nil {
