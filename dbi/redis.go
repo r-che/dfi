@@ -2,134 +2,135 @@
 package dbi
 
 import (
-    "context"
 	"fmt"
+	"context"
 	"strconv"
-	"sync"
 
 	"github.com/r-che/dfi/types"
 
-    "github.com/go-redis/redis/v8"
+	"github.com/r-che/log"
+
+	"github.com/go-redis/redis/v8"
 )
 
-const (
-	redisLogID	=	"RedisCtrl"
-	ObjPrefix	=	"obj:"
-)
+const RedisObjPrefix	=	"obj:"
 
-func InitController(ctx context.Context, hostname string, dbc *DBConfig, dbChan <-chan []*DBOperation) (DBContrFunc, error) {
-	// Set Redis controller log identifier
-	var logIDSuff string
-	if v := ctx.Value(types.CtxLogIdSuff); v != nil {
-		logIDSuff = v.(string)
-	}
-	setLogID(redisLogID, logIDSuff)
+type RedisClient struct {
+	// Pre-configured members
+	ctx		context.Context
+	stop	context.CancelFunc
+	cliHost	string
 
-	// Convert string representation of database identifier to numeric database index
-	dbid, err := strconv.ParseUint(dbc.DBID, 10, 64)
-	if err != nil {
-		return nil, fmt.Errorf("cannot convert database identifier value to unsigned integer: %v", err)
-	}
-	// Initialize Redis client
-    rc := redis.NewClient(&redis.Options{
-        Addr:     dbc.HostPort,
-        Password: dbc.Password,
-        DB:       int(dbid),
-    })
-	// Separate context for redis client
-	ctxR, rCliStop := context.WithCancel(context.Background())
+	c		*redis.Client
 
-	logInf("Database controller created")
-
-	return func() {
-		// Get waitgroup from context
-		wg := ctx.Value(types.CtxWGDBC).(*sync.WaitGroup)
-
-		logInf("Database controller started ")
-
-		for {
-			select {
-				// Wait for set of values from watchers
-				case dbOps := <-dbChan:
-					// Process database operations
-					if err := updateRedis(ctxR, hostname, rc, dbOps); err != nil {
-						logErr("Update operations failed: %v", err)
-					}
-				// Wait for finish signal from context
-				case <-ctx.Done():
-					// Cancel Redis client
-					rCliStop()
-
-					logInf("Database controller finished")
-					// Signal that this goroutine is finished
-					wg.Done()
-
-					// Exit from controller goroutine
-					return
-			}
-		}
-	}, nil
+	// Dynamic members
+	toDelete	[]string
+	updated		int64
+	deleted		int64
 }
 
-func updateRedis(ctx context.Context, hostname string, rc *redis.Client, dbOps []*DBOperation) error {
-	// Update data in Redis
-	logInf("Processing %d keys ...", len(dbOps))
-
-	// List of keys to delete
-	delKeys := []string{}
-
-	updated, deleted := 0, int64(0)
-	defer func() {
-		logInf("%d keys updated, %d keys deleted", updated, deleted)
-	}()
-
-	for _, op := range dbOps {
-		// Make key
-		key := ObjPrefix + hostname + ":" + op.ObjectInfo.FPath
-		logDbg("%v => %s\n", op.Op, key)
-
-		switch op.Op {
-			case Update:
-				res := rc.HSet(ctx, key, prepareValues(op.ObjectInfo))
-				if err := res.Err(); err != nil {
-					return fmt.Errorf("HSET of key %q returned error: %v", key, err)
-				}
-				updated++
-			case Delete:
-				// Add key to delete list
-				delKeys = append(delKeys, key)
-		}
+func newDBClient(dbCfg *DBConfig) (DBClient, error) {
+	// Convert string representation of database identifier to numeric database index
+	dbid, err := strconv.ParseUint(dbCfg.DBID, 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("RedisCtx: cannot convert database identifier value to unsigned integer: %v", err)
 	}
 
-	// Check for keys to delete
-	if nDel := len(delKeys); nDel != 0 {
-		logDbg("Need to delete %d keys", nDel)
-
-		res := rc.Del(ctx, delKeys...)
-		if err := res.Err(); err != nil {
-			return fmt.Errorf("DEL operation failed: %v", err)
-		}
-
-		deleted = res.Val()
-
-		logDbg("Done deletion operation")
+	// Initialize Redis client
+	rc := &RedisClient{
+		c: redis.NewClient(&redis.Options{
+			Addr:		dbCfg.HostPort,
+			Password:	dbCfg.Password,
+			DB:			int(dbid),
+		}),
+		cliHost:	dbCfg.CliHost,
 	}
+
+	// Separate context for redis client
+	rc.ctx, rc.stop = context.WithCancel(context.Background())
+
+	return rc, nil
+}
+
+func (rc *RedisClient) Update(fso *types.FSObject) error {
+	// Make a key
+	key := RedisObjPrefix + rc.cliHost + ":" + fso.FPath
+
+	log.D("(DBC) HSET => %s\n", key)
+
+	res := rc.c.HSet(rc.ctx, key, prepareHSetValues(fso))
+	if err := res.Err(); err != nil {
+		return fmt.Errorf("HSET of key %q returned error: %v", key, err)
+	}
+
+	rc.updated++
 
 	// OK
 	return nil
 }
 
-func prepareValues(fso *types.FSObject) []string {
+func (rc *RedisClient) Delete(fso *types.FSObject) error {
+	// Make a key
+	key := RedisObjPrefix + rc.cliHost + ":" + fso.FPath
+
+	log.D("(DBC) DEL (pending) => %s\n", key)
+
+	// Append key to delete
+	rc.toDelete = append(rc.toDelete, key)
+
+	// OK
+	return nil
+}
+
+func (rc *RedisClient) Commit() (int64, int64, error) {
+	// Reset state on return
+	defer func() {
+		// Reset counters
+		rc.updated = 0
+		rc.deleted = 0
+		// Reset list to delete
+		rc.toDelete = nil
+	}()
+
+	// Check for keys to delete
+	if nDel := len(rc.toDelete); nDel != 0 {
+		log.D("(RedisCli) Need to delete %d keys", nDel)
+
+		res := rc.c.Del(rc.ctx, rc.toDelete...)
+		if err := res.Err(); err != nil {
+			return rc.updated, res.Val(), fmt.Errorf("DEL operation failed: %v", err)
+		}
+
+		rc.deleted = res.Val()
+
+		log.D("(RedisCli) Done deletion operation")
+	}
+
+	// XXX Use intermediate variables to avoid resetting return values by deferred function
+	ru, rd := rc.updated, rc.deleted
+
+	return ru, rd, nil
+}
+
+func (rc *RedisClient) Stop() {
+	rc.stop()
+}
+
+// Auxiliary functions
+
+func prepareHSetValues(fso *types.FSObject) []string {
 	// Output slice with values prepared to send to Redis
 	values := make([]string, 0, types.FSObjectFieldsNum + 1)	// + 1 - id field
 
-	values = append(values, FieldID, makeID(fso))
-	values = append(values, FieldName, fso.Name)
-	values = append(values, FieldFPath, fso.FPath)
-	values = append(values, FieldRPath, fso.RPath)
-	values = append(values, FieldType, fso.Type)
-	values = append(values, FieldSize, strconv.FormatInt(fso.Size, 10))
-	values = append(values, FieldChecksum, fso.Checksum)
+	values = append(values,
+		FieldID, makeID(fso),
+		FieldName, fso.Name,
+		FieldFPath, fso.FPath,
+		FieldRPath, fso.RPath,
+		FieldType, fso.Type,
+		FieldSize, strconv.FormatInt(fso.Size, 10),
+		FieldChecksum, fso.Checksum,
+	)
 
 	return values
 }

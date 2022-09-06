@@ -16,7 +16,6 @@ type progConfig struct {
 	DBCfg		dbi.DBConfig
 
 	// Other options
-	Hostname	string	// Override real hostname
 	LogFile		string	// Set location of log file
 	Reindex		bool	// Start reindex on startup
 	Cleanup		bool	// Cleanup database

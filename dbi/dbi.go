@@ -11,6 +11,7 @@ import (
 type DBConfig struct {
 	// Connection information
 	HostPort	string
+	CliHost		string	// Client hostname
 	// Authentication
 	User		string
 	Password	string

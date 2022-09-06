@@ -8,7 +8,7 @@ import (
 	"github.com/r-che/optsparser"
 )
 
-const fallbackHostname = `BALLBACK-HOSTNAME`
+const fallbackHostname = `FALLBACK-HOSTNAME`
 
 var config progConfig
 
@@ -38,7 +38,7 @@ func Init(name string) {
 	p.AddString(`dbid|D`, `database identifier - name, number and so on`, &config.DBCfg.DBID, "")
 
 	// Other options
-	p.AddString(`hostname`, `override real hostname by provided value`, &config.Hostname, hostname)
+	p.AddString(`hostname`, `override real client hostname by provided value`, &config.DBCfg.CliHost, hostname)
 	p.AddString(`log-file|l`, `log file path`, &config.LogFile, "")
 	p.AddBool(`reindex|R`, `do reindex configured paths at startup`, &config.Reindex, false)
 	p.AddBool(`cleanup|c`, `delete records without existing files on disk and that do not correspond to configured paths`, &config.Cleanup, false)
