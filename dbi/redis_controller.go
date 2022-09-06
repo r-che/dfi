@@ -98,13 +98,15 @@ func prepareValues(fso *types.FSObject) []string {
 	// Output slice with values prepared to send to Redis
 	values := make([]string, 0, types.FSObjectFieldsNum + 1)	// + 1 - id field
 
-	values = append(values, FieldID, makeID(fso))
-	values = append(values, FieldName, fso.Name)
-	values = append(values, FieldFPath, fso.FPath)
-	values = append(values, FieldRPath, fso.RPath)
-	values = append(values, FieldType, fso.Type)
-	values = append(values, FieldSize, strconv.FormatInt(fso.Size, 10))
-	values = append(values, FieldChecksum, fso.Checksum)
+	values = append(values,
+		FieldID, makeID(fso),
+		FieldName, fso.Name,
+		FieldFPath, fso.FPath,
+		FieldRPath, fso.RPath,
+		FieldType, fso.Type,
+		FieldSize, strconv.FormatInt(fso.Size, 10),
+		FieldChecksum, fso.Checksum,
+	)
 
 	return values
 }
