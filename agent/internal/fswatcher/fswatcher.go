@@ -314,7 +314,7 @@ func getObjectInfo(name string) (*types.FSObject, error) {
 		case oi.Mode() & fs.ModeSymlink != 0:
 			// Resolve symbolic link value
 			if fso.RPath, err = filepath.EvalSymlinks(name); err != nil {
-				return nil, fmt.Errorf("cannot resolve symbolic link object %q to real path: %v", name, err)
+				log.W("Cannot resolve symbolic link object %q to real path: %v", name, err)
 			}
 
 			// Assign proper type
