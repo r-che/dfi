@@ -67,12 +67,12 @@ func (dbc *DBController) update(dbOps []*DBOperation) error {
         switch op.Op {
             case Update:
                 // Add/update data in DB
-                if err := dbc.dbCli.Update(op.ObjectInfo); err != nil {
+                if err := dbc.dbCli.UpdateObj(op.ObjectInfo); err != nil {
                     return err
                 }
             case Delete:
                 // Delete data from DB
-                if err := dbc.dbCli.Delete(op.ObjectInfo); err != nil {
+                if err := dbc.dbCli.DeleteObj(op.ObjectInfo); err != nil {
                     return err
                 }
         }

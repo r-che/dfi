@@ -10,9 +10,11 @@ import (
 )
 
 type DBClient interface {
-    Update(*types.FSObject) error
-    Delete(*types.FSObject) error
+    UpdateObj(*types.FSObject) error
+    DeleteObj(*types.FSObject) error
+    Delete(string) error
     Commit() (int64, int64, error)
+	LoadHostPaths() ([]string, error)
     Stop()
 }
 

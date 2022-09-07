@@ -13,7 +13,10 @@ import (
 	"github.com/go-redis/redis/v8"
 )
 
-const RedisObjPrefix	=	"obj:"
+const (
+	RedisMaxScanKeys	=	1024 * 10
+	RedisObjPrefix		=	"obj:"
+)
 
 type RedisClient struct {
 	// Pre-configured members
@@ -33,7 +36,7 @@ func newDBClient(dbCfg *DBConfig) (DBClient, error) {
 	// Convert string representation of database identifier to numeric database index
 	dbid, err := strconv.ParseUint(dbCfg.DBID, 10, 64)
 	if err != nil {
-		return nil, fmt.Errorf("RedisCtx: cannot convert database identifier value to unsigned integer: %v", err)
+		return nil, fmt.Errorf("(RedisCli) cannot convert database identifier value to unsigned integer: %v", err)
 	}
 
 	// Initialize Redis client
@@ -52,11 +55,11 @@ func newDBClient(dbCfg *DBConfig) (DBClient, error) {
 	return rc, nil
 }
 
-func (rc *RedisClient) Update(fso *types.FSObject) error {
+func (rc *RedisClient) UpdateObj(fso *types.FSObject) error {
 	// Make a key
 	key := RedisObjPrefix + rc.cliHost + ":" + fso.FPath
 
-	log.D("(DBC) HSET => %s\n", key)
+	log.D("(RedisCli) HSET => %s\n", key)
 
 	res := rc.c.HSet(rc.ctx, key, prepareHSetValues(fso))
 	if err := res.Err(); err != nil {
@@ -69,11 +72,15 @@ func (rc *RedisClient) Update(fso *types.FSObject) error {
 	return nil
 }
 
-func (rc *RedisClient) Delete(fso *types.FSObject) error {
-	// Make a key
-	key := RedisObjPrefix + rc.cliHost + ":" + fso.FPath
+func (rc *RedisClient) DeleteObj(fso *types.FSObject) error {
+	return rc.Delete(fso.FPath)
+}
 
-	log.D("(DBC) DEL (pending) => %s\n", key)
+func (rc *RedisClient) Delete(path string) error {
+	// Make a key
+	key := RedisObjPrefix + rc.cliHost + ":" + path
+
+	log.D("(RedisCli) DEL (pending) => %s\n", key)
 
 	// Append key to delete
 	rc.toDelete = append(rc.toDelete, key)
@@ -114,6 +121,43 @@ func (rc *RedisClient) Commit() (int64, int64, error) {
 
 func (rc *RedisClient) Stop() {
 	rc.stop()
+}
+
+func (rc *RedisClient) LoadHostPaths() ([]string, error) {
+	// Make prefix of objects keys
+	pref := RedisObjPrefix + rc.cliHost + ":*"
+
+	// Output list of keys of objects belong to the host
+	hostKeys := []string{}
+	// Calculate path offset to append paths to the output list
+	pathOffset:= len(pref) - 1
+
+	// Scan() intermediate  variables
+	var cursor uint64
+	var sKeys []string
+	var err error
+
+	log.D("(RedisCli) Scanning DB for keys with prefix %q, using %d as COUNT value for SCAN operation", pref, RedisMaxScanKeys)
+	// Scan keys space prefixed by pref
+	for {
+		// Scan for RedisMaxScanKeys items (max)
+		sKeys, cursor, err = rc.c.Scan(rc.ctx, cursor, pref, RedisMaxScanKeys).Result()
+		if err != nil {
+			return nil, err
+		}
+
+		// Append scanned keys to the resulted list as set of paths without prefix
+		for _, k := range sKeys {
+			hostKeys = append(hostKeys, k[pathOffset:])
+		}
+
+		// Is the end of keys space reached
+		if cursor == 0 {
+			// Return resulted data
+			log.D("(RedisCli) Scan for keys prefixed by %q finished, %d keys obtained", pref, len(hostKeys))
+			return hostKeys, nil
+		}
+	}
 }
 
 // Auxiliary functions

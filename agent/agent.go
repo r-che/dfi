@@ -7,7 +7,7 @@ import (
 	stdLog "log"
 
 	"github.com/r-che/dfi/agent/internal/cfg"
-//	"github.com/r-che/dfi/agent/internal/cleanup"
+	"github.com/r-che/dfi/agent/internal/cleanup"
 	"github.com/r-che/dfi/agent/internal/fswatcher"
 	"github.com/r-che/dfi/dbi"
 	"github.com/r-che/dfi/types"
@@ -36,8 +36,8 @@ func main() {
 
 	// Starting agent
 	log.I("==== %s %s started ====", ProgNameLong, ProgVers)
-	log.I("Current hostname - %q database host - %q database identifier - %s paths to indexing %v",
-		c.DBCfg.CliHost, c.DBCfg.HostPort, c.DBCfg.DBID, c.IdxPaths)
+	log.I("Paths to indexing - %v client hostname - %q database host - %q database identifier - %q",
+		c.IdxPaths, c.DBCfg.CliHost, c.DBCfg.HostPort, c.DBCfg.DBID)
 
 	// Channel to read information collected by watchers to send it to database
 	dbChan := make(chan []*dbi.DBOperation)
@@ -71,9 +71,9 @@ func main() {
 
 	// Start cleanup if requested
 	if c.Cleanup {
-		// TODO
-		// wgC.Add(1)
-		// cleanup.Do(ctxC)
+		if err := cleanup.Run(); err != nil {
+			log.F("Cannot start cleanup operation: %v", err)
+		}
 	}
 
 	// Wait for external events (signals)
