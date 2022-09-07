@@ -313,7 +313,7 @@ func getObjectInfo(name string) (*types.FSObject, error) {
 	switch {
 		case oi.Mode() & fs.ModeSymlink != 0:
 			// Resolve symbolic link value
-			if fso.RPath, err = filepath.EvalSymlinks(name); err != nil {
+			if fso.RPath, err = os.Readlink(name); err != nil {
 				log.W("Cannot resolve symbolic link object %q to real path: %v", name, err)
 			}
 
