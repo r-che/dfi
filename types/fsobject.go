@@ -9,9 +9,10 @@ type FSObject struct {
 	RPath		string	// Real object path
 	Type		string	// Regular file, directory, symbolic link, etc...
 	Size		int64
+	MTime		int64
 	Checksum	string
 }
-const FSObjectFieldsNum = 6
+const FSObjectFieldsNum = 7
 
 type eventType int
 const (

@@ -52,6 +52,7 @@ const (
 	FieldRPath = "rpath"	// Where object really placed
 	FieldType = "type"		// Regular file, directory, symbolic link
 	FieldSize = "size"		// Size of object in bytes, if applicable
+	FieldMTime = "mtime"	// Object modifications time
 	FieldChecksum = "csum"	// Message digest, if enabled by indexer settings
 )
 
