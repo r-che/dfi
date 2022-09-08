@@ -312,6 +312,7 @@ func getObjectInfo(name string) (*types.FSObject, error) {
 		Name:	oi.Name(),
 		FPath:	name,
 		Size:	oi.Size(),
+		MTime:	oi.ModTime().Unix(),
 	}
 
 	switch {

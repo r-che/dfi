@@ -176,6 +176,7 @@ func prepareHSetValues(fso *types.FSObject) []string {
 		FieldRPath, fso.RPath,
 		FieldType, fso.Type,
 		FieldSize, strconv.FormatInt(fso.Size, 10),
+		FieldMTime, strconv.FormatInt(fso.MTime, 10),
 		FieldChecksum, fso.Checksum,
 	)
 
