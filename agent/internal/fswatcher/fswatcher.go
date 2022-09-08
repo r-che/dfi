@@ -25,6 +25,10 @@ const (
 	// Stubs to fill checksum field on special cases
 	csTooLarge = `<FILE TOO LARGE>`
 	csErrorStub = `<FAIL TO CALCULATE CHECKSUM>`
+
+	// Do or do not reindexing of path
+	doReindex	=	true
+	noReindex	=	false
 )
 
 func New(ctx context.Context, watchPath string, dbChan chan<- []*dbi.DBOperation) error {
@@ -36,10 +40,10 @@ func New(ctx context.Context, watchPath string, dbChan chan<- []*dbi.DBOperation
 	if !filepath.IsAbs(watchPath) {
 		absPath, err := filepath.Abs(watchPath)
 		if err != nil {
-			return fmt.Errorf("cannot convert non-absolue path %q to absolute form: %v", watchPath, err)
+			return fmt.Errorf("(watcher:%s) cannot convert non-absolue path %q to absolute form: %v", watchPath, err)
 		}
 
-		log.D("Converted non-absolute path %q to %q", watchPath, absPath)
+		log.D("(watcher:%s) Converted non-absolute path %q to %q", watchPath, watchPath, absPath)
 		watchPath = absPath
 	}
 
@@ -49,23 +53,22 @@ func New(ctx context.Context, watchPath string, dbChan chan<- []*dbi.DBOperation
 		return fmt.Errorf("(watcher:%s) cannot create watcher: %v", watchPath, err)
 	}
 
-	// Add configured path to watching
-	if err = watcher.Add(watchPath); err != nil {
-		watcher.Close()
-		return fmt.Errorf("(watcher:%s) cannot add watcher: %v", watchPath, err)
-	}
-
 	// Cached filesystem events
 	events := map[string]*types.FSEvent{}
 
 	// Is reindex required?
 	if c.Reindex {
-		log.I("Reindexing path %q ...", watchPath)
-		// Do recursive scan and add watchers to all subdirectories
-		if err = scanDir(watcher, watchPath, events); err != nil {
-			log.E("Cannot reindex path %q: %v", watchPath, err)
-		} else {
-			log.I("Reindexing done for %q", watchPath)
+		log.I("(watcher:%s) Starting reindexing ...", watchPath)
+		// Do recursive scan and reindexing
+		if err = scanDir(watcher, watchPath, events, doReindex); err != nil {
+			return fmt.Errorf("(watcher:%s) cannot reindex: %v", watchPath, err)
+		}
+
+		log.I("(watcher:%s) Reindexing done", watchPath)
+	} else {
+		// Run recursive scan without reindexing
+		if err = scanDir(watcher, watchPath, events, noReindex); err != nil {
+			return fmt.Errorf("(watcher:%s) cannot set watcher: %v", watchPath, err)
 		}
 	}
 
@@ -167,7 +170,7 @@ func handleEvent(watcher *fsn.Watcher, event *fsn.Event, events map[string]*type
 			} else {
 				log.I("Added watcher for %q", event.Name)
 				// Do recursive scan and add watchers to all subdirectories
-				if err = scanDir(watcher, event.Name, events); err != nil {
+				if err = scanDir(watcher, event.Name, events, doReindex); err != nil {
 					log.E("Cannot scan newly created directory %q: %v", event.Name, err)
 				}
 			}
@@ -204,7 +207,7 @@ func handleEvent(watcher *fsn.Watcher, event *fsn.Event, events map[string]*type
 	}
 }
 
-func scanDir(watcher *fsn.Watcher, dir string, events map[string]*types.FSEvent) error {
+func scanDir(watcher *fsn.Watcher, dir string, events map[string]*types.FSEvent, doIndexing bool) error {
 	// Scan directory to watch all subentries
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -214,8 +217,12 @@ func scanDir(watcher *fsn.Watcher, dir string, events map[string]*types.FSEvent)
 	for _, entry := range entries {
 		// Create object name as path concatenation of top-directory and entry name
 		objName := filepath.Join(dir, entry.Name())
-		// Add each entry as newsly created object
-		events[objName] = &types.FSEvent{Type: types.EvCreate}
+
+		// Is indexing of objects required?
+		if doIndexing {
+			// Add each entry as newly created object to update data in DB
+			events[objName] = &types.FSEvent{Type: types.EvCreate}
+		}
 
 		// Check that the the entry is a directory
 		if entry.IsDir() {
@@ -229,7 +236,7 @@ func scanDir(watcher *fsn.Watcher, dir string, events map[string]*types.FSEvent)
 			log.D("Added watcher for %q", objName)
 
 			// Do recursively call to scan all directorie's subentries
-			if err = scanDir(watcher, objName, events); err != nil {
+			if err = scanDir(watcher, objName, events, doIndexing); err != nil {
 				log.E("Cannot scan nested directory %q: %v", objName, err)
 			}
 		}
