@@ -123,7 +123,7 @@ func (rc *RedisClient) Stop() {
 	rc.stop()
 }
 
-func (rc *RedisClient) LoadHostPaths() ([]string, error) {
+func (rc *RedisClient) LoadHostPaths(filter FilterFunc) ([]string, error) {
 	// Make prefix of objects keys
 	pref := RedisObjPrefix + rc.cliHost + ":*"
 
@@ -139,7 +139,7 @@ func (rc *RedisClient) LoadHostPaths() ([]string, error) {
 
 	log.D("(RedisCli) Scanning DB for keys with prefix %q, using %d as COUNT value for SCAN operation", pref, RedisMaxScanKeys)
 	// Scan keys space prefixed by pref
-	for {
+	for i := 0; ; i++ {
 		// Scan for RedisMaxScanKeys items (max)
 		sKeys, cursor, err = rc.c.Scan(rc.ctx, cursor, pref, RedisMaxScanKeys).Result()
 		if err != nil {
@@ -148,13 +148,16 @@ func (rc *RedisClient) LoadHostPaths() ([]string, error) {
 
 		// Append scanned keys to the resulted list as set of paths without prefix
 		for _, k := range sKeys {
-			hostKeys = append(hostKeys, k[pathOffset:])
+			// Append only filtered values
+			if path := k[pathOffset:]; filter(path) {
+				hostKeys = append(hostKeys, path)
+			}
 		}
 
 		// Is the end of keys space reached
 		if cursor == 0 {
 			// Return resulted data
-			log.D("(RedisCli) Scan for keys prefixed by %q finished, %d keys obtained", pref, len(hostKeys))
+			log.D("(RedisCli) Scan for keys prefixed by %q finished, scans number %d, %d keys filtered", pref, i, len(hostKeys))
 			return hostKeys, nil
 		}
 	}
