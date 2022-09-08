@@ -13,6 +13,7 @@ type progConfig struct {
 	// Required options
 	paths		string			// Hidden option to write original value from the command line
 	IdxPaths	[]string
+	DBPriv		string			// Path to file with DBMS-specific private data - username/password, keys and so on
 	DBCfg		dbi.DBConfig
 
 	// Other options
@@ -40,6 +41,23 @@ func (pc *progConfig) prepare() error {
 	// Prepare paths
 	pc.IdxPaths = strings.Split(pc.paths, ",")
 
+	// Prepare DB-private data
+	if err := pc.loadPriv(); err != nil {
+		return err
+	}
+
 	// Parsing completed successful
+	return nil
+}
+
+func (pc *progConfig) loadPriv() error {
+	// Return if no private data was set
+	if pc.DBPriv == "" {
+		// OK
+		return nil
+	}
+
+	// TODO Possible need to check ownership and permissions of the file
+	// TODO
 	return nil
 }
