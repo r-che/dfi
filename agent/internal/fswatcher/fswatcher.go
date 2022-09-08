@@ -208,6 +208,13 @@ func handleEvent(watcher *fsn.Watcher, event *fsn.Event, events map[string]*type
 }
 
 func scanDir(watcher *fsn.Watcher, dir string, events map[string]*types.FSEvent, doIndexing bool) error {
+	// Need to add watcher for this directory
+	if err := watcher.Add(dir); err != nil {
+		log.E("Cannot add watcher to directory %q: %v", dir, err)
+	} else {
+		log.D("Added watcher to %q", dir)
+	}
+
 	// Scan directory to watch all subentries
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -226,21 +233,11 @@ func scanDir(watcher *fsn.Watcher, dir string, events map[string]*types.FSEvent,
 
 		// Check that the the entry is a directory
 		if entry.IsDir() {
-
-			// Need to add watcher for this directory
-			if err = watcher.Add(objName); err != nil {
-				log.E("Cannot add watcher to directory %q: %v", objName, err)
-				continue
-			}
-
-			log.D("Added watcher for %q", objName)
-
 			// Do recursively call to scan all directorie's subentries
 			if err = scanDir(watcher, objName, events, doIndexing); err != nil {
 				log.E("Cannot scan nested directory %q: %v", objName, err)
 			}
 		}
-
 	}
 
 	return nil
