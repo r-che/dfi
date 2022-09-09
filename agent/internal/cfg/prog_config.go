@@ -1,10 +1,14 @@
 package cfg
 
 import (
+	"fmt"
 	"strings"
 	"time"
+	"io/ioutil"
+	"encoding/json"
 
 	"github.com/r-che/dfi/dbi"
+	"github.com/r-che/dfi/common/fschecks"
 )
 
 type progConfig struct {
@@ -57,7 +61,23 @@ func (pc *progConfig) loadPriv() error {
 		return nil
 	}
 
-	// TODO Possible need to check ownership and permissions of the file
-	// TODO
+	// Check correctness of ownership/permissions of the private file
+	if err := fschecks.PrivOwnership(pc.DBPriv); err != nil {
+		return fmt.Errorf("failed to check ownership/mode the private configuration of DB: %v", err)
+	}
+
+	// Read configuration file
+	data, err := ioutil.ReadFile(pc.DBPriv)
+	if err != nil {
+		return fmt.Errorf("cannot read private database configuration: %v", err)
+	}
+
+	// Parse JSON, load it to configuration
+	pc.DBCfg.DBPrivCfg= map[string]any{}
+	if err = json.Unmarshal(data, &pc.DBCfg.DBPrivCfg); err != nil {
+		return fmt.Errorf("cannot decode private database configuration %q: %v", pc.DBPriv, err)
+	}
+
+	// OK
 	return nil
 }

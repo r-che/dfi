@@ -42,7 +42,9 @@ func (dbc *DBController) Run() {
 			case dbOps := <-dbc.dbChan:
 				// Process database operations
 				if err := dbc.update(dbOps); err != nil {
-					log.E("Update operations failed: %v", err)
+					log.E("(DBC) Update operations failed: %v", err)
+				} else {
+					log.I("(DBC) Done %d operations", len(dbOps))
 				}
 			// Wait for finish signal from context
 			case <-dbc.ctx.Done():

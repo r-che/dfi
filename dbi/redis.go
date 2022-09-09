@@ -16,6 +16,10 @@ import (
 const (
 	RedisMaxScanKeys	=	1024 * 10
 	RedisObjPrefix		=	"obj:"
+
+	// Private configuration fields
+	userField	=	"user"
+	uassField	=	"password"
 )
 
 type RedisClient struct {
@@ -39,11 +43,18 @@ func newDBClient(dbCfg *DBConfig) (DBClient, error) {
 		return nil, fmt.Errorf("(RedisCli) cannot convert database identifier value to unsigned integer: %v", err)
 	}
 
+	// Read username/password from private data if set
+	user, passw, err := userPasswd(dbCfg.DBPrivCfg)
+	if err != nil {
+		return nil, fmt.Errorf("(RedisCli) failed to load username/password from private configuration: %v", err)
+	}
+
 	// Initialize Redis client
 	rc := &RedisClient{
 		c: redis.NewClient(&redis.Options{
 			Addr:		dbCfg.HostPort,
-			Password:	dbCfg.Password,
+			Username:	user,
+			Password:	passw,
 			DB:			int(dbid),
 		}),
 		cliHost:	dbCfg.CliHost,
@@ -53,6 +64,40 @@ func newDBClient(dbCfg *DBConfig) (DBClient, error) {
 	rc.ctx, rc.stop = context.WithCancel(context.Background())
 
 	return rc, nil
+}
+
+func userPasswd(pcf map[string]any) (string, string, error) {
+	// Check for empty configuration
+	if pcf == nil {
+		// OK, just return nothing
+		return "", "", nil
+	}
+
+
+	loadField := func(field string) (string, error) {
+		v, ok := pcf[field]
+		if !ok {
+			return "", fmt.Errorf("(RedisCli) private configuration does not contain %q field", field)
+		}
+		if user, ok := v.(string); ok {
+			return user, nil
+		}
+		return "", fmt.Errorf(`(RedisCli) invalid type of %q field in private configuration, got %T, wanted string`,
+			field, v)
+	}
+
+	// Extract username/password values
+	user, err := loadField(userField)
+	if err != nil {
+		return "", "", err
+	}
+
+	passwd, err := loadField(uassField)
+	if err != nil {
+		return "", "", err
+	}
+
+	return user, passwd, nil
 }
 
 func (rc *RedisClient) UpdateObj(fso *types.FSObject) error {
