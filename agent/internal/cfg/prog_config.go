@@ -1,10 +1,14 @@
 package cfg
 
 import (
+	"fmt"
 	"strings"
 	"time"
+	"io/ioutil"
+	"encoding/json"
 
 	"github.com/r-che/dfi/dbi"
+	"github.com/r-che/dfi/common/fschecks"
 )
 
 type progConfig struct {
@@ -13,6 +17,7 @@ type progConfig struct {
 	// Required options
 	paths		string			// Hidden option to write original value from the command line
 	IdxPaths	[]string
+	DBPriv		string			// Path to file with DBMS-specific private data - username/password, keys and so on
 	DBCfg		dbi.DBConfig
 
 	// Other options
@@ -40,6 +45,39 @@ func (pc *progConfig) prepare() error {
 	// Prepare paths
 	pc.IdxPaths = strings.Split(pc.paths, ",")
 
+	// Prepare DB-private data
+	if err := pc.loadPriv(); err != nil {
+		return err
+	}
+
 	// Parsing completed successful
+	return nil
+}
+
+func (pc *progConfig) loadPriv() error {
+	// Return if no private data was set
+	if pc.DBPriv == "" {
+		// OK
+		return nil
+	}
+
+	// Check correctness of ownership/permissions of the private file
+	if err := fschecks.PrivOwnership(pc.DBPriv); err != nil {
+		return fmt.Errorf("failed to check ownership/mode the private configuration of DB: %v", err)
+	}
+
+	// Read configuration file
+	data, err := ioutil.ReadFile(pc.DBPriv)
+	if err != nil {
+		return fmt.Errorf("cannot read private database configuration: %v", err)
+	}
+
+	// Parse JSON, load it to configuration
+	pc.DBCfg.DBPrivCfg= map[string]any{}
+	if err = json.Unmarshal(data, &pc.DBCfg.DBPrivCfg); err != nil {
+		return fmt.Errorf("cannot decode private database configuration %q: %v", pc.DBPriv, err)
+	}
+
+	// OK
 	return nil
 }

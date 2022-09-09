@@ -12,12 +12,10 @@ type DBConfig struct {
 	// Connection information
 	HostPort	string
 	CliHost		string	// Client hostname
-	// Authentication
-	User		string
-	Password	string
 
 	// Database specific information
-	DBID		string	// Database identifier - name, number, etc...
+	DBID		string			// Database identifier - name, number, etc...
+	DBPrivCfg	map[string]any	// Private configuration loaded from JSON
 }
 
 // Supported operators on database
