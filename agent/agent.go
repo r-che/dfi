@@ -113,8 +113,10 @@ func initWatchers(ctx context.Context, paths []string, dbChan chan<- []*dbi.DBOp
 }
 
 func waitEvents(cancelW context.CancelFunc, wgW *sync.WaitGroup, cancelC context.CancelFunc, wgC *sync.WaitGroup) error {
+	// TODO Need to wait OS signals
 	fmt.Println("Press Enter to STOP")
 	fmt.Scanln()
+	fmt.Println("Total watchers were set:", fswatcher.NWatchers())
 
 	log.D("Stopping all watchers...")
 	// Stop all watchers

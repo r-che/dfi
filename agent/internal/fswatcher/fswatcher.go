@@ -31,6 +31,9 @@ const (
 	noReindex	=	false
 )
 
+// Map with for FS watchers paths
+var watchers = types.NewSyncMap()
+
 func New(ctx context.Context, watchPath string, dbChan chan<- []*dbi.DBOperation) error {
 	// Get configuration
 	c := cfg.Config()
@@ -56,18 +59,19 @@ func New(ctx context.Context, watchPath string, dbChan chan<- []*dbi.DBOperation
 	// Cached filesystem events
 	events := map[string]*types.FSEvent{}
 
+	nWatchers := 0
 	// Is reindex required?
 	if c.Reindex {
 		log.I("(watcher:%s) Starting reindexing ...", watchPath)
 		// Do recursive scan and reindexing
-		if err = scanDir(watcher, watchPath, events, doReindex); err != nil {
+		if nWatchers, err = scanDir(watcher, watchPath, events, doReindex); err != nil {
 			return fmt.Errorf("(watcher:%s) cannot reindex: %v", watchPath, err)
 		}
 
 		log.I("(watcher:%s) Reindexing done", watchPath)
 	} else {
 		// Run recursive scan without reindexing
-		if err = scanDir(watcher, watchPath, events, noReindex); err != nil {
+		if nWatchers, err = scanDir(watcher, watchPath, events, noReindex); err != nil {
 			return fmt.Errorf("(watcher:%s) cannot set watcher: %v", watchPath, err)
 		}
 	}
@@ -141,9 +145,13 @@ func New(ctx context.Context, watchPath string, dbChan chan<- []*dbi.DBOperation
 	}()
 
 	// Return no errors, success
-	log.I("Started filesystem events watcher for %q", watchPath)
+	log.I("Started filesystem watcher for %q, %d watchers were set", watchPath, nWatchers)
 
 	return nil
+}
+
+func NWatchers() int {
+	return watchers.Len()
 }
 
 func handleEvent(watcher *fsn.Watcher, event *fsn.Event, events map[string]*types.FSEvent) {
@@ -170,7 +178,8 @@ func handleEvent(watcher *fsn.Watcher, event *fsn.Event, events map[string]*type
 			} else {
 				log.I("Added watcher for %q", event.Name)
 				// Do recursive scan and add watchers to all subdirectories
-				if err = scanDir(watcher, event.Name, events, doReindex); err != nil {
+				_, err := scanDir(watcher, event.Name, events, doReindex)
+				if err != nil {
 					log.E("Cannot scan newly created directory %q: %v", event.Name, err)
 				}
 			}
@@ -195,6 +204,9 @@ func handleEvent(watcher *fsn.Watcher, event *fsn.Event, events map[string]*type
 		//	log.E("Cannot remove watcher from %q: %v", event.Name, err)
 		//}
 
+		// Delete object from watchers if was set
+		watchers.Del(event.Name)
+
 	// Object mode was changed
 	case event.Op & fsn.Chmod != 0:
 		// Nothing
@@ -207,18 +219,22 @@ func handleEvent(watcher *fsn.Watcher, event *fsn.Event, events map[string]*type
 	}
 }
 
-func scanDir(watcher *fsn.Watcher, dir string, events map[string]*types.FSEvent, doIndexing bool) error {
+func scanDir(watcher *fsn.Watcher, dir string, events map[string]*types.FSEvent, doIndexing bool) (int, error) {
+	// Summary count of watchers
+	nWatchers := 0
 	// Need to add watcher for this directory
 	if err := watcher.Add(dir); err != nil {
 		log.E("Cannot add watcher to directory %q: %v", dir, err)
 	} else {
 		log.D("Added watcher to %q", dir)
+		nWatchers++
+		watchers.Set(dir, nil)
 	}
 
 	// Scan directory to watch all subentries
 	entries, err := os.ReadDir(dir)
 	if err != nil {
-		return fmt.Errorf("cannot read entries of directory %q: %v", dir, err)
+		return nWatchers, fmt.Errorf("cannot read entries of directory %q: %v", dir, err)
 	}
 
 	for _, entry := range entries {
@@ -234,13 +250,15 @@ func scanDir(watcher *fsn.Watcher, dir string, events map[string]*types.FSEvent,
 		// Check that the the entry is a directory
 		if entry.IsDir() {
 			// Do recursively call to scan all directorie's subentries
-			if err = scanDir(watcher, objName, events, doIndexing); err != nil {
+			nw, err := scanDir(watcher, objName, events, doIndexing)
+			if err != nil {
 				log.E("Cannot scan nested directory %q: %v", objName, err)
 			}
+			nWatchers += nw
 		}
 	}
 
-	return nil
+	return nWatchers, nil
 }
 
 func flushCached(watchPath string, events map[string]*types.FSEvent, dbChan chan<- []*dbi.DBOperation) error {
