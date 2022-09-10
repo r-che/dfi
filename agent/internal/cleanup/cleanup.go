@@ -52,7 +52,7 @@ func cleanup(dbc dbi.DBClient) {
 
 		fsCheck:
 		// Check path for existing
-		_, err := os.Stat(path)
+		_, err := os.Lstat(path)
 		if err == nil {
 			// OK, path exists, check next => should NOT be deleted
 			return false

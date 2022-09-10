@@ -165,7 +165,7 @@ func handleEvent(watcher *fsn.Watcher, event *fsn.Event, events map[string]*type
 		events[event.Name] = &types.FSEvent{Type: types.EvCreate}
 
 		// Check that the created object is a directory
-		oi, err := os.Stat(event.Name)
+		oi, err := os.Lstat(event.Name)
 		if err != nil {
 			log.W("Cannot stat() for created object %q: %v", event.Name, err)
 			return
