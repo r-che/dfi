@@ -40,15 +40,15 @@ func cleanup(dbc dbi.DBClient) {
 				// OK, this path inside of configured directories
 				goto fsCheck
 			}
-
-			// This path is outside of configured directories, append to delete
-			log.D("(Cleanup) Path %q does not belong to configured directories", path)
-			nc++
-
-			// Skip filesystem check because it does not make sense,
-			// just return true because this path SHOULD BE DELETED
-			return true
 		}
+
+		// This path is outside of configured directories, append to delete
+		log.D("(Cleanup) Path %q does not belong to configured directories (%v)", path, c.IdxPaths)
+		nc++
+
+		// Skip filesystem check because it does not make sense,
+		// just return true because this path SHOULD BE DELETED
+		return true
 
 		fsCheck:
 		// Check path for existing
