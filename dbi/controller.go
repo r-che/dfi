@@ -13,12 +13,12 @@ type DBController struct {
 	// Internal fields
 	ctx context.Context
 
-	dbChan		<-chan []*DBOperation
+	dbChan		DBChan
 
 	dbCli		DBClient
 }
 
-func NewController(ctx context.Context, dbCfg *DBConfig, dbChan <-chan []*DBOperation) (*DBController, error) {
+func NewController(ctx context.Context, dbCfg *DBConfig, dbChan DBChan) (*DBController, error) {
 	// Initiate database client
 	dbCli, err := newDBClient(dbCfg)
 	if err != nil {

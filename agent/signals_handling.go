@@ -5,6 +5,10 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/r-che/dfi/agent/internal/cfg"
+	"github.com/r-che/dfi/agent/internal/fswatcher"
+	"github.com/r-che/dfi/dbi"
+
 	"github.com/r-che/log"
 )
 
@@ -18,7 +22,7 @@ const (
 	sigQuit	=	syscall.SIGQUIT
 )
 
-func waitSignals() {
+func waitSignals(dbChan dbi.DBChan) {
 	// Create channels for each handled signal
 
 	chStopApp := make(chan os.Signal, 0)	// Stop application
@@ -40,12 +44,20 @@ func waitSignals() {
 	signal.Notify(chStopOps, sigQuit)
 
 	// Run handling
+	var err error
 	for {
 		select {
 			case s := <-chStopApp:
 				// Stop application
 				log.W("Stopping due to signal %q (#%#v)", s, s)
+
+				// Need to stop all watchers
+				fswatcher.StopWatchers()
+
+				// TODO Need to move stopDB to this point
+
 				return
+
 			case s := <-chReLogs:
 				log.I("Received %q signal - reopening log file...", s)
 				if err := log.Reopen(); err != nil {
@@ -53,8 +65,20 @@ func waitSignals() {
 				} else {
 					log.I("Log file reopened")
 				}
-			case <-chReInd:
-				log.W("TODO: reindexing")
+
+			case s := <-chReInd:
+				log.W("Catched reindexing signal %q, stopping all watchers...", s)
+				// Need to restart watching on configured directories
+
+				// Stop all watchers
+				fswatcher.StopWatchers()
+
+				c := cfg.Config()
+				log.W("Restarting indexing for paths %q...", c.IdxPaths)
+				if err = fswatcher.InitWatchers(c.IdxPaths, dbChan, fswatcher.DoReindex); err != nil {
+					log.F("Reindexing failed: %v", err)
+				}
+
 			case <-chClean:
 				log.W("TODO: cleaning up")
 			case <-chStat:

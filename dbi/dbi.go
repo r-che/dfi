@@ -39,8 +39,7 @@ type DBOperation struct {
 	ObjectInfo *types.FSObject
 }
 
-// Type of function that reads database operations from wathers to apply them to database
-type DBContrFunc func()
+type DBChan chan []*DBOperation
 
 // Database object fields
 const (

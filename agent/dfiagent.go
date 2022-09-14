@@ -39,16 +39,11 @@ func main() {
 		c.IdxPaths, c.DBCfg.CliHost, c.DBCfg.HostPort, c.DBCfg.DBID)
 
 	// Channel to read information collected by watchers to send it to database
-	dbChan := make(chan []*dbi.DBOperation)
+	dbChan := make(dbi.DBChan)
 
-	// Wait group to synchronize finish of all watchers
-	wgW := sync.WaitGroup{}
 	// Waith group to synchronize database controller
 	wgC := sync.WaitGroup{}
 
-	// Context, to stop all watchers
-	ctxW, cancelW := context.WithCancel(context.Background())
-	ctxW = context.WithValue(ctxW, types.CtxWGWatchers, &wgW)
 	// Context to stop database controller
 	ctxC, cancelC := context.WithCancel(context.Background())
 	ctxC = context.WithValue(ctxC, types.CtxWGDBC, &wgC)
@@ -61,11 +56,9 @@ func main() {
 		log.F("Cannot initiate database controller: %v", err)
 	}
 
-	// Add number of watchers to waitgroup
-	wgW.Add(len(c.IdxPaths))
 	// Init watchers on all configured directories
-	if err = initWatchers(ctxW, c.IdxPaths, dbChan); err != nil {
-		log.F("Cannot initiate watchers on configured paths %v: %v", c.IdxPaths, err)
+	if err = fswatcher.InitWatchers(c.IdxPaths, dbChan, c.Reindex); err != nil {
+		log.F("Cannot initiate watchers on configured paths %q: %v", c.IdxPaths, err)
 	}
 
 	// Start cleanup if requested
@@ -76,7 +69,7 @@ func main() {
 	}
 
 	// Wait for external events (signals)
-	if err = waitEvents(cancelW, &wgW, cancelC, &wgC); err != nil {
+	if err = waitEvents(cancelC, &wgC, dbChan); err != nil {
 		log.F("%v", err)
 	}
 
@@ -85,9 +78,8 @@ func main() {
 	log.Close()
 }
 
-func initDB(ctx context.Context, dbCfg *dbi.DBConfig, dbChan <-chan []*dbi.DBOperation) error {
+func initDB(ctx context.Context, dbCfg *dbi.DBConfig, dbChan dbi.DBChan) error {
 	// Init database controller
-	// func NewController(ctx context.Context, dbCfg *DBConfig, cliHost string, dbChan <-chan []*DBOperation) (*DBController, error) {
 	dbc, err := dbi.NewController(ctx, dbCfg, dbChan)
 	if err != nil {
 		return err
@@ -100,34 +92,18 @@ func initDB(ctx context.Context, dbCfg *dbi.DBConfig, dbChan <-chan []*dbi.DBOpe
 	return nil
 }
 
-func initWatchers(ctx context.Context, paths []string, dbChan chan<- []*dbi.DBOperation) error {
-	for _, path := range paths {
-		if err := fswatcher.New(ctx, path, dbChan); err != nil {
-			return err
-		}
-	}
-
-	// OK
-	return nil
-}
-
-func waitEvents(cancelW context.CancelFunc, wgW *sync.WaitGroup, cancelC context.CancelFunc, wgC *sync.WaitGroup) error {
+func waitEvents(cancelC context.CancelFunc, wgC *sync.WaitGroup, dbChan dbi.DBChan) error {
 	// Wait for OS signals
-	waitSignals()
-
-	// TODO Dump runtime statistic
-
-	log.D("Stopping all watchers...")
-	// Stop all watchers
-	cancelW()
-	// Wait for watcher finished
-	wgW.Wait()
+	waitSignals(dbChan)
 
 	log.D("Stopping database controller...")
 	// Stop database controller
 	cancelC()
 	// Wait for database controller finished
 	wgC.Wait()
+
+	// TODO Dump runtime statistic - move to waitSignals()
+	log.W("TODO %d watchers were set", fswatcher.NWatchers())
 
 	return nil
 }

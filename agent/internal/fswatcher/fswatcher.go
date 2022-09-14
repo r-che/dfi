@@ -21,23 +21,71 @@ import (
 	fsn "github.com/fsnotify/fsnotify"
 )
 
+// Package's types
+type eventsMap map[string]*types.FSEvent
+
 const (
 	// Stubs to fill checksum field on special cases
 	csTooLarge = `<FILE TOO LARGE>`
 	csErrorStub = `<FAIL TO CALCULATE CHECKSUM>`
 
 	// Do or do not reindexing of path
-	doReindex	=	true
-	noReindex	=	false
+	DoReindex	=	true
+	NoReindex	=	false
 )
 
+// Package's private global variables
+
 // Map with for FS watchers paths
-var watchers = types.NewSyncMap()
+var watchers *types.SyncMap
+// Function to stop all running watchers
+var stopWatchers context.CancelFunc
+// WaitGroup to wait until all watchers will be stopped
+var wgWatchers sync.WaitGroup
 
-func New(ctx context.Context, watchPath string, dbChan chan<- []*dbi.DBOperation) error {
-	// Get configuration
-	c := cfg.Config()
+func InitWatchers(paths []string, dbChan chan<- []*dbi.DBOperation, doIndexing bool) error {
+	// Init/clear watchers map
+	watchers = types.NewSyncMap()
 
+	// Add number of watchers to waitgroup
+	wgWatchers.Add(len(paths))
+	// Context, to stop all watchers
+	var ctx context.Context
+	ctx, stopWatchers = context.WithCancel(context.Background())
+	ctx = context.WithValue(ctx, types.CtxWGWatchers, &wgWatchers)
+
+	// Number of watchers successfuly set
+	nSet := 0
+	for _, path := range paths {
+		if err := newWatcher(ctx, path, dbChan, doIndexing); err != nil {
+			log.E("(Watcher) Cannot create watcher for %q: %v", path, err)
+
+			// Decrease value of wait group for failed watcher
+			wgWatchers.Done()
+		} else {
+			nSet++
+		}
+	}
+
+	if nSet == 0 {
+		return fmt.Errorf("no watchers set, cannot work")
+	}
+
+	log.I("(Watcher) %d watchers set", nSet)
+
+	// OK
+	return nil
+}
+
+func StopWatchers() {
+	log.D("(Watcher) Stopping all watchers...")
+	// Stop all watchers
+	stopWatchers()
+	// Wait for watcher finished
+	wgWatchers.Wait()
+}
+
+func newWatcher(ctx context.Context, watchPath string, dbChan chan<- []*dbi.DBOperation, doIndexing bool) error {
 	log.D("(watcher:%s) Starting...", watchPath)
 	// Check that watchPath is not absolute
 	if !filepath.IsAbs(watchPath) {
@@ -56,93 +104,38 @@ func New(ctx context.Context, watchPath string, dbChan chan<- []*dbi.DBOperation
 		return fmt.Errorf("(watcher:%s) cannot create watcher: %v", watchPath, err)
 	}
 
+	// Store created fswatcher
+	watchers.Set(watchPath, watcher)
+
 	// Cached filesystem events
-	events := map[string]*types.FSEvent{}
+	events := eventsMap{}
 
 	nWatchers := 0
 	// Is reindex required?
-	if c.Reindex {
+	if doIndexing {
 		log.I("(watcher:%s) Starting reindexing ...", watchPath)
 		// Do recursive scan and reindexing
-		if nWatchers, err = scanDir(watcher, watchPath, events, doReindex); err != nil {
+		nWatchers, err = scanDir(watcher, watchPath, events, DoReindex)
+		if err != nil {
+			// Remove broken watcher from map
+			watchers.Del(watchPath)
+
 			return fmt.Errorf("(watcher:%s) cannot reindex: %v", watchPath, err)
 		}
 
 		log.I("(watcher:%s) Reindexing done", watchPath)
 	} else {
 		// Run recursive scan without reindexing
-		if nWatchers, err = scanDir(watcher, watchPath, events, noReindex); err != nil {
+		if nWatchers, err = scanDir(watcher, watchPath, events, NoReindex); err != nil {
+			// Remove broken watcher from map
+			watchers.Del(watchPath)
+
 			return fmt.Errorf("(watcher:%s) cannot set watcher: %v", watchPath, err)
 		}
 	}
 
 	// Run watcher for watchPath
-	go func() {
-		// Get waitgroup from context
-		wg := ctx.Value(types.CtxWGWatchers).(*sync.WaitGroup)
-
-		// Timer to flush cache to database
-		timer := time.Tick(c.FlushPeriod)
-
-		for {
-			select {
-			// Some event
-			case event, ok := <-watcher.Events:
-				if !ok {
-					log.F("(watcher:%s) Filesystem events channel unexpectedly closed", watchPath)
-				}
-
-				// Handle event
-				handleEvent(watcher, &event, events)
-
-			// Need to flush cache
-			case <-timer:
-				if len(events) == 0 {
-					log.D("(watcher:%s) No new events", watchPath)
-					// No new events
-					continue
-				}
-
-				log.D("(watcher:%s) Flushing %d event(s)", watchPath, len(events))
-
-				// Flush collected events
-				if err := flushCached(watchPath, events, dbChan); err != nil {
-					log.F("(watcher:%s) Cannot flush cached items: %v", watchPath, err)
-				}
-				// Replace cache by new empty map
-				events = map[string]*types.FSEvent{}
-
-			// Some error
-			case err, ok := <-watcher.Errors:
-				if !ok {
-					log.F("(watcher:%s) Errors channel unexpectedly closed", watchPath)
-				}
-				log.E("(watcher:%s) Filesystem events watcher returned error: %v", watchPath, err)
-
-			// Stop watching
-			case <-ctx.Done():
-				watcher.Close()
-				log.D("(watcher:%s) Watching stopped", watchPath)
-
-				// Flush collected events
-				if len(events) != 0 {
-					log.D("(watcher:%s) Flushing %d event(s) before termination", watchPath, len(events))
-
-					// Flush collected events
-					if err := flushCached(watchPath, events, dbChan); err != nil {
-						log.F("(watcher:%s) Cannot flush cached items: %v", watchPath, err)
-					}
-				}
-
-				log.I("Stopped watcher due to request for %q", watchPath)
-
-				// Decrease waitgroup conunter to notify main goroutine that this child finished
-				wg.Done()
-
-				return
-			}
-		}
-	}()
+	go watch(ctx, watchPath, events, dbChan)
 
 	// Return no errors, success
 	log.I("Started filesystem watcher for %q, %d watchers were set", watchPath, nWatchers)
@@ -150,8 +143,91 @@ func New(ctx context.Context, watchPath string, dbChan chan<- []*dbi.DBOperation
 	return nil
 }
 
+func watch(ctx context.Context, watchPath string, events eventsMap, dbChan chan<- []*dbi.DBOperation) {
+	// Get configuration
+	c := cfg.Config()
+
+	// Get waitgroup from context
+	wg := ctx.Value(types.CtxWGWatchers).(*sync.WaitGroup)
+
+	// Get watcher from global watchers map
+	watcher := watchers.Val(watchPath).(*fsn.Watcher)
+
+	// Timer to flush cache to database
+	timer := time.Tick(c.FlushPeriod)
+
+	for {
+		select {
+		// Some event
+		case event, ok := <-watcher.Events:
+			if !ok {
+				log.F("(watcher:%s) Filesystem events channel unexpectedly closed", watchPath)
+			}
+
+			// Handle event
+			handleEvent(watcher, &event, events)
+
+		// Need to flush cache
+		case <-timer:
+			if len(events) == 0 {
+				log.D("(watcher:%s) No new events", watchPath)
+				// No new events
+				continue
+			}
+
+			log.D("(watcher:%s) Flushing %d event(s)", watchPath, len(events))
+
+			// Flush collected events
+			if err := flushCached(watchPath, events, dbChan); err != nil {
+				log.F("(watcher:%s) Cannot flush cached items: %v", watchPath, err)
+			}
+			// Replace cache by new empty map
+			events = map[string]*types.FSEvent{}
+
+		// Some error
+		case err, ok := <-watcher.Errors:
+			if !ok {
+				log.F("(watcher:%s) Errors channel unexpectedly closed", watchPath)
+			}
+			log.E("(watcher:%s) Filesystem events watcher returned error: %v", watchPath, err)
+
+		// Stop watching
+		case <-ctx.Done():
+			watcher.Close()
+			log.D("(watcher:%s) Watching stopped", watchPath)
+
+			// Flush collected events
+			if len(events) != 0 {
+				log.D("(watcher:%s) Flushing %d event(s) before termination", watchPath, len(events))
+
+				// Flush collected events
+				if err := flushCached(watchPath, events, dbChan); err != nil {
+					log.F("(watcher:%s) Cannot flush cached items: %v", watchPath, err)
+				}
+			}
+
+			log.I("Stopped watcher due to request for %q", watchPath)
+
+			// Decrease waitgroup conunter to notify main goroutine that this child finished
+			wg.Done()
+
+			return
+		}
+	}
+}
+
 func NWatchers() int {
-	return watchers.Len()
+	// Total number of directories under watchers
+	sum := 0
+	// Counter function
+	count := func(k string, v any) {
+		sum += len(v.(*fsn.Watcher).WatchList())
+	}
+
+	// Run counter functions on watchers map
+	watchers.Apply(count)
+
+	return sum
 }
 
 func handleEvent(watcher *fsn.Watcher, event *fsn.Event, events map[string]*types.FSEvent) {
@@ -178,7 +254,7 @@ func handleEvent(watcher *fsn.Watcher, event *fsn.Event, events map[string]*type
 			} else {
 				log.I("Added watcher for %q", event.Name)
 				// Do recursive scan and add watchers to all subdirectories
-				_, err := scanDir(watcher, event.Name, events, doReindex)
+				_, err := scanDir(watcher, event.Name, events, DoReindex)
 				if err != nil {
 					log.E("Cannot scan newly created directory %q: %v", event.Name, err)
 				}
@@ -204,9 +280,6 @@ func handleEvent(watcher *fsn.Watcher, event *fsn.Event, events map[string]*type
 		//	log.E("Cannot remove watcher from %q: %v", event.Name, err)
 		//}
 
-		// Delete object from watchers if was set
-		watchers.Del(event.Name)
-
 	// Object mode was changed
 	case event.Op & fsn.Chmod != 0:
 		// Nothing
@@ -228,7 +301,6 @@ func scanDir(watcher *fsn.Watcher, dir string, events map[string]*types.FSEvent,
 	} else {
 		log.D("Added watcher to %q", dir)
 		nWatchers++
-		watchers.Set(dir, nil)
 	}
 
 	// Scan directory to watch all subentries
