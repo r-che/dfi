@@ -4,7 +4,6 @@ import (
 	"context"
 	"sync"
 
-	"github.com/r-che/dfi/types"
 
 	"github.com/r-che/log"
 )
@@ -16,51 +15,77 @@ type DBController struct {
 	dbChan		DBChan
 
 	dbCli		DBClient
+
+	wg			*sync.WaitGroup
+	cancel		context.CancelFunc
 }
 
-func NewController(ctx context.Context, dbCfg *DBConfig, dbChan DBChan) (*DBController, error) {
+func NewController(dbCfg *DBConfig) (*DBController, error) {
 	// Initiate database client
 	dbCli, err := newDBClient(dbCfg)
 	if err != nil {
 		return nil, err
 	}
 
+	// Context to stop database controller
+	ctx, cancel := context.WithCancel(context.Background())
+
 	return &DBController{
 		ctx:		ctx,
-		dbChan:		dbChan,
+		dbChan:		make(DBChan),
 		dbCli:		dbCli,
+		wg:			&sync.WaitGroup{},
+		cancel:		cancel,
 	}, nil
+}
+
+func (dbc *DBController) Stop() {
+	log.D("Stopping database controller...")
+
+	// Do cancel on context
+	dbc.cancel()
+
+	// Wait for finishing
+	dbc.wg.Wait()
 }
 
 func (dbc *DBController) Run() {
 	log.I("(DBC) Database controller started ")
 
+	// Increment WaitGroup BEFORE start separate goroutine
+	dbc.wg.Add(1)
+
 	// Start DB events loop
-	for {
-		select {
-			// Wait for set of values from watchers
-			case dbOps := <-dbc.dbChan:
-				// Process database operations
-				if err := dbc.update(dbOps); err != nil {
-					log.E("(DBC) Update operations failed: %v", err)
-				} else {
-					log.I("(DBC) Done %d operations", len(dbOps))
-				}
-			// Wait for finish signal from context
-			case <-dbc.ctx.Done():
-				// Stop DB client
-				dbc.dbCli.Stop()
+	go func() {
+		for {
+			select {
+				// Wait for set of values from watchers
+				case dbOps := <-dbc.dbChan:
+					// Process database operations
+					if err := dbc.update(dbOps); err != nil {
+						log.E("(DBC) Update operations failed: %v", err)
+					} else {
+						log.I("(DBC) Done %d operations", len(dbOps))
+					}
+				// Wait for finish signal from context
+				case <-dbc.ctx.Done():
+					// Stop DB client
+					dbc.dbCli.Stop()
 
-				// Call waitgroup from context
-				dbc.ctx.Value(types.CtxWGDBC).(*sync.WaitGroup).Done()
+					// Call waitgroup from context
+					dbc.wg.Done()
 
-				log.I("(DBC) Database controller finished")
+					log.I("(DBC) Database controller finished")
 
-				// Exit from database controler loop
-				return
+					// Exit from database controler loop
+					return
+			}
 		}
-	}
+	}()
+}
 
+func (dbc *DBController) Channel() DBChan {
+	return dbc.dbChan
 }
 
 func (dbc *DBController) update(dbOps []*DBOperation) error {

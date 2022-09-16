@@ -36,7 +36,7 @@ const (
 
 // Package's private global variables
 
-// Map with for FS watchers paths
+// Map with started FS watchers
 var watchers *types.SyncMap
 // Function to stop all running watchers
 var stopWatchers context.CancelFunc
@@ -52,7 +52,6 @@ func InitWatchers(paths []string, dbChan chan<- []*dbi.DBOperation, doIndexing b
 	// Context, to stop all watchers
 	var ctx context.Context
 	ctx, stopWatchers = context.WithCancel(context.Background())
-	ctx = context.WithValue(ctx, types.CtxWGWatchers, &wgWatchers)
 
 	// Number of watchers successfuly set
 	nSet := 0
@@ -71,7 +70,7 @@ func InitWatchers(paths []string, dbChan chan<- []*dbi.DBOperation, doIndexing b
 		return fmt.Errorf("no watchers set, cannot work")
 	}
 
-	log.I("(Watcher) %d watchers set", nSet)
+	log.I("(Watcher) %d top-level watchers set", nSet)
 
 	// OK
 	return nil
@@ -147,9 +146,6 @@ func watch(ctx context.Context, watchPath string, events eventsMap, dbChan chan<
 	// Get configuration
 	c := cfg.Config()
 
-	// Get waitgroup from context
-	wg := ctx.Value(types.CtxWGWatchers).(*sync.WaitGroup)
-
 	// Get watcher from global watchers map
 	watcher := watchers.Val(watchPath).(*fsn.Watcher)
 
@@ -209,7 +205,7 @@ func watch(ctx context.Context, watchPath string, events eventsMap, dbChan chan<
 			log.I("Stopped watcher due to request for %q", watchPath)
 
 			// Decrease waitgroup conunter to notify main goroutine that this child finished
-			wg.Done()
+			wgWatchers.Done()
 
 			return
 		}

@@ -22,7 +22,7 @@ const (
 	sigQuit	=	syscall.SIGQUIT
 )
 
-func waitSignals(dbChan dbi.DBChan) {
+func waitSignals(dbc *dbi.DBController) {
 	// Create channels for each handled signal
 
 	chStopApp := make(chan os.Signal, 0)	// Stop application
@@ -54,7 +54,8 @@ func waitSignals(dbChan dbi.DBChan) {
 				// Need to stop all watchers
 				fswatcher.StopWatchers()
 
-				// TODO Need to move stopDB to this point
+				// Need to stop database controller
+				dbc.Stop()
 
 				return
 
@@ -75,7 +76,7 @@ func waitSignals(dbChan dbi.DBChan) {
 
 				c := cfg.Config()
 				log.W("Restarting indexing for paths %q...", c.IdxPaths)
-				if err = fswatcher.InitWatchers(c.IdxPaths, dbChan, fswatcher.DoReindex); err != nil {
+				if err = fswatcher.InitWatchers(c.IdxPaths, dbc.Channel(), fswatcher.DoReindex); err != nil {
 					log.F("Reindexing failed: %v", err)
 				}
 

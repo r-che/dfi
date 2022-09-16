@@ -1,15 +1,12 @@
 package main
 
 import (
-	"context"
-	"sync"
 	stdLog "log"
 
 	"github.com/r-che/dfi/agent/internal/cfg"
 	"github.com/r-che/dfi/agent/internal/cleanup"
 	"github.com/r-che/dfi/agent/internal/fswatcher"
 	"github.com/r-che/dfi/dbi"
-	"github.com/r-che/dfi/types"
 
 	"github.com/r-che/log"
 )
@@ -38,26 +35,15 @@ func main() {
 	log.I("Paths to indexing - %v client hostname - %q database host - %q database identifier - %q",
 		c.IdxPaths, c.DBCfg.CliHost, c.DBCfg.HostPort, c.DBCfg.DBID)
 
-	// Channel to read information collected by watchers to send it to database
-	dbChan := make(dbi.DBChan)
-
-	// Waith group to synchronize database controller
-	wgC := sync.WaitGroup{}
-
-	// Context to stop database controller
-	ctxC, cancelC := context.WithCancel(context.Background())
-	ctxC = context.WithValue(ctxC, types.CtxWGDBC, &wgC)
-
-	// Add database controller to wait group
-	wgC.Add(1)
-	// Init DB controller
-	err := initDB(ctxC, &c.DBCfg, dbChan)
+	// Init and run database controller
+	dbc, err := dbi.NewController(&c.DBCfg)
 	if err != nil {
 		log.F("Cannot initiate database controller: %v", err)
 	}
+	dbc.Run()
 
 	// Init watchers on all configured directories
-	if err = fswatcher.InitWatchers(c.IdxPaths, dbChan, c.Reindex); err != nil {
+	if err = fswatcher.InitWatchers(c.IdxPaths, dbc.Channel(), c.Reindex); err != nil {
 		log.F("Cannot initiate watchers on configured paths %q: %v", c.IdxPaths, err)
 	}
 
@@ -69,41 +55,17 @@ func main() {
 	}
 
 	// Wait for external events (signals)
-	if err = waitEvents(cancelC, &wgC, dbChan); err != nil {
-		log.F("%v", err)
-	}
+	waitSignals(dbc)
+
+	// Print runtime statistic to log
+	dumpStat()
 
 	// Finish, cleanup operations
 	log.I("%s %s finished normally", ProgNameLong, ProgVers)
 	log.Close()
 }
 
-func initDB(ctx context.Context, dbCfg *dbi.DBConfig, dbChan dbi.DBChan) error {
-	// Init database controller
-	dbc, err := dbi.NewController(ctx, dbCfg, dbChan)
-	if err != nil {
-		return err
-	}
-
-	// Run database controller as goroutine
-	go dbc.Run()
-
-	// OK
-	return nil
-}
-
-func waitEvents(cancelC context.CancelFunc, wgC *sync.WaitGroup, dbChan dbi.DBChan) error {
-	// Wait for OS signals
-	waitSignals(dbChan)
-
-	log.D("Stopping database controller...")
-	// Stop database controller
-	cancelC()
-	// Wait for database controller finished
-	wgC.Wait()
-
+func dumpStat() {
 	// TODO Dump runtime statistic - move to waitSignals()
 	log.W("TODO %d watchers were set", fswatcher.NWatchers())
-
-	return nil
 }
