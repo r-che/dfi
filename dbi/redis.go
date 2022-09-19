@@ -34,6 +34,7 @@ type RedisClient struct {
 	toDelete	[]string
 	updated		int64
 	deleted		int64
+	stopLongVal int		// should be incremented when need to terminate long-term operation
 }
 
 func newDBClient(dbCfg *DBConfig) (DBClient, error) {
@@ -164,6 +165,10 @@ func (rc *RedisClient) Commit() (int64, int64, error) {
 	return ru, rd, nil
 }
 
+func (rc *RedisClient) StopLong() {
+	rc.stopLongVal++
+}
+
 func (rc *RedisClient) Stop() {
 	rc.stop()
 }
@@ -178,7 +183,7 @@ func (rc *RedisClient) LoadHostPaths(filter FilterFunc) ([]string, error) {
 	pathOffset:= len(pref) - 1
 
 	// Keep current stopLong value to have ability to compare during long-term operations
-	currStopLong := stopLong
+	initStopLong := rc.stopLongVal
 
 	// Scan() intermediate  variables
 	var cursor uint64
@@ -189,7 +194,7 @@ func (rc *RedisClient) LoadHostPaths(filter FilterFunc) ([]string, error) {
 	// Scan keys space prefixed by pref
 	for i := 0; ; i++ {
 		// If value of the stopLong was updated - need to stop long-term operation
-		if stopLong != currStopLong {
+		if rc.stopLongVal != initStopLong {
 			return nil, fmt.Errorf("terminated")
 		}
 

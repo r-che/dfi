@@ -94,7 +94,7 @@ func waitSignals(dbc *dbi.DBController, wp *fswatcher.Pool) {
 
 			case <-chStopOps:
 				wp.StopLong()
-				dbi.StopLong()
+				dbc.StopLong()
 		}
 	}
 }

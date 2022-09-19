@@ -58,13 +58,3 @@ func makeID(fso *types.FSObject) string {
 	// Use found path as value to generate the identifier
 	return fmt.Sprintf("%x", sha1.Sum([]byte(fso.FPath)))
 }
-
-// Package's private global variables
-
-// Value of stopLong should be incremented when need to terminate long-term operation
-var stopLong = 0
-
-// StopLong stops long-term operations on database
-func StopLong() {
-	stopLong++
-}

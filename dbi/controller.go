@@ -18,6 +18,7 @@ type DBController struct {
 
 	wg			*sync.WaitGroup
 	cancel		context.CancelFunc
+	stopLongVal int		// should be incremented when need to terminate long-term operation
 }
 
 func NewController(dbCfg *DBConfig) (*DBController, error) {
@@ -37,6 +38,12 @@ func NewController(dbCfg *DBConfig) (*DBController, error) {
 		wg:			&sync.WaitGroup{},
 		cancel:		cancel,
 	}, nil
+}
+
+// StopLong stops long-term operations on database
+func (dbc *DBController) StopLong() {
+	dbc.stopLongVal++
+	dbc.dbCli.StopLong()
 }
 
 func (dbc *DBController) Stop() {
@@ -90,11 +97,11 @@ func (dbc *DBController) Channel() DBChan {
 
 func (dbc *DBController) update(dbOps []*DBOperation) error {
 	// Keep current stopLong value to have ability to compare during long-term updates
-	currStopLong := stopLong
+	initStopLong := dbc.stopLongVal
 
     for _, op := range dbOps {
 		// If value of the stopLong was updated - need to stop long-term update
-		if stopLong != currStopLong {
+		if dbc.stopLongVal != initStopLong {
 			return fmt.Errorf("terminated")
 		}
 
