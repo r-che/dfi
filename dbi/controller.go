@@ -1,9 +1,9 @@
 package dbi
 
 import (
+	"fmt"
 	"context"
 	"sync"
-
 
 	"github.com/r-che/log"
 )
@@ -89,19 +89,26 @@ func (dbc *DBController) Channel() DBChan {
 }
 
 func (dbc *DBController) update(dbOps []*DBOperation) error {
+	// Keep current stopLong value to have ability to compare during long-term updates
+	currStopLong := stopLong
 
     for _, op := range dbOps {
+		// If value of the stopLong was updated - need to stop long-term update
+		if stopLong != currStopLong {
+			return fmt.Errorf("terminated")
+		}
+
         switch op.Op {
-            case Update:
-                // Add/update data in DB
-                if err := dbc.dbCli.UpdateObj(op.ObjectInfo); err != nil {
-                    return err
-                }
-            case Delete:
-                // Delete data from DB
-                if err := dbc.dbCli.DeleteObj(op.ObjectInfo); err != nil {
-                    return err
-                }
+		case Update:
+			// Add/update data in DB
+			if err := dbc.dbCli.UpdateObj(op.ObjectInfo); err != nil {
+				return err
+			}
+		case Delete:
+			// Delete data from DB
+			if err := dbc.dbCli.DeleteObj(op.ObjectInfo); err != nil {
+				return err
+			}
         }
     }
 

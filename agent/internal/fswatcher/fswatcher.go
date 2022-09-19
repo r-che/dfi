@@ -42,6 +42,8 @@ var watchers *types.SyncMap
 var stopWatchers context.CancelFunc
 // WaitGroup to wait until all watchers will be stopped
 var wgWatchers sync.WaitGroup
+// Value of stopLong should be incremented when need to terminate long-term operation
+var stopLong = 0
 
 func InitWatchers(paths []string, dbChan chan<- []*dbi.DBOperation, doIndexing bool) error {
 	// Init/clear watchers map
@@ -67,7 +69,7 @@ func InitWatchers(paths []string, dbChan chan<- []*dbi.DBOperation, doIndexing b
 	}
 
 	if nSet == 0 {
-		return fmt.Errorf("no watchers set, cannot work")
+		return fmt.Errorf("no watchers set, no directories to work")
 	}
 
 	log.I("(Watcher) %d top-level watchers set", nSet)
@@ -82,6 +84,12 @@ func StopWatchers() {
 	stopWatchers()
 	// Wait for watcher finished
 	wgWatchers.Wait()
+}
+
+// StopLong stops long-term operations on filesystem
+func StopLong() {
+	log.W("StopLong() called for fswatcher.go")
+	stopLong++
 }
 
 func newWatcher(ctx context.Context, watchPath string, dbChan chan<- []*dbi.DBOperation, doIndexing bool) error {
@@ -112,6 +120,8 @@ func newWatcher(ctx context.Context, watchPath string, dbChan chan<- []*dbi.DBOp
 	nWatchers := 0
 	// Is reindex required?
 	if doIndexing {
+		// TODO Need to add map to keep started reindexing to avoid duplicates
+		// TODO using https://pkg.go.dev/sync#Map.LoadOrStore
 		log.I("(watcher:%s) Starting reindexing ...", watchPath)
 		// Do recursive scan and reindexing
 		nWatchers, err = scanDir(watcher, watchPath, events, DoReindex)
@@ -175,10 +185,10 @@ func watch(ctx context.Context, watchPath string, events eventsMap, dbChan chan<
 
 			// Flush collected events
 			if err := flushCached(watchPath, events, dbChan); err != nil {
-				log.F("(watcher:%s) Cannot flush cached items: %v", watchPath, err)
+				log.E("(watcher:%s) Cannot flush cached items: %v", watchPath, err)
 			}
 			// Replace cache by new empty map
-			events = map[string]*types.FSEvent{}
+			events = eventsMap{}
 
 		// Some error
 		case err, ok := <-watcher.Errors:
@@ -198,7 +208,7 @@ func watch(ctx context.Context, watchPath string, events eventsMap, dbChan chan<
 
 				// Flush collected events
 				if err := flushCached(watchPath, events, dbChan); err != nil {
-					log.F("(watcher:%s) Cannot flush cached items: %v", watchPath, err)
+					log.E("(watcher:%s) Cannot flush cached items: %v", watchPath, err)
 				}
 			}
 
@@ -305,7 +315,15 @@ func scanDir(watcher *fsn.Watcher, dir string, events map[string]*types.FSEvent,
 		return nWatchers, fmt.Errorf("cannot read entries of directory %q: %v", dir, err)
 	}
 
+	// Keep current stopLong value to have ability to compare during long-term operations
+	currStopLong := stopLong
+
 	for _, entry := range entries {
+		// If value of the stopLong was updated - need to stop long-term operation
+		if stopLong != currStopLong {
+			return nWatchers, fmt.Errorf("terminated")
+		}
+
 		// Create object name as path concatenation of top-directory and entry name
 		objName := filepath.Join(dir, entry.Name())
 
@@ -340,8 +358,16 @@ func flushCached(watchPath string, events map[string]*types.FSEvent, dbChan chan
 	// Prepare database operations list
 	dbOps := make([]*dbi.DBOperation, 0, len(events))
 
+	// Keep current stopLong value to have ability to compare during long-term operations
+	currStopLong := stopLong
+
 	// Handle events one by one
 	for _, name := range names {
+		// If value of the stopLong was updated - need to stop long-term operation
+		if stopLong != currStopLong {
+			return fmt.Errorf("terminated")
+		}
+
 		event := events[name]
 
 		switch event.Type {

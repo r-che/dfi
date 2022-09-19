@@ -24,9 +24,9 @@ const (
 
 type RedisClient struct {
 	// Pre-configured members
-	ctx		context.Context
-	stop	context.CancelFunc
-	cliHost	string
+	ctx			context.Context
+	stop		context.CancelFunc
+	cliHost		string
 
 	c		*redis.Client
 
@@ -177,6 +177,9 @@ func (rc *RedisClient) LoadHostPaths(filter FilterFunc) ([]string, error) {
 	// Calculate path offset to append paths to the output list
 	pathOffset:= len(pref) - 1
 
+	// Keep current stopLong value to have ability to compare during long-term operations
+	currStopLong := stopLong
+
 	// Scan() intermediate  variables
 	var cursor uint64
 	var sKeys []string
@@ -185,6 +188,11 @@ func (rc *RedisClient) LoadHostPaths(filter FilterFunc) ([]string, error) {
 	log.D("(RedisCli) Scanning DB for keys with prefix %q, using %d as COUNT value for SCAN operation", pref, RedisMaxScanKeys)
 	// Scan keys space prefixed by pref
 	for i := 0; ; i++ {
+		// If value of the stopLong was updated - need to stop long-term operation
+		if stopLong != currStopLong {
+			return nil, fmt.Errorf("terminated")
+		}
+
 		// Scan for RedisMaxScanKeys items (max)
 		sKeys, cursor, err = rc.c.Scan(rc.ctx, cursor, pref, RedisMaxScanKeys).Result()
 		if err != nil {

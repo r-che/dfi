@@ -1,12 +1,7 @@
 package dbi
 
 import (
-	//"context"
-	//"sync"
-
 	"github.com/r-che/dfi/types"
-
-	//"github.com/r-che/log"
 )
 
 type DBClient interface {

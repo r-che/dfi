@@ -42,10 +42,15 @@ func main() {
 	}
 	dbc.Run()
 
-	// Init watchers on all configured directories
-	if err = fswatcher.InitWatchers(c.IdxPaths, dbc.Channel(), c.Reindex); err != nil {
-		log.F("Cannot initiate watchers on configured paths %q: %v", c.IdxPaths, err)
-	}
+	// Start watchers asynchronously to avoid delays in cleaning and
+	// signal processing if the configured directories contain many
+	// entries (files, dirs and so on) that can take a long time
+	go func() {
+		// Init watchers on all configured directories
+		if err = fswatcher.InitWatchers(c.IdxPaths, dbc.Channel(), c.Reindex); err != nil {
+			log.F("Cannot initiate watchers on configured paths %q: %v", c.IdxPaths, err)
+		}
+	}()
 
 	// Start cleanup if requested
 	if c.Cleanup {
@@ -57,15 +62,7 @@ func main() {
 	// Wait for external events (signals)
 	waitSignals(dbc)
 
-	// Print runtime statistic to log
-	dumpStat()
-
 	// Finish, cleanup operations
 	log.I("%s %s finished normally", ProgNameLong, ProgVers)
 	log.Close()
-}
-
-func dumpStat() {
-	// TODO Dump runtime statistic - move to waitSignals()
-	log.W("TODO %d watchers were set", fswatcher.NWatchers())
 }

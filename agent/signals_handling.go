@@ -26,22 +26,22 @@ const (
 func waitSignals(dbc *dbi.DBController) {
 	// Create channels for each handled signal
 
-	chStopApp := make(chan os.Signal, 0)	// Stop application
+	chStopApp := make(chan os.Signal, 1)	// Stop application
 	signal.Notify(chStopApp, sigTerm, sigInt)
 
-	chReLogs := make(chan os.Signal, 0)		// Reopen logs
+	chReLogs := make(chan os.Signal, 1)		// Reopen logs
 	signal.Notify(chReLogs, sigHup)
 
-	chReInd := make(chan os.Signal, 0)		// Run reindexing
+	chReInd := make(chan os.Signal, 1)		// Run reindexing
 	signal.Notify(chReInd, sigUsr1)
 
-	chClean := make(chan os.Signal, 0)		// Run cleanup
+	chClean := make(chan os.Signal, 1)		// Run cleanup
 	signal.Notify(chClean, sigUsr2)
 
-	chStat := make(chan os.Signal, 0)		// Dump statistic to logs
+	chStat := make(chan os.Signal, 1)		// Dump statistic to logs
 	signal.Notify(chStat, sigCont)
 
-	chStopOps := make(chan os.Signal, 0)	// Stop long-term operations (reindexing/cleanup)
+	chStopOps := make(chan os.Signal, 1)	// Stop long-term operations (reindexing/cleanup)
 	signal.Notify(chStopOps, sigQuit)
 
 	// Run handling
@@ -52,9 +52,12 @@ func waitSignals(dbc *dbi.DBController) {
 				// Stop application
 				log.W("Received %q - stopping application...", s)
 
-				// Need to stop all watchers
+				// Stop all watchers
+				fswatcher.StopLong()
 				fswatcher.StopWatchers()
-				// Need to stop database controller
+
+				// Stop database controller
+				dbi.StopLong()
 				dbc.Stop()
 
 				return
@@ -74,19 +77,28 @@ func waitSignals(dbc *dbi.DBController) {
 				// Stop all watchers
 				fswatcher.StopWatchers()
 
-				if err = fswatcher.InitWatchers(cfg.Config().IdxPaths, dbc.Channel(), fswatcher.DoReindex); err != nil {
-					log.F("Reindexing failed: %v", err)
-				}
+				go func() {
+					if err = fswatcher.InitWatchers(cfg.Config().IdxPaths, dbc.Channel(), fswatcher.DoReindex); err != nil {
+						log.E("Reindexing failed: %v", err)
+					}
+				}()
 
 			case s := <-chClean:
 				log.I("Received %q signal - starting cleaning up...", s)
-				if err := cleanup.Run(); err != nil {
-					log.E("Cannot start cleanup operation: %v", err)
-				}
+				go func() {
+					if err := cleanup.Run(); err != nil {
+						log.E("Cannot start cleanup operation: %v", err)
+					}
+				}()
+
 			case <-chStat:
+				// TODO Will be implemented later
 				log.W("TODO: dump stat")
+
 			case <-chStopOps:
 				log.W("TODO: stop long term")
+				fswatcher.StopLong()
+				dbi.StopLong()
 		}
 	}
 }
