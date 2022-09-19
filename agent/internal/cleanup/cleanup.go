@@ -1,6 +1,7 @@
 package cleanup
 
 import (
+	"fmt"
 	"strings"
 	"os"
 
@@ -16,14 +17,6 @@ func Run() error {
 		return err
 	}
 
-	// Start cleanup goroutine
-	go cleanup(dbc)
-
-	// OK
-	return nil
-}
-
-func cleanup(dbc dbi.DBClient) {
 	log.I("(Cleanup) Started")
 
 	// Load application configuration
@@ -75,14 +68,13 @@ func cleanup(dbc dbi.DBClient) {
     // Load from database all objects that belong to the current host
 	toDel, err := dbc.LoadHostPaths(filter)
 	if err != nil {
-		log.E("(Cleanup) Cannot load list of objects paths belong to this host: %v", err)
-		return
+		return fmt.Errorf("(Cleanup) cannot load list of objects paths belong to this host: %v", err)
 	}
 
 	// Check for stale data
 	if nc + nx == 0 {
 		log.I("(Cleanup) Nothing to clean")
-		return
+		return nil
 	}
 
 	log.I("(Cleanup) %d not configured and %d non-existing records found", nc, nx)
@@ -100,4 +92,7 @@ func cleanup(dbc dbi.DBClient) {
 	} else {
 		log.I("(Cleanup) Cleaned up %d objects from DB", deleted)
 	}
+
+	// OK
+	return nil
 }

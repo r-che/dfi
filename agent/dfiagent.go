@@ -57,9 +57,11 @@ func main() {
 
 	// Start cleanup if requested
 	if c.Cleanup {
-		if err := cleanup.Run(); err != nil {
-			log.F("Cannot start cleanup operation: %v", err)
-		}
+		go func() {
+			if err := cleanup.Run(); err != nil {
+				log.E("Cannot start cleanup operation: %v", err)
+			}
+		}()
 	}
 
 	// Wait for external events (signals)

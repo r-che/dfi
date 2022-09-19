@@ -103,7 +103,7 @@ func (p *Pool) StopWatchers() {
 		return
 	}
 
-	log.D("(WatchersPool) Stopping all watchers...")
+	log.D("(WatchersPool) Stopping %d watchers...", len(p.watchers))
 
 	// Close stop channel to notify all watchers that work should be stopped
 	close(p.stop)
@@ -231,7 +231,7 @@ func (p *Pool) watch(watcher *fsn.Watcher, watchPath string, events eventsMap, d
 
 			// Flush collected events
 			if len(events) != 0 {
-				log.D("(watcher:%s) Flushing %d event(s) before termination", watchPath, len(events))
+				log.I("(watcher:%s) Flushing %d event(s) before termination", watchPath, len(events))
 
 				// Flush collected events
 				if err := p.flushCached(watchPath, events); err != nil {

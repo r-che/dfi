@@ -45,11 +45,20 @@ func waitSignals(dbc *dbi.DBController, wp *fswatcher.Pool) {
 
 	// Run handling
 	var err error
+	// Concurency flags
+	reindexRun := false
+	cleanupRun := false
+
 	for {
 		select {
 			case s := <-chStopApp:
 				// Stop application
-				log.W("Received %q - stopping application...", s)
+				log.W("Received %q - graceful stopping application... To abort immediately repeat the termination signal", s)
+
+				go func() {
+					<-chStopApp
+					log.F("Aborted because of the second termination signal")
+				}()
 
 				// Stop all watchers
 				wp.StopWatchers()
@@ -71,21 +80,40 @@ func waitSignals(dbc *dbi.DBController, wp *fswatcher.Pool) {
 				log.W("Received %q, starting re-indexing operation...", s)
 				// Need to restart watching on configured directories
 
+				if reindexRun {
+					log.E("Reindexing has already begun")
+					break
+				}
+				reindexRun = true
+
 				go func() {
 					// Stop all watchers
+					log.I("Stopping watchers to restart indexing...")
 					wp.StopWatchers()
 
+					log.I("Restarting indexing")
 					if err = wp.StartWatchers(fswatcher.DoReindex); err != nil {
 						log.E("Reindexing failed: %v", err)
 					}
+
+					reindexRun = false
 				}()
 
 			case s := <-chClean:
 				log.I("Received %q signal - starting cleaning up...", s)
+
+				if cleanupRun {
+					log.E("Cleanup has already begun")
+					break
+				}
+				cleanupRun = true
+
 				go func() {
 					if err := cleanup.Run(); err != nil {
 						log.E("Cannot start cleanup operation: %v", err)
 					}
+
+					cleanupRun = false
 				}()
 
 			case <-chStat:
