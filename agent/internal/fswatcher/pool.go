@@ -80,7 +80,7 @@ func (p *Pool) StartWatchers(doIndexing bool) error {
 	}
 
 	// Wait for all watchers started
-	for _ = range p.paths {	// TODO Need to check how it works
+	for _ = range p.paths {
 		<-started
 	}
 
@@ -258,12 +258,12 @@ func (p *Pool) flushCached(watchPath string, events eventsMap) error {
 	dbOps := make([]*dbi.DBOperation, 0, len(events))
 
 	// Keep current stopLongVal value to have ability to compare during long-term operations
-	currStopLong := p.stopLongVal	// TODO May be better solution
+	initStopLong := p.stopLongVal
 
 	// Handle events one by one
 	for _, name := range names {
 		// If value of the stopLongVal was updated - need to stop long-term operation
-		if p.stopLongVal != currStopLong {
+		if p.stopLongVal != initStopLong {
 			return fmt.Errorf("terminated")
 		}
 
@@ -326,11 +326,11 @@ func (p *Pool) scanDir(watcher *fsn.Watcher, dir string, events eventsMap, doInd
 	}
 
 	// Keep current stopLongVal value to have ability to compare during long-term operations
-	currStopLong := p.stopLongVal
+	initStopLong := p.stopLongVal
 
 	for _, entry := range entries {
 		// If value of the stopLongVal was updated - need to stop long-term operation
-		if p.stopLongVal != currStopLong {
+		if p.stopLongVal != initStopLong {
 			return nWatchers, fmt.Errorf("terminated")
 		}
 
