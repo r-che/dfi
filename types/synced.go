@@ -40,7 +40,6 @@ func (ic *intCounter) Val() int {
 */
 
 // Synchronized map
-// TODO Replace by https://pkg.go.dev/sync#Map
 type SyncMap struct {
 	m map[string]any
 	mtx sync.Mutex

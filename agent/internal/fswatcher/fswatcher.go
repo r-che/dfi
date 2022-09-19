@@ -80,15 +80,16 @@ func InitWatchers(paths []string, dbChan chan<- []*dbi.DBOperation, doIndexing b
 
 func StopWatchers() {
 	log.D("(Watcher) Stopping all watchers...")
+	// Stop all long term operations first
+	StopLong()
 	// Stop all watchers
 	stopWatchers()
-	// Wait for watcher finished
+	// Wait for watchers finished
 	wgWatchers.Wait()
 }
 
 // StopLong stops long-term operations on filesystem
 func StopLong() {
-	log.W("StopLong() called for fswatcher.go")
 	stopLong++
 }
 

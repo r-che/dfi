@@ -53,11 +53,9 @@ func waitSignals(dbc *dbi.DBController) {
 				log.W("Received %q - stopping application...", s)
 
 				// Stop all watchers
-				fswatcher.StopLong()
 				fswatcher.StopWatchers()
 
 				// Stop database controller
-				dbi.StopLong()
 				dbc.Stop()
 
 				return
@@ -74,10 +72,10 @@ func waitSignals(dbc *dbi.DBController) {
 				log.W("Received %q, starting re-indexing operation...", s)
 				// Need to restart watching on configured directories
 
-				// Stop all watchers
-				fswatcher.StopWatchers()
-
 				go func() {
+					// Stop all watchers
+					fswatcher.StopWatchers()
+
 					if err = fswatcher.InitWatchers(cfg.Config().IdxPaths, dbc.Channel(), fswatcher.DoReindex); err != nil {
 						log.E("Reindexing failed: %v", err)
 					}
@@ -93,10 +91,9 @@ func waitSignals(dbc *dbi.DBController) {
 
 			case <-chStat:
 				// TODO Will be implemented later
-				log.W("TODO: dump stat")
+				log.W("STUB: dump stat")
 
 			case <-chStopOps:
-				log.W("TODO: stop long term")
 				fswatcher.StopLong()
 				dbi.StopLong()
 		}
