@@ -5,7 +5,6 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/r-che/dfi/agent/internal/cfg"
 	"github.com/r-che/dfi/agent/internal/cleanup"
 	"github.com/r-che/dfi/agent/internal/fswatcher"
 	"github.com/r-che/dfi/dbi"
@@ -23,7 +22,7 @@ const (
 	sigQuit	=	syscall.SIGQUIT
 )
 
-func waitSignals(dbc *dbi.DBController) {
+func waitSignals(dbc *dbi.DBController, wp *fswatcher.Pool) {
 	// Create channels for each handled signal
 
 	chStopApp := make(chan os.Signal, 1)	// Stop application
@@ -53,7 +52,7 @@ func waitSignals(dbc *dbi.DBController) {
 				log.W("Received %q - stopping application...", s)
 
 				// Stop all watchers
-				fswatcher.StopWatchers()
+				wp.StopWatchers()
 
 				// Stop database controller
 				dbc.Stop()
@@ -74,9 +73,9 @@ func waitSignals(dbc *dbi.DBController) {
 
 				go func() {
 					// Stop all watchers
-					fswatcher.StopWatchers()
+					wp.StopWatchers()
 
-					if err = fswatcher.InitWatchers(cfg.Config().IdxPaths, dbc.Channel(), fswatcher.DoReindex); err != nil {
+					if err = wp.StartWatchers(fswatcher.DoReindex); err != nil {
 						log.E("Reindexing failed: %v", err)
 					}
 				}()
@@ -94,7 +93,7 @@ func waitSignals(dbc *dbi.DBController) {
 				log.W("STUB: dump stat")
 
 			case <-chStopOps:
-				fswatcher.StopLong()
+				wp.StopLong()
 				dbi.StopLong()
 		}
 	}

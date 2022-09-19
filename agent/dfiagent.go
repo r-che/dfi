@@ -42,13 +42,16 @@ func main() {
 	}
 	dbc.Run()
 
+	// Create new watchers pool
+	wp := fswatcher.NewPool(c.IdxPaths, dbc.Channel(), c.FlushPeriod)
+
 	// Start watchers asynchronously to avoid delays in cleaning and
 	// signal processing if the configured directories contain many
 	// entries (files, dirs and so on) that can take a long time
 	go func() {
-		// Init watchers on all configured directories
-		if err = fswatcher.InitWatchers(c.IdxPaths, dbc.Channel(), c.Reindex); err != nil {
-			log.F("Cannot initiate watchers on configured paths %q: %v", c.IdxPaths, err)
+		// Start watchers in pool
+		if err := wp.StartWatchers(c.Reindex); err != nil {
+			log.F("Cannot initiate watchers pool on configured paths %q: %v", c.IdxPaths, err)
 		}
 	}()
 
@@ -60,7 +63,7 @@ func main() {
 	}
 
 	// Wait for external events (signals)
-	waitSignals(dbc)
+	waitSignals(dbc, wp)
 
 	// Finish, cleanup operations
 	log.I("%s %s finished normally", ProgNameLong, ProgVers)

@@ -82,7 +82,7 @@ func StopWatchers() {
 	log.D("(Watcher) Stopping all watchers...")
 	// Stop all long term operations first
 	StopLong()
-	// Stop all watchers
+	// Stop all watchers using context.Cancel function
 	stopWatchers()
 	// Wait for watchers finished
 	wgWatchers.Wait()
