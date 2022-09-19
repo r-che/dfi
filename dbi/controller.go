@@ -42,9 +42,6 @@ func NewController(dbCfg *DBConfig) (*DBController, error) {
 func (dbc *DBController) Stop() {
 	log.D("Stopping database controller...")
 
-	// Stop all long-term operations first
-	StopLong()
-
 	// Cancel on context to stop related DB activities
 	dbc.cancel()
 

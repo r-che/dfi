@@ -45,7 +45,6 @@ func NewPool(paths []string, dbChan chan<- []*dbi.DBOperation, flushDelay time.D
 		paths:	paths,
 		dbChan:	dbChan,
 		fDelay:	flushDelay,
-		stop:	make(chan interface{}),
 	}
 }
 
@@ -61,6 +60,9 @@ func (p *Pool) StartWatchers(doIndexing bool) error {
 
 	// Init watchers map
 	p.watchers = make(map[string]doneChan, len(p.paths))
+
+	// Init stop channel
+	p.stop = make(chan interface{})
 
 	// Run watchers in parallel
 	started := make(chan interface{}, len(p.paths))
