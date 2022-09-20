@@ -17,5 +17,5 @@ gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 h1:uRGJdciOHaEIrze2W8Q3AKkep
 gopkg.in/yaml.v2 v2.4.0 h1:D8xgwECY7CYvx+Y2n4sBz93Jn9JRvxdiyyo8CTfuKaY=
 services-code.local/log.git v0.1.3 h1:CbzFwFiwi9xYAFFdmCGLQe/vTjh7vDnXGzsYvhhSN5o=
 services-code.local/log.git v0.1.3/go.mod h1:9wX8Wku2qv8zAuRuRDY0/yOHz+qQ4E5S6ZbktAzrm50=
-services-code.local/optsparser.git v0.1.1 h1:C1/vE9i302hu5mz9nShC0hNmAh17U0Qr4mLmQzfQXyU=
-services-code.local/optsparser.git v0.1.1/go.mod h1:UEa7o3pBav+bj6/nkjNMGt5x5cNSUPfNu0u/J/OGtdI=
+services-code.local/optsparser.git v0.1.3 h1:bqGsG5fBG2gc11MEUIlwmPORG5SM7pXKgKOUL5gsrQo=
+services-code.local/optsparser.git v0.1.3/go.mod h1:UEa7o3pBav+bj6/nkjNMGt5x5cNSUPfNu0u/J/OGtdI=
