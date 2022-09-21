@@ -2,13 +2,13 @@ package cfg
 
 import (
 	"fmt"
-	//"strings"
-	//"time"
 	//"io/ioutil"
 	//"encoding/json"
 
 	"github.com/r-che/dfi/dbi"
 )
+
+const anyVal = "any"
 
 type progConfig struct {
 	// Flag values
@@ -21,12 +21,15 @@ type progConfig struct {
 	// Search mode options
 	strMtime	string
 	strSize		string
-	sym			string
-	csum		string
-	id			string
-	host		string
-	orExp		bool
+	oTypes		string
+	csums		string
+	ids			string
+	hosts		string
+	orExpr		bool
 	negExpr		bool
+
+	// Query arguments
+	qArgs		*queryArgs
 
 	// Required options
 	DBCfg		dbi.DBConfig
@@ -62,7 +65,68 @@ func (pc *progConfig) prepare() error {
 		return fmt.Errorf("only one mode option can be set")
 	}
 
+	// Prepare required options
+	switch {
+		case pc.modeSearch:
+			if err := pc.prepareSearch(); err != nil {
+				return err
+			}
+		case pc.modeShow:
+			// TODO
+		case pc.modeSet:
+			// TODO
+		case pc.modeDel:
+			// TODO
+		case pc.modeAdmin:
+			// TODO
+	}
 
 	// Parsing completed successful
+	return nil
+}
+
+func (pc *progConfig) prepareSearch() error {
+	pc.qArgs = &queryArgs{}
+
+	if pc.strMtime != anyVal {
+		if err := pc.qArgs.parseMtimes(pc.strMtime); err != nil {
+			return err
+		}
+	}
+
+	if pc.strSize != anyVal {
+		if err := pc.qArgs.parseSizes(pc.strSize); err != nil {
+			return err
+		}
+	}
+
+	if pc.oTypes != anyVal {
+		if err := pc.qArgs.parseTypes(pc.oTypes); err != nil {
+			return err
+		}
+	}
+
+	if pc.csums != anyVal {
+		if err := pc.qArgs.parseSums(pc.csums); err != nil {
+			return err
+		}
+	}
+
+	if pc.ids != anyVal {
+		if err := pc.qArgs.parseIDs(pc.ids); err != nil {
+			return err
+		}
+	}
+
+	if pc.hosts != anyVal {
+		if err := pc.qArgs.parseHosts(pc.hosts); err != nil {
+			return err
+		}
+	}
+
+	pc.qArgs.setOr(pc.orExpr)
+	pc.qArgs.setNeg(pc.negExpr)
+
+	// OK
 	return nil
 }
