@@ -33,7 +33,7 @@ type progConfig struct {
 	// Other options
 
 	// Auxiliary options
-	progConf	string
+	confPath	string
 	Debug		bool
 	NoLogTS		bool
 
@@ -43,10 +43,30 @@ type progConfig struct {
 	// Internal filled options
 
 	// Query arguments
-	qArgs		*queryArgs
+	qArgs		*dbi.QueryArgs
 	// Program configuration loaded from file
 	fConf		fileCfg
 
+}
+
+func (pc *progConfig) Search() bool {
+	return pc.modeSearch
+}
+func (pc *progConfig) Show() bool {
+	return pc.modeShow
+}
+func (pc *progConfig) Set() bool {
+	return pc.modeSet
+}
+func (pc *progConfig) Del() bool {
+	return pc.modeDel
+}
+func (pc *progConfig) Admin() bool {
+	return pc.modeAdmin
+}
+
+func (pc *progConfig) DBConfig() *dbi.DBConfig {
+	return &pc.fConf.DB
 }
 
 func (pc *progConfig) clone() *progConfig {
@@ -93,10 +113,10 @@ func (pc *progConfig) prepare(cmdArgs []string) error {
 	}
 
 	// Is program configuration was not set?
-	if pc.progConf == progConfigDefault {
+	if pc.confPath == progConfigDefault {
 		// Try to define default path
 		if homeEnv, ok := os.LookupEnv(`HOME`); ok {
-			pc.progConf = filepath.Join(homeEnv, progConfigSuff)
+			pc.confPath = filepath.Join(homeEnv, progConfigSuff)
 		} else {
 			log.E(`Cannot get value of the "HOME", the default path to the program configuration is not determined`)
 		}

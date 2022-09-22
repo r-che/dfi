@@ -15,6 +15,10 @@ type DBClient interface {
 }
 
 type FilterFunc func(string) bool
+type QueryResult struct {
+	ID		string	// Short unique ID created by makeID() function
+	FullID	string	// Full object identifier includes prefix, hostname and found path
+}
 
 func NewClient(dbCfg *DBConfig) (DBClient, error) {
 	// Initiate database client

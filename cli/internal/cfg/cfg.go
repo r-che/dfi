@@ -50,7 +50,7 @@ func Init(name string) {
 	// Auxiliary options
 	p.AddSeparator("")
 	p.AddSeparator(">> General options")
-	p.AddString(`cfg|c`, `path to configuration file`, &config.progConf, progConfigDefault)
+	p.AddString(`cfg|c`, `path to configuration file`, &config.confPath, progConfigDefault)
 	p.AddBool(`debug|d`, `enable debug logging`, &config.Debug, false)
 	p.AddBool(`nologts|N`, `disable log timestamps`, &config.NoLogTS, false)
 

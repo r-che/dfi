@@ -20,34 +20,34 @@ type fileCfg struct {
 
 func (pc *progConfig) loadConf() error {
 	// Check existing of configuration
-	if _, err := os.Stat(pc.progConf); err != nil {
+	if _, err := os.Stat(pc.confPath); err != nil {
 		// Is file not exist?
 		if errors.Is(err, fs.ErrNotExist) {
 			// OK, treat this as case with an empty configuration
-			log.D("No configuration file exists in %q", pc.progConf)
+			log.D("No configuration file exists in %q", pc.confPath)
 			return nil
 		}
 
 		// Something went wrong
-		return fmt.Errorf("cannot access program configuration %q: %v", pc.progConf, err)
+		return fmt.Errorf("cannot access program configuration %q: %v", pc.confPath, err)
 	}
 
-	log.D("Using program configuration from %q", pc.progConf)
+	log.D("Using program configuration from %q", pc.confPath)
 
 	// Configuration should not be public-readable - check correctness of ownership/permissions
-	if err := fschecks.PrivOwnership(pc.progConf); err != nil {
+	if err := fschecks.PrivOwnership(pc.confPath); err != nil {
 		return fmt.Errorf("failed to check ownership/mode of program configuraton: %v", err)
 	}
 
 	// Read configuration file
-	data, err := ioutil.ReadFile(pc.progConf)
+	data, err := ioutil.ReadFile(pc.confPath)
 	if err != nil {
 		return fmt.Errorf("cannot read private database configuration: %v", err)
 	}
 
 	// Parse JSON, load it to configuration
 	if err = json.Unmarshal(data, &pc.fConf); err != nil {
-		return fmt.Errorf("cannot decode configuration %q: %v", pc.progConf, err)
+		return fmt.Errorf("cannot decode configuration %q: %v", pc.confPath, err)
 	}
 
 	// OK
