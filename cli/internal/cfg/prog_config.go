@@ -69,6 +69,14 @@ func (pc *progConfig) DBConfig() *dbi.DBConfig {
 	return &pc.fConf.DB
 }
 
+func (pc *progConfig) CmdArgs() []string {
+	return pc.cmdArgs
+}
+
+func (pc *progConfig) QueryArgs() *dbi.QueryArgs {
+	return pc.qArgs
+}
+
 func (pc *progConfig) clone() *progConfig {
 	rv := *pc
 

@@ -10,7 +10,7 @@ type DBClient interface {
     Delete(string) error
     Commit() (int64, int64, error)
 	LoadHostPaths(FilterFunc) ([]string, error)
-	Query(*QueryArgs) ([]QueryResult, error)
+	Query([]string, *QueryArgs) ([]QueryResult, error)
 	StopLong()
     Stop()
 }

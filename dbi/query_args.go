@@ -54,6 +54,48 @@ func (qa *QueryArgs) Clone() *QueryArgs {
 	return &rv
 }
 
+func (qa *QueryArgs) isMtime() bool {
+	return len(qa.mtimeSet) != 0 || qa.mtimeStart != 0 || qa.mtimeEnd != 0
+}
+
+func (qa *QueryArgs) isSize() bool {
+	return len(qa.sizeSet) != 0 || qa.sizeStart != 0 || qa.sizeEnd != 0
+}
+
+func (qa *QueryArgs) isType() bool {
+	return len(qa.types) != 0
+}
+
+func (qa *QueryArgs) isChecksum() bool {
+	return len(qa.csums) != 0
+}
+
+func (qa *QueryArgs) isID() bool {
+	return len(qa.ids) != 0
+}
+
+func (qa *QueryArgs) isHost() bool {
+	return len(qa.hosts) != 0
+}
+
+func (qa *QueryArgs) CanSearch(searchPhrases []string) bool {
+	// Check for any search phrases
+	for _, sp := range searchPhrases {
+		if sp != "" {
+			// Non-empty search phrase will be sufficient
+			return true
+		}
+	}
+
+	if qa.isMtime() || qa.isSize() || qa.isType() || qa.isChecksum() || qa.isID() || qa.isHost() {
+		// Sufficient conditions to search query
+		return true
+	}
+
+	// Insufficient
+	return false
+}
+
 func (qa *QueryArgs) ParseMtimes(mtimeLine string) error {
 	// Possible variants:
 	// * ts1[,ts2,ts3...]
@@ -345,24 +387,4 @@ func (qa *QueryArgs) SetNeg(neg bool) {
 
 func (qa *QueryArgs) SetOr(or bool) {
 	qa.orExpr = or
-}
-
-func (qa *QueryArgs) CanSearch(searchPhrases []string) bool {
-	// Check for any search phrases
-	for _, sp := range searchPhrases {
-		if sp != "" {
-			// Non-empty search phrase will be sufficient
-			return true
-		}
-	}
-
-	if len(qa.mtimeSet) != 0 || qa.mtimeStart != 0 || qa.mtimeEnd != 0 ||
-		len(qa.sizeSet) != 0 || qa.sizeStart != 0 || qa.sizeEnd != 0 ||
-		len(qa.types) != 0 || len(qa.csums) != 0 || len(qa.ids) != 0 || len(qa.hosts) != 0 {
-		// Sufficient conditions to search query
-		return true
-	}
-
-	// Insufficient
-	return false
 }

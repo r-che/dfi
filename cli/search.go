@@ -10,7 +10,14 @@ import (
 func doSearch(dbc dbi.DBClient) error {
 	// Get configuration
 	c := cfg.Config()
-	fmt.Println("config:", c)
+
+	qr, err := dbc.Query(c.CmdArgs(), c.QueryArgs())
+	if err != nil {
+		return err
+	}
+
+	// TODO
+	fmt.Printf("SUCCESS: %#v\n", qr)
 	// OK
 	return nil
 }

@@ -27,6 +27,8 @@ type RedisClient struct {
 	ctx			context.Context
 	stop		context.CancelFunc
 	cliHost		string
+	// Provided configuration
+	cfg			*DBConfig
 
 	c		*redis.Client
 
@@ -52,6 +54,7 @@ func newDBClient(dbCfg *DBConfig) (DBClient, error) {
 
 	// Initialize Redis client
 	rc := &RedisClient{
+		cfg: dbCfg,
 		c: redis.NewClient(&redis.Options{
 			Addr:		dbCfg.HostPort,
 			Username:	user,

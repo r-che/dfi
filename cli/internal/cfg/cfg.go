@@ -13,7 +13,7 @@ import (
 var config progConfig
 
 // Defaults
-var knownTypes = []string{"file", "dir", "sym"}
+var knownTypes = []string{"reg", "dir", "sym"}
 var progConfigSuff = filepath.Join(".dfi", "cli.json")
 var progConfigDefault = filepath.Join("${HOME}", progConfigSuff)
 
@@ -41,6 +41,9 @@ func Init(name string) {
 	p.AddString(`checksum`, `set of objects checksums`, &config.csums, anyVal)
 	p.AddString(`id`, `object unique ID`, &config.ids, anyVal)
 	p.AddString(`host`, `set of hosts when object may be located`, &config.hosts, anyVal)
+	// TODO --tag
+	// TODO --dupe
+	// TODO --descr
 	p.AddBool(`or`, `use OR instead of AND between conditions`, &config.orExpr, false)
 	p.AddBool(`not`, `use negative expression`, &config.negExpr, false)
 
