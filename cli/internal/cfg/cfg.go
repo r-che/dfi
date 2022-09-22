@@ -20,19 +20,10 @@ func Init(name string) {
 	// Create new parser
 	p := optsparser.NewParser(name,
 		// List of required options
-		//TODO
 	)
 
 	// Get real hostname
-	/*
-	hostname, err := os.Hostname()
-	if err != nil {
-		log.E("Cannot get hostname of this host: %v - using the fallback value %q", err, fallbackHostname)
-		hostname = fallbackHostname
-	}
-	*/
-
-	p.AddSeparator(`>> Opearting modes (only can be set)`)
+	p.AddSeparator(`>> Opearting mode (only one can be set)`)
 	p.AddBool(`search`, `enable search mode, used by default if no other modes are set`, &config.modeSearch, false)
 	p.AddBool(`show`, `enable show mode`, &config.modeShow, false)
 	p.AddBool(`set`, `enable set mode`, &config.modeSet, false)
@@ -72,7 +63,7 @@ func Init(name string) {
 	log.SetDebug(config.Debug)
 
 	// Check and prepare configuration
-	if err := config.prepare(); err != nil {
+	if err := config.prepare(p.Args()); err != nil {
 		p.Usage(err.Error())
 	}
 }

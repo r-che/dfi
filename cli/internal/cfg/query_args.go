@@ -18,7 +18,6 @@ type queryArgs struct {
 	mtimeSet	[]int64
 
 	// Size related
-	sizeRange	bool
 	sizeStart	int64
 	sizeEnd		int64
 	sizeSet		[]int64
@@ -324,4 +323,24 @@ func (qa *queryArgs) setNeg(neg bool) {
 
 func (qa *queryArgs) setOr(or bool) {
 	qa.orExpr = or
+}
+
+func (qa *queryArgs) canSearch(searchPhrases []string) bool {
+	// Check for any search phrases
+	for _, sp := range searchPhrases {
+		if sp != "" {
+			// Non-empty search phrase will be sufficient
+			return true
+		}
+	}
+
+	if len(qa.mtimeSet) != 0 || qa.mtimeStart != 0 || qa.mtimeEnd != 0 ||
+		len(qa.sizeSet) != 0 || qa.sizeStart != 0 || qa.sizeEnd != 0 ||
+		len(qa.types) != 0 || len(qa.csums) != 0 || len(qa.ids) != 0 || len(qa.hosts) != 0 {
+		// Sufficient conditions to search query
+		return true
+	}
+
+	// Insufficient
+	return false
 }

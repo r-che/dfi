@@ -35,6 +35,9 @@ type progConfig struct {
 	Debug		bool
 	NoLogTS		bool
 
+	// Non-flags arguments from command line
+	cmdArgs []string
+
 	// Internal filled options
 
 	// Query arguments
@@ -50,7 +53,10 @@ func (pc *progConfig) clone() *progConfig {
 	return &rv
 }
 
-func (pc *progConfig) prepare() error {
+func (pc *progConfig) prepare(cmdArgs []string) error {
+	// Keep search phrases
+	pc.cmdArgs = cmdArgs
+
 	// Check mode
 	mn := 0
 	switch {
@@ -140,6 +146,10 @@ func (pc *progConfig) prepareSearch() error {
 	pc.qArgs.setOr(pc.orExpr)
 	pc.qArgs.setNeg(pc.negExpr)
 
+	// Check for sufficient conditions for search
+	if !pc.qArgs.canSearch(pc.cmdArgs) {
+		return fmt.Errorf("insufficient arguments to make search")
+	}
 	// OK
 	return nil
 }

@@ -49,7 +49,6 @@ func (pc *progConfig) loadConf() error {
 	if err = json.Unmarshal(data, &pc.fConf); err != nil {
 		return fmt.Errorf("cannot decode configuration %q: %v", pc.progConf, err)
 	}
-	fmt.Printf("cfg: %#v\n", pc.fConf)
 
 	// OK
 	return nil
