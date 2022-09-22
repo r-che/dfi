@@ -31,6 +31,29 @@ type QueryArgs struct {
 	negExpr		bool
 }
 
+func (qa *QueryArgs) Clone() *QueryArgs {
+	rv := *qa
+
+	rv.mtimeSet = make([]int64, len(qa.mtimeSet))
+	copy(rv.mtimeSet, qa.mtimeSet)
+	rv.sizeSet = make([]int64, len(qa.sizeSet))
+	copy(rv.sizeSet, qa.sizeSet)
+
+	rv.types = make([]string, len(qa.types))
+	copy(rv.types, qa.types)
+
+	rv.csums = make([]string, len(qa.csums))
+	copy(rv.csums, qa.csums)
+
+	rv.ids = make([]string, len(qa.ids))
+	copy(rv.ids, qa.ids)
+
+	rv.hosts = make([]string, len(qa.hosts))
+	copy(rv.hosts, qa.hosts)
+
+	return &rv
+}
+
 func (qa *QueryArgs) ParseMtimes(mtimeLine string) error {
 	// Possible variants:
 	// * ts1[,ts2,ts3...]

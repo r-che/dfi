@@ -36,6 +36,7 @@ func (pc *progConfig) clone() *progConfig {
 	rv := *pc
 
 	// Make deep copy of paths to indexing
+	rv.IdxPaths = make([]string, len(pc.IdxPaths))
 	copy(rv.IdxPaths, pc.IdxPaths)
 
 	return &rv

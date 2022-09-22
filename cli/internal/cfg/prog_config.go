@@ -72,6 +72,12 @@ func (pc *progConfig) DBConfig() *dbi.DBConfig {
 func (pc *progConfig) clone() *progConfig {
 	rv := *pc
 
+	// Make deep copy of cmdArgs
+	rv.cmdArgs = make([]string, len(pc.cmdArgs))
+	copy(rv.cmdArgs, pc.cmdArgs)
+
+	rv.qArgs = rv.qArgs.Clone()
+
 	return &rv
 }
 
