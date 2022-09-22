@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/r-che/dfi/dbi"
+
 	"github.com/r-che/log"
 )
 
@@ -105,49 +107,49 @@ func (pc *progConfig) prepare(cmdArgs []string) error {
 }
 
 func (pc *progConfig) prepareSearch() error {
-	pc.qArgs = &queryArgs{}
+	pc.qArgs = &dbi.QueryArgs{}
 
 	if pc.strMtime != anyVal {
-		if err := pc.qArgs.parseMtimes(pc.strMtime); err != nil {
+		if err := pc.qArgs.ParseMtimes(pc.strMtime); err != nil {
 			return err
 		}
 	}
 
 	if pc.strSize != anyVal {
-		if err := pc.qArgs.parseSizes(pc.strSize); err != nil {
+		if err := pc.qArgs.ParseSizes(pc.strSize); err != nil {
 			return err
 		}
 	}
 
 	if pc.oTypes != anyVal {
-		if err := pc.qArgs.parseTypes(pc.oTypes); err != nil {
+		if err := pc.qArgs.ParseTypes(pc.oTypes, knownTypes); err != nil {
 			return err
 		}
 	}
 
 	if pc.csums != anyVal {
-		if err := pc.qArgs.parseSums(pc.csums); err != nil {
+		if err := pc.qArgs.ParseSums(pc.csums); err != nil {
 			return err
 		}
 	}
 
 	if pc.ids != anyVal {
-		if err := pc.qArgs.parseIDs(pc.ids); err != nil {
+		if err := pc.qArgs.ParseIDs(pc.ids); err != nil {
 			return err
 		}
 	}
 
 	if pc.hosts != anyVal {
-		if err := pc.qArgs.parseHosts(pc.hosts); err != nil {
+		if err := pc.qArgs.ParseHosts(pc.hosts); err != nil {
 			return err
 		}
 	}
 
-	pc.qArgs.setOr(pc.orExpr)
-	pc.qArgs.setNeg(pc.negExpr)
+	pc.qArgs.SetOr(pc.orExpr)
+	pc.qArgs.SetNeg(pc.negExpr)
 
 	// Check for sufficient conditions for search
-	if !pc.qArgs.canSearch(pc.cmdArgs) {
+	if !pc.qArgs.CanSearch(pc.cmdArgs) {
 		return fmt.Errorf("insufficient arguments to make search")
 	}
 	// OK

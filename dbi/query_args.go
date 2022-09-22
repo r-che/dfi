@@ -1,4 +1,4 @@
-package cfg
+package dbi
 
 import (
 	"fmt"
@@ -11,7 +11,7 @@ import (
 // Separator between start/end of some range passed by command line
 const dataRangeSep = ".."
 
-type queryArgs struct {
+type QueryArgs struct {
 	// Mtime related
 	mtimeStart	int64
 	mtimeEnd	int64
@@ -31,7 +31,7 @@ type queryArgs struct {
 	negExpr		bool
 }
 
-func (qa *queryArgs) parseMtimes(mtimeLine string) error {
+func (qa *QueryArgs) ParseMtimes(mtimeLine string) error {
 	// Possible variants:
 	// * ts1[,ts2,ts3...]
 	// * ts1..ts2
@@ -152,7 +152,7 @@ func parseTime(timeStr string) (int64, error) {
 	return -1, fmt.Errorf("cannot parse time %q", timeStr)
 }
 
-func (qa *queryArgs) parseSizes(sizeLine string) error {
+func (qa *QueryArgs) ParseSizes(sizeLine string) error {
 	// Possible variants:
 	// * size1[,size2,size3...]
 	// * size1..size2
@@ -262,13 +262,12 @@ func parseSize(sizeStr string) (int64, error) {
 	return size * multiplier, nil
 }
 
-var knownTypes = []string{"file", "dir", "sym"}
-func (qa *queryArgs) parseTypes(typesLine string) error {
+func (qa *QueryArgs) ParseTypes(typesLine string, allowed []string) error {
 	qa.types = []string{}
 
 	argTypes:
 	for _, argType := range strings.Split(typesLine, ",") {
-		for _, kt := range knownTypes {
+		for _, kt := range allowed {
 			if argType == kt {
 				qa.types = append(qa.types, argType)
 				continue argTypes
@@ -281,7 +280,7 @@ func (qa *queryArgs) parseTypes(typesLine string) error {
 	return nil
 }
 
-func (qa *queryArgs) parseSums(cSumsLine string) error {
+func (qa *QueryArgs) ParseSums(cSumsLine string) error {
 	qa.csums = strings.Split(cSumsLine, ",")
 
 	for _, csum := range qa.csums {
@@ -293,7 +292,7 @@ func (qa *queryArgs) parseSums(cSumsLine string) error {
 	return nil
 }
 
-func (qa *queryArgs) parseIDs(idsLine string) error {
+func (qa *QueryArgs) ParseIDs(idsLine string) error {
 	qa.ids = strings.Split(idsLine, ",")
 
 	for _, id := range qa.ids {
@@ -305,7 +304,7 @@ func (qa *queryArgs) parseIDs(idsLine string) error {
 	return nil
 }
 
-func (qa *queryArgs) parseHosts(hostsLine string) error {
+func (qa *QueryArgs) ParseHosts(hostsLine string) error {
 	qa.hosts = strings.Split(hostsLine, ",")
 
 	for _, host := range qa.hosts {
@@ -317,15 +316,15 @@ func (qa *queryArgs) parseHosts(hostsLine string) error {
 	return nil
 }
 
-func (qa *queryArgs) setNeg(neg bool) {
+func (qa *QueryArgs) SetNeg(neg bool) {
 	qa.negExpr = neg
 }
 
-func (qa *queryArgs) setOr(or bool) {
+func (qa *QueryArgs) SetOr(or bool) {
 	qa.orExpr = or
 }
 
-func (qa *queryArgs) canSearch(searchPhrases []string) bool {
+func (qa *QueryArgs) CanSearch(searchPhrases []string) bool {
 	// Check for any search phrases
 	for _, sp := range searchPhrases {
 		if sp != "" {

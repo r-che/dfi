@@ -13,6 +13,7 @@ import (
 var config progConfig
 
 // Defaults
+var knownTypes = []string{"file", "dir", "sym"}
 var progConfigSuff = filepath.Join(".dfi", "cli.json")
 var progConfigDefault = filepath.Join("${HOME}", progConfigSuff)
 
