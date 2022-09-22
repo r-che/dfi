@@ -33,7 +33,7 @@ func main() {
 	// Starting agent
 	log.I("==== %s %s started ====", ProgNameLong, ProgVers)
 	log.I("Paths to indexing - %v client hostname - %q database host - %q database identifier - %q",
-		c.IdxPaths, c.DBCfg.CliHost, c.DBCfg.HostPort, c.DBCfg.DBID)
+		c.IdxPaths, c.DBCfg.CliHost, c.DBCfg.HostPort, c.DBCfg.ID)
 
 	// Init and run database controller
 	dbc, err := dbi.NewController(&c.DBCfg)

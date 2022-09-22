@@ -9,15 +9,13 @@ import (
 	"encoding/json"
 
 	"github.com/r-che/dfi/common/fschecks"
+	"github.com/r-che/dfi/dbi"
 
 	"github.com/r-che/log"
 )
 
 type fileCfg struct {
-	DBHostPort	string
-	DBName		string
-	DBUser		string
-	DBPass		string
+	DB	dbi.DBConfig
 }
 
 func (pc *progConfig) loadConf() error {
@@ -48,10 +46,10 @@ func (pc *progConfig) loadConf() error {
 	}
 
 	// Parse JSON, load it to configuration
-	cfg := fileCfg{}
-	if err = json.Unmarshal(data, &cfg); err != nil {
+	if err = json.Unmarshal(data, &pc.fConf); err != nil {
 		return fmt.Errorf("cannot decode configuration %q: %v", pc.progConf, err)
 	}
+	fmt.Printf("cfg: %#v\n", pc.fConf)
 
 	// OK
 	return nil

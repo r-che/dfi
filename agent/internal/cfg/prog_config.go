@@ -73,8 +73,8 @@ func (pc *progConfig) loadPriv() error {
 	}
 
 	// Parse JSON, load it to configuration
-	pc.DBCfg.DBPrivCfg= map[string]any{}
-	if err = json.Unmarshal(data, &pc.DBCfg.DBPrivCfg); err != nil {
+	pc.DBCfg.PrivCfg= map[string]any{}
+	if err = json.Unmarshal(data, &pc.DBCfg.PrivCfg); err != nil {
 		return fmt.Errorf("cannot decode private database configuration %q: %v", pc.DBPriv, err)
 	}
 

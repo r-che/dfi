@@ -5,8 +5,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/r-che/dfi/dbi"
-
 	"github.com/r-che/log"
 )
 
@@ -30,18 +28,20 @@ type progConfig struct {
 	orExpr		bool
 	negExpr		bool
 
-	// Query arguments
-	qArgs		*queryArgs
-
-	// Required options
-	DBCfg		*dbi.DBConfig
-
 	// Other options
 
 	// Auxiliary options
 	progConf	string
 	Debug		bool
 	NoLogTS		bool
+
+	// Internal filled options
+
+	// Query arguments
+	qArgs		*queryArgs
+	// Program configuration loaded from file
+	fConf		fileCfg
+
 }
 
 func (pc *progConfig) clone() *progConfig {

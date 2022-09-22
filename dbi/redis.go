@@ -39,13 +39,13 @@ type RedisClient struct {
 
 func newDBClient(dbCfg *DBConfig) (DBClient, error) {
 	// Convert string representation of database identifier to numeric database index
-	dbid, err := strconv.ParseUint(dbCfg.DBID, 10, 64)
+	dbid, err := strconv.ParseUint(dbCfg.ID, 10, 64)
 	if err != nil {
 		return nil, fmt.Errorf("(RedisCli) cannot convert database identifier value to unsigned integer: %v", err)
 	}
 
 	// Read username/password from private data if set
-	user, passw, err := userPasswd(dbCfg.DBPrivCfg)
+	user, passw, err := userPasswd(dbCfg.PrivCfg)
 	if err != nil {
 		return nil, fmt.Errorf("(RedisCli) failed to load username/password from private configuration: %v", err)
 	}

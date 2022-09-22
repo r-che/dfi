@@ -14,8 +14,8 @@ type DBConfig struct {
 	CliHost		string	// Client hostname
 
 	// Database specific information
-	DBID		string			// Database identifier - name, number, etc...
-	DBPrivCfg	map[string]any	// Private configuration loaded from JSON
+	ID			string			// Database identifier - name, number, etc...
+	PrivCfg		map[string]any	// Private configuration loaded from JSON
 }
 
 // Supported operators on database

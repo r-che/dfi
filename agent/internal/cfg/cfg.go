@@ -35,7 +35,7 @@ func Init(name string) {
 	// Database connection information
 	p.AddString(`dbhost|H`, `database host or IP address and port in HOST:PORT format`, &config.DBCfg.HostPort, "")
 	// Databace indentifier - name, number ans do on
-	p.AddString(`dbid|D`, `database identifier - name, number and so on`, &config.DBCfg.DBID, "")
+	p.AddString(`dbid|D`, `database identifier - name, number and so on`, &config.DBCfg.ID, "")
 
 	// Other options
 	p.AddString(`dbprivate|P`, `path to file with DBMS-specific private data - username/passwd, etc...`, &config.DBPriv, "")
