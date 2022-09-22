@@ -1,14 +1,20 @@
 package cfg
 
 import (
+	stdLog "log"
 	//"os"
 	"strings"
+	"path/filepath"
 
-	//"github.com/r-che/log"
+	"github.com/r-che/log"
 	"github.com/r-che/optsparser"
 )
 
 var config progConfig
+
+// Defaults
+var progConfigSuff = filepath.Join(".dfi", "cli.json")
+var progConfigDefault = filepath.Join("${HOME}", progConfigSuff)
 
 func Init(name string) {
 	// Create new parser
@@ -52,11 +58,18 @@ func Init(name string) {
 	// Auxiliary options
 	p.AddSeparator("")
 	p.AddSeparator(">> General options")
+	p.AddString(`cfg|c`, `path to configuration file`, &config.progConf, progConfigDefault)
 	p.AddBool(`debug|d`, `enable debug logging`, &config.Debug, false)
 	p.AddBool(`nologts|N`, `disable log timestamps`, &config.NoLogTS, false)
 
 	// Parse options
 	p.Parse()
+
+	// Configure logger
+	if !config.NoLogTS {
+		log.SetFlags(log.Flags() | stdLog.Ldate | stdLog.Ltime)
+	}
+	log.SetDebug(config.Debug)
 
 	// Check and prepare configuration
 	if err := config.prepare(); err != nil {

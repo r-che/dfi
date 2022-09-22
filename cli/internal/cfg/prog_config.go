@@ -2,10 +2,12 @@ package cfg
 
 import (
 	"fmt"
-	//"io/ioutil"
-	//"encoding/json"
+	"os"
+	"path/filepath"
 
 	"github.com/r-che/dfi/dbi"
+
+	"github.com/r-che/log"
 )
 
 const anyVal = "any"
@@ -32,11 +34,12 @@ type progConfig struct {
 	qArgs		*queryArgs
 
 	// Required options
-	DBCfg		dbi.DBConfig
+	DBCfg		*dbi.DBConfig
 
 	// Other options
 
 	// Auxiliary options
+	progConf	string
 	Debug		bool
 	NoLogTS		bool
 }
@@ -81,8 +84,18 @@ func (pc *progConfig) prepare() error {
 			// TODO
 	}
 
-	// Parsing completed successful
-	return nil
+	// Is program configuration was not set?
+	if pc.progConf == progConfigDefault {
+		// Try to define default path
+		if homeEnv, ok := os.LookupEnv(`HOME`); ok {
+			pc.progConf = filepath.Join(homeEnv, progConfigSuff)
+		} else {
+			log.E(`Cannot get value of the "HOME", the default path to the program configuration is not determined`)
+		}
+	}
+
+	// Load configuration from file and return result
+	return pc.loadConf()
 }
 
 func (pc *progConfig) prepareSearch() error {
