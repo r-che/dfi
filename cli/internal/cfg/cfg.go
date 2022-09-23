@@ -39,13 +39,15 @@ func Init(name string) {
 	p.AddString(`size`, `object size`, &config.strSize, anyVal)
 	p.AddString(`type`, `set of object types, possible values: ` + strings.Join(knownTypes, ", "), &config.oTypes, anyVal)
 	p.AddString(`checksum`, `set of objects checksums`, &config.csums, anyVal)
-	p.AddString(`id`, `object unique ID`, &config.ids, anyVal)
 	p.AddString(`host`, `set of hosts when object may be located`, &config.hosts, anyVal)
 	// TODO --tag
 	// TODO --dupe
 	// TODO --descr
 	p.AddBool(`or`, `use OR instead of AND between conditions`, &config.orExpr, false)
 	p.AddBool(`not`, `use negative expression`, &config.negExpr, false)
+
+	// Other modes common options
+	p.AddString(`id`, `object unique ID`, &config.ids, anyVal)
 
 	// Other options
 	//p.AddString(`hostname`, `override real client hostname by provided value`, &config.DBCfg.CliHost, hostname)

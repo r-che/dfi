@@ -25,10 +25,12 @@ type progConfig struct {
 	strSize		string
 	oTypes		string
 	csums		string
-	ids			string
 	hosts		string
 	orExpr		bool
 	negExpr		bool
+
+	// Other modes common options
+	ids			string
 
 	// Other options
 
@@ -163,12 +165,6 @@ func (pc *progConfig) prepareSearch() error {
 
 	if pc.csums != anyVal {
 		if err := pc.qArgs.ParseSums(pc.csums); err != nil {
-			return err
-		}
-	}
-
-	if pc.ids != anyVal {
-		if err := pc.qArgs.ParseIDs(pc.ids); err != nil {
 			return err
 		}
 	}
