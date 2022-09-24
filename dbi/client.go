@@ -10,15 +10,15 @@ type DBClient interface {
     Delete(string) error
     Commit() (int64, int64, error)
 	LoadHostPaths(FilterFunc) ([]string, error)
-	Query([]string, *QueryArgs) ([]QueryResult, error)
+	Query([]string, *QueryArgs, []string) ([]QueryResult, error)
 	StopLong()
     Stop()
 }
 
 type FilterFunc func(string) bool
 type QueryResult struct {
-	ID		string	// Short unique ID created by makeID() function
 	FullID	string	// Full object identifier includes prefix, hostname and found path
+	Fields	map[string]any
 }
 
 func NewClient(dbCfg *DBConfig) (DBClient, error) {

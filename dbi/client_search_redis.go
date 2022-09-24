@@ -13,7 +13,7 @@ import (
 const metaRschIdx = "obj-meta-idx"
 const objsPerQuery = 1000
 
-func (rc *RedisClient) Query(searchPhrases []string, qa *QueryArgs) ([]QueryResult, error) {
+func (rc *RedisClient) Query(searchPhrases []string, qa *QueryArgs, retFields []string) ([]QueryResult, error) {
 	// TODO
 	// Common order:
 	// * Add to query all additional arguments from query args
@@ -23,30 +23,41 @@ func (rc *RedisClient) Query(searchPhrases []string, qa *QueryArgs) ([]QueryResu
 	// * Build final query using or/not modifiers
 
 
+	// Do standard SCAN search
+
+
+
+	// Do RediSearch
+
 	// Get RediSearch client
 	rsc, err := rc.rschInit()
 	if err != nil {
 		// Log error but do not abort execution
 		log.E("(RedisCli) Cannot initialize RediSearch client: %v", err)
 	} else {
-		qr := rshSearch(rsc, qa, searchPhrases)
+		qr := rshSearch(rsc, qa, searchPhrases, retFields)
 		for _, obj := range qr {
-			//fmt.Println(obj.ID)	// TODO
+			fmt.Println(obj)	// TODO
 			_=obj
 		}
 	}
 
-
 	return nil, nil
 }
 
-func rshSearch(cli *rsh.Client, qa *QueryArgs, searchPhrases []string) []*QueryResult {
+func rshSearch(cli *rsh.Client, qa *QueryArgs, searchPhrases []string, retFields []string) []*QueryResult {
 	// Offset from which matched documents should be selected
 	offset := 0
 
 	// Make redisearch initial query
-	q := rsh.NewQuery(rshQuery(searchPhrases, qa)).
-		SetReturnFields(FieldID)
+	q := rsh.NewQuery(rshQuery(searchPhrases, qa))
+
+	if len(retFields) != 0 {
+		// Set list of requested fields
+		q.SetReturnFields(retFields...)
+	} else {
+		q.SetFlags(rsh.QueryNoContent)
+	}
 
 	log.D("(RedisCli) Prepared RediSearch query string: %v", q.Raw)
 
@@ -64,31 +75,28 @@ func rshSearch(cli *rsh.Client, qa *QueryArgs, searchPhrases []string) []*QueryR
 		docs, total, err := cli.Search(q)
 		if err != nil {
 			log.E("(RedisCli) RediSearch query failed: %v", err)
-			continue
+			break
 		}
 
 		log.D("Scanned offset: %d .. %d, selected %d (total matched %d)", offset, offset + objsPerQuery, len(docs), total)
 
 		// Convert scanned documents to output result
 		for _, doc := range docs {
-			if id, ok := doc.Properties[FieldID].(string); ok {
-				qr = append(qr, &QueryResult{FullID: doc.Id, ID: id})
-			} else {
-				log.W("(RedisCli) RediSearch found invalid record %q without %q field", doc.Id, FieldID)
-				qr = append(qr, &QueryResult{FullID: doc.Id})
-			}
+			qr = append(qr, &QueryResult{FullID: doc.Id, Fields: doc.Properties})
 		}
 
 		// Check for number of total matched documents reached total - no mo docs to scan
 		if totDocs += len(docs); totDocs >= total {
 			// Return results
 			log.D("(RedisCli) RediSearch returned %d records", len(qr))
-			return qr
+			break
 		}
 
 		// Update offset
 		offset += objsPerQuery
 	}
+
+	return qr
 }
 
 func (rc *RedisClient) rschInit() (*rsh.Client, error) {
