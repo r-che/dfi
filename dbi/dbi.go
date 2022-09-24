@@ -44,6 +44,7 @@ type DBChan chan []*DBOperation
 // Database object fields
 const (
 	FieldID = "id"			// Unique object identifier (sha1 of found path)
+	FieldHost = "host"		// Hosw where the object was found
 	FieldName = "name"		// File name (w/o full path)
 	FieldFPath = "fpath"	// Where object was found, may include symbolic links
 	FieldRPath = "rpath"	// Where object really placed

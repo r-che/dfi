@@ -110,7 +110,7 @@ func (rc *RedisClient) UpdateObj(fso *types.FSObject) error {
 
 	log.D("(RedisCli) HSET => %s\n", key)
 
-	res := rc.c.HSet(rc.ctx, key, prepareHSetValues(fso))
+	res := rc.c.HSet(rc.ctx, key, prepareHSetValues(rc.cliHost, fso))
 	if err := res.Err(); err != nil {
 		return fmt.Errorf("HSET of key %q returned error: %v", key, err)
 	}
@@ -226,12 +226,13 @@ func (rc *RedisClient) LoadHostPaths(filter FilterFunc) ([]string, error) {
 
 // Auxiliary functions
 
-func prepareHSetValues(fso *types.FSObject) []string {
+func prepareHSetValues(host string, fso *types.FSObject) []string {
 	// Output slice with values prepared to send to Redis
-	values := make([]string, 0, types.FSObjectFieldsNum + 1)	// + 1 - id field
+	values := make([]string, 0, types.FSObjectFieldsNum + 2)	// + 2 - id field + host field
 
 	values = append(values,
 		FieldID, makeID(fso),
+		FieldHost, host,
 		FieldName, fso.Name,
 		FieldFPath, fso.FPath,
 		FieldRPath, fso.RPath,

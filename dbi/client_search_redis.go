@@ -56,11 +56,6 @@ func rshSearch(cli *rsh.Client, qa *QueryArgs, searchPhrases []string) []*QueryR
 	// Total selected docs
 	totDocs := 0
 
-	// TODO Need hosts filtering
-	if qa.isHost() {
-		// TODO Results should be filtered by qa.hosts if provided
-	}
-
 	for {
 		// Update query to set offset/limit
 		q.Limit(offset, objsPerQuery)
@@ -145,9 +140,10 @@ func rshQuery(searchPhrases []string, qa *QueryArgs) string {
 	if qa.isChecksum() {
 		chunks = append(chunks, prepChecksum(qa))
 	}
-	if qa.isID() {
-		chunks = append(chunks, prepID(qa))
+	if qa.isHost() {
+		chunks = append(chunks, prepHost(qa))
 	}
+
 
 	// Make search phrases query - try to search them in found path and real path
 	var spQuery string
@@ -200,8 +196,15 @@ func prepChecksum(qa *QueryArgs) string {
 	return `@` + FieldChecksum + `:{` +  strings.Join(qa.csums, `|`) + `}`
 }
 
-func prepID(qa *QueryArgs) string {
-	return `@` + FieldID+ `:{` +  strings.Join(qa.ids, `|`) + `}`
+func prepHost(qa *QueryArgs) string {
+	escapedHosts := make([]string, 0, len(qa.hosts))
+
+	for _, host := range qa.hosts {
+		escapedHosts = append(escapedHosts, rsh.EscapeTextFileString(host))
+	}
+
+	// FT.SEARCH obj-meta-idx @host:'{deb\-devtest}' RETURN 1 host
+	return `@` + FieldHost + `:{` + strings.Join(escapedHosts, `|`) + `}`
 }
 
 func makeSetRangeQuery(field string, min, max int64, set []int64) string {
