@@ -25,7 +25,10 @@ func (rc *RedisClient) Query(searchPhrases []string, qa *QueryArgs, retFields []
 
 	// Do standard SCAN search
 
-
+	// TODO
+	if _, err := rc.scanSearch(searchPhrases, qa, retFields); err != nil {
+		log.E("(RedisCli) SCAN search failed: %v", err)
+	}
 
 	// Do RediSearch
 
@@ -45,12 +48,105 @@ func (rc *RedisClient) Query(searchPhrases []string, qa *QueryArgs, retFields []
 	return nil, nil
 }
 
+func (rc *RedisClient) scanSearch(searchPhrases []string, qa *QueryArgs, retFields []string) ([]QueryResult, error) {
+	// Check for empty search phrases
+	if len(searchPhrases) == 0 {
+		// Nothing to search using SCAN
+		return nil, nil
+	}
+
+	// 1. Prepare matches list for all search phrases
+	matches := make([]string, 0, len(searchPhrases) * len(qa.hosts))
+	for _, sp := range searchPhrases {
+		sp = prepareScanPhrase(sp)
+
+		if len(qa.hosts) == 0 {
+			// All hosts match
+			matches = append(matches, RedisObjPrefix + sp)
+		} else {
+			// Prepare search phrases for each host separately
+			for _, host := range qa.hosts {
+				matches = append(matches, RedisObjPrefix + host + ":" + sp)
+			}
+		}
+	}
+
+	// 2. Search for all matching keys
+	matched := []string{}
+	for _, match := range matches {
+		log.D("(RedisCli) Do SCAN search for: %s", match)
+		if err := rc.scanKeyMatch(match, &matched); err != nil {
+			return nil, err
+		}
+	}
+	log.D("(RedisCli) Total %d matched by SCAN operation", len(matched))
+
+	// Check for nothing to do
+	if len(matched) == 0 {
+		return nil, nil
+	}
+
+	// 3. Get ID for each matched key
+	ids := make([]string, 0, len(matched))
+	for _, k := range matched {
+		id, err := rc.c.HGet(rc.ctx, k, FieldID).Result()
+		if err != nil {
+			return nil, fmt.Errorf("cannot get ID for key %q: %v", k, err)
+		}
+		// Append extracted ID
+		ids = append(ids, id)
+	}
+	log.D("(RedisCli) Identifiers of found objects extracted")
+
+	// 4. TODO Run RediSearch with extracted ID and provided query arguments
+
+	return nil, nil
+}
+
+func (rc *RedisClient) scanKeyMatch(match string, keys *[]string) error {
+	// Scan() intermediate  variables
+	var cursor uint64
+	var sKeys []string
+	var err error
+
+	// Scan keys space prefixed by pref
+	for i := 0; ; i++ {
+		// Scan for RedisMaxScanKeys items (max)
+		sKeys, cursor, err = rc.c.Scan(rc.ctx, cursor, match, RedisMaxScanKeys).Result()
+		if err != nil {
+			return err
+		}
+
+		// Append scanned keys to the resulted list as set of paths without prefix
+		for _, k := range sKeys {
+			*keys = append(*keys, k)
+		}
+
+		// Is the end of keys space reached
+		if cursor == 0 {
+			// Scan finished
+			return nil
+		}
+	}
+}
+
+func prepareScanPhrase(sp string) string {
+	if !strings.HasPrefix(sp, "*") {
+		sp = "*" + sp
+	}
+	if !strings.HasSuffix(sp, "*") {
+		sp += "*"
+	}
+
+	return sp
+}
+
 func rshSearch(cli *rsh.Client, qa *QueryArgs, searchPhrases []string, retFields []string) []*QueryResult {
 	// Offset from which matched documents should be selected
 	offset := 0
 
 	// Make redisearch initial query
-	q := rsh.NewQuery(rshQuery(searchPhrases, qa))
+	q := rsh.NewQuery(rshQuerySP(searchPhrases, qa))
 
 	if len(retFields) != 0 {
 		// Set list of requested fields
@@ -132,8 +228,27 @@ func (rc *RedisClient) rschInit() (*rsh.Client, error) {
 	return c, err
 }
 
-func rshQuery(searchPhrases []string, qa *QueryArgs) string {
-	// Query chunks
+func rshQuerySP(searchPhrases []string, qa *QueryArgs) string {
+	if len(searchPhrases) == 0 {
+		// Return only arguments part
+		return rshArgsQuery(qa)
+	}
+
+	// Make search phrases query - try to search them in found path and real path
+	var spQuery string
+	if len(searchPhrases) != 0 {
+		spQuery = fmt.Sprintf(`(@%[1]s:%[3]s | @%[2]s:%[3]s)`,
+			FieldFPath, FieldRPath,
+			strings.Join(searchPhrases, ` | `),
+		)
+	}
+
+	// Make a summary query with search phrases
+	return spQuery + ` ` + rshArgsQuery(qa)
+}
+
+func rshArgsQuery(qa *QueryArgs) string {
+	// Arguments query chunks
 	chunks := []string{}
 
 	if qa.isMtime() {
@@ -152,18 +267,9 @@ func rshQuery(searchPhrases []string, qa *QueryArgs) string {
 		chunks = append(chunks, prepHost(qa))
 	}
 
-
-	// Make search phrases query - try to search them in found path and real path
-	var spQuery string
-	if len(searchPhrases) != 0 {
-		spExpr := strings.Join(searchPhrases, ` | `)
-		spQuery = fmt.Sprintf(`(@%s:%s | @%s:%s)`, FieldFPath, spExpr, FieldRPath, spExpr)
-	}
-
 	// Check that chunks is not empty
 	if len(chunks) == 0 {
-		// Using only search phrases
-		return spQuery
+		return ""
 	}
 
 	// Need to build request from chunks
@@ -179,12 +285,7 @@ func rshQuery(searchPhrases []string, qa *QueryArgs) string {
 		argsQuery = fmt.Sprintf(`%s(%s)`, negMark, strings.Join(chunks, ` `))
 	}
 
-	if spQuery != "" {
-		// Make a summary query with search phrases
-		return spQuery + ` ` + argsQuery
-	}
-
-	// Return only arguments part
+	// Done
 	return argsQuery
 }
 
