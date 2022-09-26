@@ -28,6 +28,7 @@ type progConfig struct {
 	hosts		string
 	orExpr		bool
 	negExpr		bool
+	onlyName	bool
 	deepSearch	bool
 	printID		bool
 	hostGroups	bool
@@ -145,6 +146,11 @@ func (pc *progConfig) prepare(cmdArgs []string) error {
 		}
 	}
 
+	// Do DBMS specific preparations/checks
+	if err := pc.prepareDBMS(); err != nil {
+		return err
+	}
+
 	// Load configuration from file and return result
 	return pc.loadConf()
 }
@@ -184,6 +190,7 @@ func (pc *progConfig) prepareSearch() error {
 
 	pc.qArgs.SetOr(pc.orExpr)
 	pc.qArgs.SetNeg(pc.negExpr)
+	pc.qArgs.SetOnlyName(pc.onlyName)
 	pc.qArgs.SetDeep(pc.deepSearch)
 
 	// Check for sufficient conditions for search

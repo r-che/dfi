@@ -157,10 +157,18 @@ func rshQuerySP(qa *QueryArgs) string {
 	}
 
 	// Make search phrases query - try to search them in found path and real path
-	spQuery := fmt.Sprintf(`(@%[1]s:%[3]s | @%[2]s:%[3]s)`,
-		FieldFPath, FieldRPath,
-		strings.Join(spLower, `|`),
-	)
+	var spQuery string
+
+	if qa.onlyName {
+		// Use only the "name" field to search
+		spQuery = fmt.Sprintf(`(@%s:%s)`, FieldName, strings.Join(spLower, `|`))
+	} else {
+		// use the found path and real path fields to search
+		spQuery = fmt.Sprintf(`(@%[1]s:%[3]s | @%[2]s:%[3]s)`,
+			FieldFPath, FieldRPath,
+			strings.Join(spLower, `|`),
+		)
+	}
 
 	// Make a summary query with search phrases
 	return spQuery + ` ` + rshArgsQuery(qa)

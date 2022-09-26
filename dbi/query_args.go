@@ -32,6 +32,7 @@ type QueryArgs struct {
 
 	orExpr		bool
 	negExpr		bool
+	onlyName	bool
 	deep		bool
 }
 
@@ -396,6 +397,10 @@ func (qa *QueryArgs) ParseHosts(hostsLine string) error {
 
 func (qa *QueryArgs) SetNeg(neg bool) {
 	qa.negExpr = neg
+}
+
+func (qa *QueryArgs) SetOnlyName(onlyName bool) {
+	qa.onlyName = onlyName
 }
 
 func (qa *QueryArgs) SetOr(or bool) {

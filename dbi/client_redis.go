@@ -237,11 +237,13 @@ func prepareHSetValues(host string, fso *types.FSObject) []string {
 	// due to default tokenizator does not use underscores as separator[1]
 	// [1]https://redis.io/docs/stack/search/reference/escaping/
 	fpathPrepared = strings.Replace(fpathPrepared, "_", " ", -1)
+	// Do the same for the name field
+	namePrepared := strings.Replace(strings.ToLower(fso.Name), "_", " ", -1)
 
 	values = append(values,
 		FieldID, makeID(host, fso),
 		FieldHost, host,
-		FieldName, fso.Name,
+		FieldName, namePrepared,
 		FieldFPath, fpathPrepared,
 		FieldRPath, fso.RPath,
 		FieldType, fso.Type,

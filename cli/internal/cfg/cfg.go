@@ -45,6 +45,7 @@ func Init(name string) {
 	// TODO --descr
 	p.AddBool(`or`, `use OR instead of AND between conditions`, &config.orExpr, false)
 	p.AddBool(`not`, `use negative expression`, &config.negExpr, false)
+	p.AddBool(`only-name|O`, `use only file name to match search phrases`, &config.onlyName, false)
 	p.AddBool(`deep|D`, `use additional DBMS dependent features (can slow down)`, &config.deepSearch, false)
 	// Output related options
 	p.AddBool(`with-ids|I`, `print ID at the beginning of the output lines`, &config.printID, false)
