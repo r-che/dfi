@@ -40,134 +40,37 @@ func (rc *RedisClient) Query(qa *QueryArgs, retFields []string) (QueryResults, e
 	return qr, nil
 }
 
-func (rc *RedisClient) scanSearch(rsc *rsh.Client, qa *QueryArgs, retFields []string, qrTop *QueryResults) (int, error) {
-	// Check for empty search phrases
-	if len(qa.sp) == 0 {
-		// Nothing to search using SCAN
-		return 0, nil
+func (rc *RedisClient) rschInit() (*rsh.Client, error) {
+	// Client pointer
+	var c *rsh.Client
+
+	// Read username/password from private data if set
+	user, passw, err := userPasswd(rc.cfg.PrivCfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load username/password from private configuration: %v", err)
 	}
 
-	// 1. Prepare matches list for all search phrases
-	matches := make([]string, 0, len(qa.sp) * len(qa.hosts))
-	for _, sp := range qa.sp {
-		sp = prepareScanPhrase(sp)
-
-		if len(qa.hosts) == 0 {
-			// All hosts match
-			matches = append(matches, RedisObjPrefix + sp)
-		} else {
-			// Prepare search phrases for each host separately
-			for _, host := range qa.hosts {
-				matches = append(matches, RedisObjPrefix + host + ":" + sp)
-			}
-		}
-	}
-
-	// 2. Search for all matching keys
-	var matched []string
-	for _, match := range matches {
-		log.D("(RedisCli) Do SCAN search for: %s", match)
-		m, err := rc.scanKeyMatch(match, func(val string) bool {
-			// Split identifier without object prefix from host:path format to separate values
-			host, path, ok := strings.Cut(val[len(RedisObjPrefix):], ":")
-			if !ok {
-				return false
-			}
-
-			// Check for key does not exist in the query results
-			if _, ok := (*qrTop)[QRKey{host: host, path: path}]; !ok {
-				// Then - need to append it
-				return true
-			}
-			// Skip this key otherwise
-			return false
-		})
-
-		if err != nil {
-			return 0, err
+	// Is password set?
+	if passw != "" {
+		// Need to create pool to provide authentication ability
+		pool := &redis.Pool{
+			Dial: func() (redis.Conn, error) {
+				return redis.Dial("tcp", rc.cfg.HostPort,
+					redis.DialUsername(user),
+					redis.DialPassword(passw),
+				)
+			},
 		}
 
-		// Append summary result
-		matched = append(matched, m...)
+		// Create client from pool
+		c = rsh.NewClientFromPool(pool, metaRschIdx)
+	} else {
+		// Create a simple client
+		c = rsh.NewClient(rc.cfg.HostPort, metaRschIdx)
 	}
 
-	log.D("(RedisCli) Total %d keys matched by SCAN operation", len(matched))
-
-	// Check for nothing to do
-	if len(matched) == 0 {
-		return 0, nil
-	}
-
-	// 3. Get ID for each matched key
-	ids := make([]string, 0, len(matched))
-	for _, k := range matched {
-		id, err := rc.c.HGet(rc.ctx, k, FieldID).Result()
-		if err != nil {
-			return 0, fmt.Errorf("cannot get ID for key %q: %v", k, err)
-		}
-		// Append extracted ID
-		ids = append(ids, id)
-	}
-	log.D("(RedisCli) Identifiers of found objects extracted")
-
-	// 4. Run RediSearch with extracted ID and provided query arguments
-
-	// Make redisearch initial query
-	q := rsh.NewQuery(rshQueryIDs(ids, qa))
-	// Run search to get results by IDs
-	qr := rshSearch(rsc, qa, q, retFields)
-	// Merge selected results with the previous results
-	for k, v := range qr {
-		(*qrTop)[k] = v
-	}
-
-	return len(qr), nil
-}
-
-func (rc *RedisClient) scanKeyMatch(match string, filter FilterFunc) ([]string, error) {
-	// Output slice
-	out := []string{}
-
-	// Scan() intermediate  variables
-	var cursor uint64
-	var sKeys []string
-	var err error
-
-	// Scan keys space prefixed by pref
-	for i := 0; ; i++ {
-		// Scan for RedisMaxScanKeys items (max)
-		sKeys, cursor, err = rc.c.Scan(rc.ctx, cursor, match, RedisMaxScanKeys).Result()
-		if err != nil {
-			return nil, err
-		}
-
-		// Append scanned keys to the resulted list as set of paths without prefix
-		for _, k := range sKeys {
-			// Append only filtered values
-			if filter(k) {
-				out = append(out, k)
-			} else {
-				log.D("(RedisCli) SCAN search skips already found key %q", k)
-			}
-		}
-
-		// Is the end of keys space reached
-		if cursor == 0 {
-			// Scan finished
-			return out, nil
-		}
-	}
-}
-
-func prepareScanPhrase(sp string) string {
-	if !strings.HasPrefix(sp, "*") {
-		sp = "*" + sp
-	}
-	if !strings.HasSuffix(sp, "*") {
-		sp += "*"
-	}
-
-	return sp
+	// OK
+	return c, err
 }
 
 func rshSearch(cli *rsh.Client, qa *QueryArgs, q *rsh.Query, retFields []string) QueryResults {
@@ -229,39 +132,6 @@ func rshSearch(cli *rsh.Client, qa *QueryArgs, q *rsh.Query, retFields []string)
 	return qr
 }
 
-func (rc *RedisClient) rschInit() (*rsh.Client, error) {
-	// Client pointer
-	var c *rsh.Client
-
-	// Read username/password from private data if set
-	user, passw, err := userPasswd(rc.cfg.PrivCfg)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load username/password from private configuration: %v", err)
-	}
-
-	// Is password set?
-	if passw != "" {
-		// Need to create pool to provide authentication ability
-		pool := &redis.Pool{
-			Dial: func() (redis.Conn, error) {
-				return redis.Dial("tcp", rc.cfg.HostPort,
-					redis.DialUsername(user),
-					redis.DialPassword(passw),
-				)
-			},
-		}
-
-		// Create client from pool
-		c = rsh.NewClientFromPool(pool, metaRschIdx)
-	} else {
-		// Create a simple client
-		c = rsh.NewClient(rc.cfg.HostPort, metaRschIdx)
-	}
-
-	// OK
-	return c, err
-}
-
 func rshQueryIDs(ids []string, qa *QueryArgs) string {
 	// Make query to search by IDs
 	idsQuery := fmt.Sprintf(`(@%s:{%s})`,
@@ -294,19 +164,25 @@ func rshArgsQuery(qa *QueryArgs) string {
 	chunks := []string{}
 
 	if qa.isMtime() {
-		chunks = append(chunks, prepMtime(qa))
+		chunks = append(chunks, makeSetRangeQuery(FieldMTime, qa.mtimeStart, qa.mtimeEnd, qa.mtimeSet))
 	}
 	if qa.isSize() {
-		chunks = append(chunks, prepSize(qa))
+		chunks = append(chunks, makeSetRangeQuery(FieldSize, qa.sizeStart, qa.sizeEnd, qa.sizeSet))
 	}
 	if qa.isType() {
-		chunks = append(chunks, prepType(qa))
+		chunks = append(chunks, `@` + FieldType + `:{` +  strings.Join(qa.types, `|`) + `}`)
 	}
 	if qa.isChecksum() {
-		chunks = append(chunks, prepChecksum(qa))
+		chunks = append(chunks, `@` + FieldChecksum + `:{` +  strings.Join(qa.csums, `|`) + `}`)
 	}
 	if qa.isHost() {
-		chunks = append(chunks, prepHost(qa))
+		// At least need to escape dashes ("-") inside of hostname to avoid split hostnames by RediSearch tokenizer
+		escapedHosts := make([]string, 0, len(qa.hosts))
+		for _, host := range qa.hosts {
+			escapedHosts = append(escapedHosts, rsh.EscapeTextFileString(host))
+		}
+
+		chunks = append(chunks, `@` + FieldHost + `:{` + strings.Join(escapedHosts, `|`) + `}`)
 	}
 
 	// Check that chunks is not empty
@@ -329,32 +205,6 @@ func rshArgsQuery(qa *QueryArgs) string {
 
 	// Done
 	return argsQuery
-}
-
-func prepMtime(qa *QueryArgs) string {
-	return makeSetRangeQuery(FieldMTime, qa.mtimeStart, qa.mtimeEnd, qa.mtimeSet)
-}
-
-func prepSize(qa *QueryArgs) string {
-	return makeSetRangeQuery(FieldSize, qa.sizeStart, qa.sizeEnd, qa.sizeSet)
-}
-
-func prepType(qa *QueryArgs) string {
-	return `@` + FieldType + `:{` +  strings.Join(qa.types, `|`) + `}`
-}
-
-func prepChecksum(qa *QueryArgs) string {
-	return `@` + FieldChecksum + `:{` +  strings.Join(qa.csums, `|`) + `}`
-}
-
-func prepHost(qa *QueryArgs) string {
-	escapedHosts := make([]string, 0, len(qa.hosts))
-
-	for _, host := range qa.hosts {
-		escapedHosts = append(escapedHosts, rsh.EscapeTextFileString(host))
-	}
-
-	return `@` + FieldHost + `:{` + strings.Join(escapedHosts, `|`) + `}`
 }
 
 func makeSetRangeQuery(field string, min, max int64, set []int64) string {
@@ -383,4 +233,132 @@ func makeSetRangeQuery(field string, min, max int64, set []int64) string {
 	}
 
 	return `(` + strings.Join(chunks, `|`) + `)`
+}
+
+/*
+ * Additional "deep" search mechanism
+ */
+
+func (rc *RedisClient) scanSearch(rsc *rsh.Client, qa *QueryArgs, retFields []string, qrTop *QueryResults) (int, error) {
+	// Check for empty search phrases
+	if len(qa.sp) == 0 {
+		// Nothing to search using SCAN
+		return 0, nil
+	}
+
+	// 1. Prepare matches list for all search phrases
+	matches := make([]string, 0, len(qa.sp) * len(qa.hosts))
+	for _, sp := range qa.sp {
+		if !strings.HasPrefix(sp, "*") {
+			sp = "*" + sp
+		}
+		if !strings.HasSuffix(sp, "*") {
+			sp += "*"
+		}
+
+		if len(qa.hosts) == 0 {
+			// All hosts match
+			matches = append(matches, RedisObjPrefix + sp)
+		} else {
+			// Prepare search phrases for each host separately
+			for _, host := range qa.hosts {
+				matches = append(matches, RedisObjPrefix + host + ":" + sp)
+			}
+		}
+	}
+
+	// 2. Search for all matching keys
+	var matched []string
+	for _, match := range matches {
+		log.D("(RedisCli) Do SCAN search for: %s", match)
+		m, err := rc.scanKeyMatch(match, func(val string) bool {
+			// Split identifier without object prefix from host:path format to separate values
+			host, path, ok := strings.Cut(val[len(RedisObjPrefix):], ":")
+			if !ok {
+				return false
+			}
+
+			// Check for key does not exist in the query results
+			if _, ok := (*qrTop)[QRKey{host: host, path: path}]; !ok {
+				// Then - need to append it
+				return true
+			}
+			// Skip this key otherwise
+			return false
+		})
+
+		if err != nil {
+			return 0, err
+		}
+
+		// Append summary result
+		matched = append(matched, m...)
+	}
+
+	log.D("(RedisCli) %d keys matched by SCAN operation", len(matched))
+
+	// Check for nothing to do
+	if len(matched) == 0 {
+		return 0, nil
+	}
+
+	// 3. Get ID for each matched key
+	ids := make([]string, 0, len(matched))
+	for _, k := range matched {
+		id, err := rc.c.HGet(rc.ctx, k, FieldID).Result()
+		if err != nil {
+			return 0, fmt.Errorf("cannot get ID for key %q: %v", k, err)
+		}
+		// Append extracted ID
+		ids = append(ids, id)
+	}
+	log.D("(RedisCli) Identifiers of found objects extracted")
+
+	// 4. Run RediSearch with extracted ID and provided query arguments
+
+	// Make redisearch initial query
+	q := rsh.NewQuery(rshQueryIDs(ids, qa))
+	// Run search to get results by IDs
+	qr := rshSearch(rsc, qa, q, retFields)
+	// Merge selected results with the previous results
+	for k, v := range qr {
+		(*qrTop)[k] = v
+	}
+
+	return len(qr), nil
+}
+
+func (rc *RedisClient) scanKeyMatch(match string, filter FilterFunc) ([]string, error) {
+	// Output slice
+	out := []string{}
+
+	// Scan() intermediate  variables
+	var cursor uint64
+	var sKeys []string
+	var err error
+
+	// Scan keys space prefixed by pref
+	for i := 0; ; i++ {
+		// Scan for RedisMaxScanKeys items (max)
+		sKeys, cursor, err = rc.c.Scan(rc.ctx, cursor, match, RedisMaxScanKeys).Result()
+		if err != nil {
+			return nil, err
+		}
+
+		// Append scanned keys to the resulted list as a set of paths without prefix
+		for _, k := range sKeys {
+			// Append only filtered values
+			if filter(k) {
+				out = append(out, k)
+			} else {
+				log.D("(RedisCli) SCAN search skips already found key %q", k)
+			}
+		}
+
+		// Is the end of keys space reached
+		if cursor == 0 {
+			// Scan finished
+			return out, nil
+		}
+	}
 }
