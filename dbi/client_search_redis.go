@@ -84,7 +84,7 @@ func rshSearch(cli *rsh.Client, qa *QueryArgs, q *rsh.Query, retFields []string)
 		q.SetFlags(rsh.QueryNoContent)
 	}
 
-	log.D("(RedisCli) Prepared RediSearch query string: %v", q.Raw)
+	// log.D("(RedisCli) Prepared RediSearch query string: %v", q.Raw)	// XXX Raw query may be too long
 
 	// Output result
 	qr := make(QueryResults, 32)	// 32 - should probably be enough for most cases on average
@@ -303,6 +303,7 @@ func (rc *RedisClient) scanSearch(rsc *rsh.Client, qa *QueryArgs, retFields []st
 	}
 
 	// 3. Get ID for each matched key
+	log.D("(RedisCli) Loading identifiers for all matched keys...")
 	ids := make([]string, 0, len(matched))
 	for _, k := range matched {
 		id, err := rc.c.HGet(rc.ctx, k, FieldID).Result()
