@@ -14,28 +14,17 @@ const metaRschIdx = "obj-meta-idx"
 const objsPerQuery = 1000
 
 func (rc *RedisClient) Query(qa *QueryArgs, retFields []string) (QueryResults, error) {
-	// TODO
-	// Common order:
-	// * Add to query all additional arguments from query args
-	// * For each search phrase:
-	//   * Use SCAN MATCH
-	//   * Try to use it as part of object name (using RediSearch)
-	// * Build final query using or/not modifiers
-
-
 	// Get RediSearch client
 	rsc, err := rc.rschInit()
-	// Do RediSearch
-	var qr QueryResults
 	if err != nil {
 		return nil, fmt.Errorf("(RedisCli) cannot initialize RediSearch client: %v", err)
 	}
 
-	// Make redisearch initial query
+	// Make initial query
 	q := rsh.NewQuery(rshQuerySP(qa))
 
-	// Make search
-	qr = rshSearch(rsc, qa, q, retFields)
+	// Do search
+	qr := rshSearch(rsc, qa, q, retFields)
 
 	// Check for deep search required
 	if qa.deep {
@@ -47,7 +36,6 @@ func (rc *RedisClient) Query(qa *QueryArgs, retFields []string) (QueryResults, e
 			log.D("(RedisCli) Total of %d records were found with a deep (SCAN) search", n)
 		}
 	}
-
 
 	return qr, nil
 }
@@ -80,8 +68,14 @@ func (rc *RedisClient) scanSearch(rsc *rsh.Client, qa *QueryArgs, retFields []st
 	for _, match := range matches {
 		log.D("(RedisCli) Do SCAN search for: %s", match)
 		m, err := rc.scanKeyMatch(match, func(val string) bool {
+			// Split identifier without object prefix from host:path format to separate values
+			host, path, ok := strings.Cut(val[len(RedisObjPrefix):], ":")
+			if !ok {
+				return false
+			}
+
 			// Check for key does not exist in the query results
-			if _, ok := (*qrTop)[val[len(RedisObjPrefix):]]; !ok {
+			if _, ok := (*qrTop)[QRKey{host: host, path: path}]; !ok {
 				// Then - need to append it
 				return true
 			}
@@ -210,8 +204,14 @@ func rshSearch(cli *rsh.Client, qa *QueryArgs, q *rsh.Query, retFields []string)
 
 		// Convert scanned documents to output result
 		for _, doc := range docs {
+			// Split identifier without object prefix from host:path format to separate values
+			host, path, ok := strings.Cut(doc.Id[len(RedisObjPrefix):], ":")
+			if !ok {
+				log.E("(RedisCli) Skip document with invalid key format: %q", doc.Id)
+				continue
+			}
 			// Append key without object prefix
-			qr[doc.Id[len(RedisObjPrefix):]] = doc.Properties
+			qr[QRKey{host: host, path: path}] = doc.Properties
 		}
 
 		// Check for number of total matched documents reached total - no more docs to scan

@@ -16,9 +16,13 @@ type DBClient interface {
 }
 
 type FilterFunc func(string) bool
-// Map to return query results indexed  by full object identifier in format: hostname:/foun/path
+// Map to return query results indexed host + found path
 // Values of this map represents key-value pairs with requested objects properties
-type QueryResults map[string]map[string]any
+type QRKey struct {
+	host string
+	path string
+}
+type QueryResults map[QRKey] map[string]any
 
 func NewClient(dbCfg *DBConfig) (DBClient, error) {
 	// Initiate database client
