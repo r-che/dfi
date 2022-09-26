@@ -45,7 +45,7 @@ func Init(name string) {
 	// TODO --descr
 	p.AddBool(`or`, `use OR instead of AND between conditions`, &config.orExpr, false)
 	p.AddBool(`not`, `use negative expression`, &config.negExpr, false)
-	p.AddBool(`deep`, `use additional DBMS dependent features (can slow down)`, &config.deepSearch, false)
+	p.AddBool(`deep|D`, `use additional DBMS dependent features (can slow down)`, &config.deepSearch, false)
 	// Output related options
 	p.AddBool(`with-ids|I`, `print ID at the beginning of the output lines`, &config.printID, false)
 	p.AddBool(`hosts-groups|H`, `group results by host instead of single line sorted output`, &config.hostGroups, false)
