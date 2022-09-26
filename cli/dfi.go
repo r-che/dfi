@@ -32,8 +32,6 @@ func main() {
 		log.F("Cannot initialize database client: %v", err)
 	}
 
-	log.I("(Cleanup) Started")
-
 	switch {
 	case c.Search():
 		err = doSearch(dbc)

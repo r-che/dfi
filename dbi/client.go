@@ -19,8 +19,8 @@ type FilterFunc func(string) bool
 // Map to return query results indexed host + found path
 // Values of this map represents key-value pairs with requested objects properties
 type QRKey struct {
-	host string
-	path string
+	Host string
+	Path string
 }
 type QueryResults map[QRKey] map[string]any
 

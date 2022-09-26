@@ -74,6 +74,10 @@ func (pc *progConfig) PrintID() bool {
 	return pc.printID
 }
 
+func (pc *progConfig) HostGroups() bool {
+	return pc.hostGroups
+}
+
 func (pc *progConfig) DBConfig() *dbi.DBConfig {
 	return &pc.fConf.DB
 }

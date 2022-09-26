@@ -29,7 +29,7 @@ func (rc *RedisClient) Query(qa *QueryArgs, retFields []string) (QueryResults, e
 	// Check for deep search required
 	if qa.deep {
 		// Do additional standard SCAN search
-		log.W("(RedisCli) Running deep search using SCAN operation...")
+		log.D("(RedisCli) Running deep search using SCAN operation...")
 		if n, err := rc.scanSearch(rsc, qa, retFields, &qr); err != nil {
 			log.E("(RedisCli) SCAN search failed: %v", err)
 		} else {
@@ -114,7 +114,7 @@ func rshSearch(cli *rsh.Client, qa *QueryArgs, q *rsh.Query, retFields []string)
 				continue
 			}
 			// Append key without object prefix
-			qr[QRKey{host: host, path: path}] = doc.Properties
+			qr[QRKey{Host: host, Path: path}] = doc.Properties
 		}
 
 		// Check for number of total matched documents reached total - no more docs to scan
@@ -279,7 +279,7 @@ func (rc *RedisClient) scanSearch(rsc *rsh.Client, qa *QueryArgs, retFields []st
 			}
 
 			// Check for key does not exist in the query results
-			if _, ok := (*qrTop)[QRKey{host: host, path: path}]; !ok {
+			if _, ok := (*qrTop)[QRKey{Host: host, Path: path}]; !ok {
 				// Then - need to append it
 				return true
 			}
