@@ -122,12 +122,8 @@ func (rc *RedisClient) UpdateObj(fso *types.FSObject) error {
 }
 
 func (rc *RedisClient) DeleteObj(fso *types.FSObject) error {
-	return rc.Delete(fso.FPath)
-}
-
-func (rc *RedisClient) Delete(path string) error {
 	// Make a key
-	key := RedisObjPrefix + rc.cliHost + ":" + path
+	key := RedisObjPrefix + rc.cliHost + ":" + fso.FPath
 
 	log.D("(RedisCli) DEL (pending) => %s\n", key)
 

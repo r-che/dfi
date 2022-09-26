@@ -7,7 +7,6 @@ import (
 type DBClient interface {
     UpdateObj(*types.FSObject) error
     DeleteObj(*types.FSObject) error
-    Delete(string) error
     Commit() (int64, int64, error)
 	LoadHostPaths(FilterFunc) ([]string, error)
 	Query(*QueryArgs, []string) (QueryResults, error)

@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/r-che/log"
+	"github.com/r-che/dfi/types"
 	"github.com/r-che/dfi/dbi"
 	"github.com/r-che/dfi/agent/internal/cfg"
 )
@@ -81,7 +82,7 @@ func Run() error {
 
 	// Delete outdated paths
 	for _, path := range toDel {
-		if err := dbc.Delete(path); err != nil {
+		if err := dbc.DeleteObj(&types.FSObject{FPath: path}); err != nil {
 			log.E("(Cleanup) Cannot delete object for path %q: %v", path, err)
 		}
 	}
