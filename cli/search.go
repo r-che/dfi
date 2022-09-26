@@ -11,7 +11,13 @@ func doSearch(dbc dbi.DBClient) error {
 	// Get configuration
 	c := cfg.Config()
 
-	qr, err := dbc.Query(c.CmdArgs(), c.QueryArgs(), []string{"id", "size"}/*TODO*/)
+	// Set of requested fields
+	rqFields := []string{}
+	if c.PrintID() {
+		rqFields = append(rqFields, dbi.FieldID)
+	}
+
+	qr, err := dbc.Query(c.QueryArgs(), rqFields)
 	if err != nil {
 		return err
 	}

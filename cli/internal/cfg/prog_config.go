@@ -28,6 +28,9 @@ type progConfig struct {
 	hosts		string
 	orExpr		bool
 	negExpr		bool
+	deepSearch	bool
+	printID		bool
+	hostGroups	bool
 
 	// Other modes common options
 	ids			string
@@ -67,12 +70,12 @@ func (pc *progConfig) Admin() bool {
 	return pc.modeAdmin
 }
 
-func (pc *progConfig) DBConfig() *dbi.DBConfig {
-	return &pc.fConf.DB
+func (pc *progConfig) PrintID() bool {
+	return pc.printID
 }
 
-func (pc *progConfig) CmdArgs() []string {
-	return pc.cmdArgs
+func (pc *progConfig) DBConfig() *dbi.DBConfig {
+	return &pc.fConf.DB
 }
 
 func (pc *progConfig) QueryArgs() *dbi.QueryArgs {
@@ -143,7 +146,7 @@ func (pc *progConfig) prepare(cmdArgs []string) error {
 }
 
 func (pc *progConfig) prepareSearch() error {
-	pc.qArgs = &dbi.QueryArgs{}
+	pc.qArgs = dbi.NewQueryArgs(pc.cmdArgs)
 
 	if pc.strMtime != anyVal {
 		if err := pc.qArgs.ParseMtimes(pc.strMtime); err != nil {
@@ -177,6 +180,7 @@ func (pc *progConfig) prepareSearch() error {
 
 	pc.qArgs.SetOr(pc.orExpr)
 	pc.qArgs.SetNeg(pc.negExpr)
+	pc.qArgs.SetDeep(pc.deepSearch)
 
 	// Check for sufficient conditions for search
 	if !pc.qArgs.CanSearch(pc.cmdArgs) {

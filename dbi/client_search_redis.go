@@ -13,7 +13,7 @@ import (
 const metaRschIdx = "obj-meta-idx"
 const objsPerQuery = 1000
 
-func (rc *RedisClient) Query(searchPhrases []string, qa *QueryArgs, retFields []string) ([]QueryResult, error) {
+func (rc *RedisClient) Query(qa *QueryArgs, retFields []string) (QueryResults, error) {
 	// TODO
 	// Common order:
 	// * Add to query all additional arguments from query args
@@ -23,41 +23,45 @@ func (rc *RedisClient) Query(searchPhrases []string, qa *QueryArgs, retFields []
 	// * Build final query using or/not modifiers
 
 
-	// Do standard SCAN search
-
-	// TODO
-	if _, err := rc.scanSearch(searchPhrases, qa, retFields); err != nil {
-		log.E("(RedisCli) SCAN search failed: %v", err)
-	}
-
-	// Do RediSearch
-
 	// Get RediSearch client
 	rsc, err := rc.rschInit()
+	// Do RediSearch
+	var qr QueryResults
 	if err != nil {
-		// Log error but do not abort execution
-		log.E("(RedisCli) Cannot initialize RediSearch client: %v", err)
-	} else {
-		qr := rshSearch(rsc, qa, searchPhrases, retFields)
-		for _, obj := range qr {
-			fmt.Println(obj)	// TODO
-			_=obj
+		return nil, fmt.Errorf("(RedisCli) cannot initialize RediSearch client: %v", err)
+	}
+
+	// Make redisearch initial query
+	q := rsh.NewQuery(rshQuerySP(qa))
+
+	// Make search
+	qr = rshSearch(rsc, qa, q, retFields)
+
+	// Check for deep search required
+	if qa.deep {
+		// Do additional standard SCAN search
+		log.W("(RedisCli) Running deep search using SCAN operation...")
+		if n, err := rc.scanSearch(rsc, qa, retFields, &qr); err != nil {
+			log.E("(RedisCli) SCAN search failed: %v", err)
+		} else {
+			log.D("(RedisCli) Total of %d records were found with a deep (SCAN) search", n)
 		}
 	}
 
-	return nil, nil
+
+	return qr, nil
 }
 
-func (rc *RedisClient) scanSearch(searchPhrases []string, qa *QueryArgs, retFields []string) ([]QueryResult, error) {
+func (rc *RedisClient) scanSearch(rsc *rsh.Client, qa *QueryArgs, retFields []string, qrTop *QueryResults) (int, error) {
 	// Check for empty search phrases
-	if len(searchPhrases) == 0 {
+	if len(qa.sp) == 0 {
 		// Nothing to search using SCAN
-		return nil, nil
+		return 0, nil
 	}
 
 	// 1. Prepare matches list for all search phrases
-	matches := make([]string, 0, len(searchPhrases) * len(qa.hosts))
-	for _, sp := range searchPhrases {
+	matches := make([]string, 0, len(qa.sp) * len(qa.hosts))
+	for _, sp := range qa.sp {
 		sp = prepareScanPhrase(sp)
 
 		if len(qa.hosts) == 0 {
@@ -72,18 +76,32 @@ func (rc *RedisClient) scanSearch(searchPhrases []string, qa *QueryArgs, retFiel
 	}
 
 	// 2. Search for all matching keys
-	matched := []string{}
+	var matched []string
 	for _, match := range matches {
 		log.D("(RedisCli) Do SCAN search for: %s", match)
-		if err := rc.scanKeyMatch(match, &matched); err != nil {
-			return nil, err
+		m, err := rc.scanKeyMatch(match, func(val string) bool {
+			// Check for key does not exist in the query results
+			if _, ok := (*qrTop)[val[len(RedisObjPrefix):]]; !ok {
+				// Then - need to append it
+				return true
+			}
+			// Skip this key otherwise
+			return false
+		})
+
+		if err != nil {
+			return 0, err
 		}
+
+		// Append summary result
+		matched = append(matched, m...)
 	}
-	log.D("(RedisCli) Total %d matched by SCAN operation", len(matched))
+
+	log.D("(RedisCli) Total %d keys matched by SCAN operation", len(matched))
 
 	// Check for nothing to do
 	if len(matched) == 0 {
-		return nil, nil
+		return 0, nil
 	}
 
 	// 3. Get ID for each matched key
@@ -91,19 +109,31 @@ func (rc *RedisClient) scanSearch(searchPhrases []string, qa *QueryArgs, retFiel
 	for _, k := range matched {
 		id, err := rc.c.HGet(rc.ctx, k, FieldID).Result()
 		if err != nil {
-			return nil, fmt.Errorf("cannot get ID for key %q: %v", k, err)
+			return 0, fmt.Errorf("cannot get ID for key %q: %v", k, err)
 		}
 		// Append extracted ID
 		ids = append(ids, id)
 	}
 	log.D("(RedisCli) Identifiers of found objects extracted")
 
-	// 4. TODO Run RediSearch with extracted ID and provided query arguments
+	// 4. Run RediSearch with extracted ID and provided query arguments
 
-	return nil, nil
+	// Make redisearch initial query
+	q := rsh.NewQuery(rshQueryIDs(ids, qa))
+	// Run search to get results by IDs
+	qr := rshSearch(rsc, qa, q, retFields)
+	// Merge selected results with the previous results
+	for k, v := range qr {
+		(*qrTop)[k] = v
+	}
+
+	return len(qr), nil
 }
 
-func (rc *RedisClient) scanKeyMatch(match string, keys *[]string) error {
+func (rc *RedisClient) scanKeyMatch(match string, filter FilterFunc) ([]string, error) {
+	// Output slice
+	out := []string{}
+
 	// Scan() intermediate  variables
 	var cursor uint64
 	var sKeys []string
@@ -114,18 +144,23 @@ func (rc *RedisClient) scanKeyMatch(match string, keys *[]string) error {
 		// Scan for RedisMaxScanKeys items (max)
 		sKeys, cursor, err = rc.c.Scan(rc.ctx, cursor, match, RedisMaxScanKeys).Result()
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		// Append scanned keys to the resulted list as set of paths without prefix
 		for _, k := range sKeys {
-			*keys = append(*keys, k)
+			// Append only filtered values
+			if filter(k) {
+				out = append(out, k)
+			} else {
+				log.D("(RedisCli) SCAN search skips already found key %q", k)
+			}
 		}
 
 		// Is the end of keys space reached
 		if cursor == 0 {
 			// Scan finished
-			return nil
+			return out, nil
 		}
 	}
 }
@@ -141,12 +176,9 @@ func prepareScanPhrase(sp string) string {
 	return sp
 }
 
-func rshSearch(cli *rsh.Client, qa *QueryArgs, searchPhrases []string, retFields []string) []*QueryResult {
+func rshSearch(cli *rsh.Client, qa *QueryArgs, q *rsh.Query, retFields []string) QueryResults {
 	// Offset from which matched documents should be selected
 	offset := 0
-
-	// Make redisearch initial query
-	q := rsh.NewQuery(rshQuerySP(searchPhrases, qa))
 
 	if len(retFields) != 0 {
 		// Set list of requested fields
@@ -158,7 +190,7 @@ func rshSearch(cli *rsh.Client, qa *QueryArgs, searchPhrases []string, retFields
 	log.D("(RedisCli) Prepared RediSearch query string: %v", q.Raw)
 
 	// Output result
-	qr := make([]*QueryResult, 0, 10)
+	qr := make(QueryResults, 32)	// 32 - should probably be enough for most cases on average
 
 	// Total selected docs
 	totDocs := 0
@@ -170,27 +202,29 @@ func rshSearch(cli *rsh.Client, qa *QueryArgs, searchPhrases []string, retFields
 		// Do search
 		docs, total, err := cli.Search(q)
 		if err != nil {
-			log.E("(RedisCli) RediSearch query failed: %v", err)
-			break
+			log.D("(RedisCli) RediSearch returned %d records with error: %v", len(qr))
+			return qr
 		}
 
-		log.D("Scanned offset: %d .. %d, selected %d (total matched %d)", offset, offset + objsPerQuery, len(docs), total)
+		log.D("(RedisCli) Scanned offset: %d .. %d, selected %d (total matched %d)", offset, offset + objsPerQuery, len(docs), total)
 
 		// Convert scanned documents to output result
 		for _, doc := range docs {
-			qr = append(qr, &QueryResult{FullID: doc.Id, Fields: doc.Properties})
+			// Append key without object prefix
+			qr[doc.Id[len(RedisObjPrefix):]] = doc.Properties
 		}
 
-		// Check for number of total matched documents reached total - no mo docs to scan
+		// Check for number of total matched documents reached total - no more docs to scan
 		if totDocs += len(docs); totDocs >= total {
-			// Return results
-			log.D("(RedisCli) RediSearch returned %d records", len(qr))
 			break
 		}
 
 		// Update offset
 		offset += objsPerQuery
 	}
+
+	// Return results
+	log.D("(RedisCli) RediSearch returned %d records", len(qr))
 
 	return qr
 }
@@ -228,20 +262,28 @@ func (rc *RedisClient) rschInit() (*rsh.Client, error) {
 	return c, err
 }
 
-func rshQuerySP(searchPhrases []string, qa *QueryArgs) string {
-	if len(searchPhrases) == 0 {
+func rshQueryIDs(ids []string, qa *QueryArgs) string {
+	// Make query to search by IDs
+	idsQuery := fmt.Sprintf(`(@%s:{%s})`,
+		FieldID,
+		strings.Join(ids, `|`),
+	)
+
+	// Make a summary query with search phrases
+	return idsQuery + ` ` + rshArgsQuery(qa)
+}
+
+func rshQuerySP(qa *QueryArgs) string {
+	if len(qa.sp) == 0 {
 		// Return only arguments part
 		return rshArgsQuery(qa)
 	}
 
 	// Make search phrases query - try to search them in found path and real path
-	var spQuery string
-	if len(searchPhrases) != 0 {
-		spQuery = fmt.Sprintf(`(@%[1]s:%[3]s | @%[2]s:%[3]s)`,
-			FieldFPath, FieldRPath,
-			strings.Join(searchPhrases, ` | `),
-		)
-	}
+	spQuery := fmt.Sprintf(`(@%[1]s:%[3]s | @%[2]s:%[3]s)`,
+		FieldFPath, FieldRPath,
+		strings.Join(qa.sp, `|`),
+	)
 
 	// Make a summary query with search phrases
 	return spQuery + ` ` + rshArgsQuery(qa)
@@ -312,7 +354,6 @@ func prepHost(qa *QueryArgs) string {
 		escapedHosts = append(escapedHosts, rsh.EscapeTextFileString(host))
 	}
 
-	// FT.SEARCH obj-meta-idx @host:'{deb\-devtest}' RETURN 1 host
 	return `@` + FieldHost + `:{` + strings.Join(escapedHosts, `|`) + `}`
 }
 
@@ -341,5 +382,5 @@ func makeSetRangeQuery(field string, min, max int64, set []int64) string {
 		chunks = append(chunks, fmt.Sprintf(`@%s:[%d %d]`, field, item, item))
 	}
 
-	return `(` + strings.Join(chunks, ` | `) + `)`
+	return `(` + strings.Join(chunks, `|`) + `)`
 }

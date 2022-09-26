@@ -231,7 +231,7 @@ func prepareHSetValues(host string, fso *types.FSObject) []string {
 	values := make([]string, 0, types.FSObjectFieldsNum + 2)	// + 2 - id field + host field
 
 	values = append(values,
-		FieldID, makeID(fso),
+		FieldID, makeID(host, fso),
 		FieldHost, host,
 		FieldName, fso.Name,
 		FieldFPath, fso.FPath,

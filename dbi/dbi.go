@@ -55,7 +55,7 @@ const (
 )
 
 // makeID makes the identifier (most unique) for a particular filesystem object
-func makeID(fso *types.FSObject) string {
+func makeID(host string, fso *types.FSObject) string {
 	// Use found path as value to generate the identifier
-	return fmt.Sprintf("%x", sha1.Sum([]byte(fso.FPath)))
+	return fmt.Sprintf("%x", sha1.Sum([]byte(host + ":" + fso.FPath)))
 }

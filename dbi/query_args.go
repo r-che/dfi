@@ -12,6 +12,9 @@ import (
 const dataRangeSep = ".."
 
 type QueryArgs struct {
+	// Search phrases
+	sp			[]string
+
 	// Mtime related
 	mtimeStart	int64
 	mtimeEnd	int64
@@ -29,10 +32,20 @@ type QueryArgs struct {
 
 	orExpr		bool
 	negExpr		bool
+	deep		bool
+}
+
+func NewQueryArgs(searchPhrases []string) *QueryArgs {
+	return &QueryArgs{
+		sp: searchPhrases,
+	}
 }
 
 func (qa *QueryArgs) Clone() *QueryArgs {
 	rv := *qa
+
+	rv.sp = make([]string, len(qa.sp))
+	copy(rv.sp, qa.sp)
 
 	rv.mtimeSet = make([]int64, len(qa.mtimeSet))
 	copy(rv.mtimeSet, qa.mtimeSet)
@@ -387,4 +400,8 @@ func (qa *QueryArgs) SetNeg(neg bool) {
 
 func (qa *QueryArgs) SetOr(or bool) {
 	qa.orExpr = or
+}
+
+func (qa *QueryArgs) SetDeep(deep bool) {
+	qa.deep = deep
 }
