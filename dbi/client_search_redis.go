@@ -149,10 +149,17 @@ func rshQuerySP(qa *QueryArgs) string {
 		return rshArgsQuery(qa)
 	}
 
+	// XXX Convert of search phrase values to lowercase because RediSearch
+	// XXX does not fully support case insensitivity for non-English locales
+	spLower := make([]string, 0, len(qa.sp))
+	for _, sp := range qa.sp {
+		spLower= append(spLower, strings.ToLower(sp))
+	}
+
 	// Make search phrases query - try to search them in found path and real path
 	spQuery := fmt.Sprintf(`(@%[1]s:%[3]s | @%[2]s:%[3]s)`,
 		FieldFPath, FieldRPath,
-		strings.Join(qa.sp, `|`),
+		strings.Join(spLower, `|`),
 	)
 
 	// Make a summary query with search phrases

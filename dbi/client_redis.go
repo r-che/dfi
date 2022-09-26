@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"context"
 	"strconv"
+	"strings"
 
 	"github.com/r-che/dfi/types"
 
@@ -226,11 +227,22 @@ func prepareHSetValues(host string, fso *types.FSObject) []string {
 	// Output slice with values prepared to send to Redis
 	values := make([]string, 0, types.FSObjectFieldsNum + 2)	// + 2 - id field + host field
 
+	/*
+	 * Prepare FPath value
+	 */
+	// XXX Convert of found path value to lowercase because RediSearch
+	// XXX does not fully support case insensitivity for non-English locales
+	fpathPrepared := strings.ToLower(fso.FPath)
+	// Replace underscores by spaces to improve RediSearch full-text search results
+	// due to default tokenizator does not use underscores as separator[1]
+	// [1]https://redis.io/docs/stack/search/reference/escaping/
+	fpathPrepared = strings.Replace(fpathPrepared, "_", " ", -1)
+
 	values = append(values,
 		FieldID, makeID(host, fso),
 		FieldHost, host,
 		FieldName, fso.Name,
-		FieldFPath, fso.FPath,
+		FieldFPath, fpathPrepared,
 		FieldRPath, fso.RPath,
 		FieldType, fso.Type,
 		FieldSize, strconv.FormatInt(fso.Size, 10),
