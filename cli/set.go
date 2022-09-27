@@ -16,17 +16,21 @@ func doSet(dbc dbi.DBClient) error {
 	setValue := args[0]
 	setIDs := args[1:]
 
+	var err error
 	switch {
 		case c.UseTags:
-			return setTags(dbc, setValue, setIDs, c.SetAdd)
+			err = setTags(dbc, setValue, setIDs, c.SetAdd)
 		case c.UseDescr:
 			// TODO
-			return nil
 		default:
 			panic("unexpected set mode")
 	}
 
-	// OK (unreachable)
+	if err == nil {
+		fmt.Println("OK")
+	}
+
+	// OK
 	return nil
 }
 
@@ -34,6 +38,10 @@ func setTags(dbc dbi.DBClient, tagsStr string, ids []string, add bool) error {
 	// Split tags string and remove empty lines if exists
 	tags := strings.Split(tagsStr, ",")
 	for i := 0; i < len(tags); {
+		// Remove leading/trailing spaces from tag
+		tags[i] = strings.TrimSpace(tags[i])
+
+		// Remove empty tags
 		if tags[i] == "" {
 			tags = append(tags[:i], tags[i+1:]...)
 		} else {
@@ -45,7 +53,7 @@ func setTags(dbc dbi.DBClient, tagsStr string, ids []string, add bool) error {
 	}
 
 	args := &dbi.AIIArgs{Tags: tags}
-	if err := dbc.ModifyAII(dbi.Update, add, ids, args); err != nil {
+	if err := dbc.ModifyAII(dbi.Update, args, ids, add); err != nil {
 		return fmt.Errorf("cannot set tags: %v", err)
 	}
 

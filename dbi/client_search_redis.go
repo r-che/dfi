@@ -323,6 +323,9 @@ func (rc *RedisClient) scanSearch(rsc *rsh.Client, qa *QueryArgs, retFields []st
 	for _, k := range matched {
 		id, err := rc.c.HGet(rc.ctx, k, FieldID).Result()
 		if err != nil {
+			if err == RedisNotFound {
+				return 0, fmt.Errorf("identificator field %q does not exist for key %q", FieldID, k)
+			}
 			return 0, fmt.Errorf("cannot get ID for key %q: %v", k, err)
 		}
 		// Append extracted ID

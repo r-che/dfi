@@ -48,7 +48,7 @@ func main() {
 	}
 
 	if err != nil {
-		log.F("Command returned error: %v", err)
+		log.F("Command error - %v", err)
 	}
 
 	log.D("%s %s finished normally", ProgNameLong, ProgVers)

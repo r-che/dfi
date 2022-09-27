@@ -17,10 +17,14 @@ import (
 const (
 	RedisMaxScanKeys	=	1024 * 10
 	RedisObjPrefix		=	"obj:"
+	RedisAIIPrefix		=	"aii:"
 
 	// Private configuration fields
 	userField	=	"user"
 	uassField	=	"password"
+
+	// Error value of redis.Get* function when requested data is not found
+	RedisNotFound	=	redis.Nil
 )
 
 type RedisClient struct {
