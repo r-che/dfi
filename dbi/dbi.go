@@ -54,6 +54,13 @@ const (
 	FieldChecksum = "csum"	// Message digest, if enabled by indexer settings
 )
 
+// Additional information item (AII) fields
+const (
+	AIIFieldTags	=	"tags"
+	AIIFieldDescr	=	"descr"
+	AIIFieldOID		=	"oid"
+)
+
 // makeID makes the identifier (most unique) for a particular filesystem object
 func makeID(host string, fso *types.FSObject) string {
 	// Use found path as value to generate the identifier

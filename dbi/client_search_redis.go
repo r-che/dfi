@@ -24,7 +24,7 @@ func (rc *RedisClient) Query(qa *QueryArgs, retFields []string) (QueryResults, e
 	q := rsh.NewQuery(rshQuerySP(qa))
 
 	// Do search
-	qr := rshSearch(rsc, qa, q, retFields)
+	qr := rshSearch(rsc, q, retFields)
 
 	// Check for deep search required
 	if qa.deep {
@@ -73,7 +73,7 @@ func (rc *RedisClient) rschInit() (*rsh.Client, error) {
 	return c, err
 }
 
-func rshSearch(cli *rsh.Client, qa *QueryArgs, q *rsh.Query, retFields []string) QueryResults {
+func rshSearch(cli *rsh.Client, q *rsh.Query, retFields []string) QueryResults {
 	// Offset from which matched documents should be selected
 	offset := 0
 
@@ -335,7 +335,7 @@ func (rc *RedisClient) scanSearch(rsc *rsh.Client, qa *QueryArgs, retFields []st
 	// Make redisearch initial query
 	q := rsh.NewQuery(rshQueryIDs(ids, qa))
 	// Run search to get results by IDs
-	qr := rshSearch(rsc, qa, q, retFields)
+	qr := rshSearch(rsc, q, retFields)
 	// Merge selected results with the previous results
 	for k, v := range qr {
 		(*qrTop)[k] = v

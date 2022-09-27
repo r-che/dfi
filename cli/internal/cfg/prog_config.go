@@ -34,7 +34,9 @@ type progConfig struct {
 	hostGroups	bool
 
 	// Other modes common options
-	ids			string
+	UseTags		bool
+	UseDescr	bool
+	SetAdd		bool
 
 	// Other options
 
@@ -44,7 +46,7 @@ type progConfig struct {
 	NoLogTS		bool
 
 	// Non-flags arguments from command line
-	cmdArgs []string
+	CmdArgs []string
 
 	// Internal filled options
 
@@ -90,29 +92,28 @@ func (pc *progConfig) QueryArgs() *dbi.QueryArgs {
 func (pc *progConfig) clone() *progConfig {
 	rv := *pc
 
-	// Make deep copy of cmdArgs
-	rv.cmdArgs = make([]string, len(pc.cmdArgs))
-	copy(rv.cmdArgs, pc.cmdArgs)
+	// Make deep copy of CmdArgs
+	rv.CmdArgs = make([]string, len(pc.CmdArgs))
+	copy(rv.CmdArgs, pc.CmdArgs)
 
-	rv.qArgs = rv.qArgs.Clone()
+	if pc.qArgs != nil {
+		rv.qArgs = pc.qArgs.Clone()
+	}
 
 	return &rv
 }
 
-func (pc *progConfig) prepare(cmdArgs []string) error {
+func (pc *progConfig) prepare(CmdArgs []string) error {
 	// Keep search phrases
-	pc.cmdArgs = cmdArgs
+	pc.CmdArgs = CmdArgs
 
 	// Check mode
 	mn := 0
-	switch {
-	case pc.modeSearch:	mn++; fallthrough
-	case pc.modeShow:	mn++; fallthrough
-	case pc.modeSet:	mn++; fallthrough
-	case pc.modeDel:	mn++; fallthrough
-	case pc.modeAdmin:	mn++; fallthrough
-	default:
-	}
+	if pc.modeSearch { mn++ }
+	if pc.modeShow { mn++ }
+	if pc.modeSet { mn++ }
+	if pc.modeDel { mn++ }
+	if pc.modeAdmin { mn++ }
 	if mn == 0 {
 		// Use search mode as default
 		pc.modeSearch = true
@@ -129,7 +130,9 @@ func (pc *progConfig) prepare(cmdArgs []string) error {
 		case pc.modeShow:
 			// TODO
 		case pc.modeSet:
-			// TODO
+			if err := pc.prepareSet(); err != nil {
+				return err
+			}
 		case pc.modeDel:
 			// TODO
 		case pc.modeAdmin:
@@ -156,7 +159,7 @@ func (pc *progConfig) prepare(cmdArgs []string) error {
 }
 
 func (pc *progConfig) prepareSearch() error {
-	pc.qArgs = dbi.NewQueryArgs(pc.cmdArgs)
+	pc.qArgs = dbi.NewQueryArgs(pc.CmdArgs)
 
 	if pc.strMtime != anyVal {
 		if err := pc.qArgs.ParseMtimes(pc.strMtime); err != nil {
@@ -194,9 +197,28 @@ func (pc *progConfig) prepareSearch() error {
 	pc.qArgs.SetDeep(pc.deepSearch)
 
 	// Check for sufficient conditions for search
-	if !pc.qArgs.CanSearch(pc.cmdArgs) {
+	if !pc.qArgs.CanSearch(pc.CmdArgs) {
 		return fmt.Errorf("insufficient arguments to make search")
 	}
 	// OK
+	return nil
+}
+
+func (pc *progConfig) prepareSet() error {
+	// Expected command line format: TAG1,TAG2,TAG3 ID1 [ID2 ... IDN]
+
+	// Also --tag or --descr mode have to be provided but not both
+	if !pc.UseTags && !pc.UseDescr {
+		return fmt.Errorf("set mode requires field which need to be set: --tags or --descr")
+	}
+	if pc.UseTags && pc.UseDescr {
+		return fmt.Errorf("cannot set --tags and --descr at the same time")
+	}
+
+	// Number of command arguments cannot be lesser than 2
+	if len(pc.CmdArgs) < 2 {
+		return fmt.Errorf("insufficient arguments for --set command")
+	}
+
 	return nil
 }

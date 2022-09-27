@@ -84,10 +84,6 @@ func (qa *QueryArgs) isChecksum() bool {
 	return len(qa.csums) != 0
 }
 
-func (qa *QueryArgs) isID() bool {
-	return len(qa.ids) != 0
-}
-
 func (qa *QueryArgs) isHost() bool {
 	return len(qa.hosts) != 0
 }
@@ -101,7 +97,7 @@ func (qa *QueryArgs) CanSearch(searchPhrases []string) bool {
 		}
 	}
 
-	if qa.isMtime() || qa.isSize() || qa.isType() || qa.isChecksum() || qa.isID() || qa.isHost() {
+	if qa.isMtime() || qa.isSize() || qa.isType() || qa.isChecksum() || qa.isHost() {
 		// Sufficient conditions to search query
 		return true
 	}

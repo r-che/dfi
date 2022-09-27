@@ -38,7 +38,7 @@ func main() {
 	case c.Show():
 		err = fmt.Errorf("not implemented") // TODO
 	case c.Set():
-		err = fmt.Errorf("not implemented") // TODO
+		err = doSet(dbc)
 	case c.Del():
 		err = fmt.Errorf("not implemented") // TODO
 	case c.Admin():

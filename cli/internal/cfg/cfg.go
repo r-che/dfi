@@ -40,9 +40,6 @@ func Init(name string) {
 	p.AddString(`type`, `set of object types, possible values: ` + strings.Join(knownTypes, ", "), &config.oTypes, anyVal)
 	p.AddString(`checksum`, `set of objects checksums`, &config.csums, anyVal)
 	p.AddString(`host`, `set of hosts when object may be located`, &config.hosts, anyVal)
-	// TODO --tag
-	// TODO --dupe
-	// TODO --descr
 	p.AddBool(`or`, `use OR instead of AND between conditions`, &config.orExpr, false)
 	p.AddBool(`not`, `use negative expression`, &config.negExpr, false)
 	p.AddBool(`only-name|O`, `use only file name to match search phrases`, &config.onlyName, false)
@@ -51,8 +48,17 @@ func Init(name string) {
 	p.AddBool(`with-ids|I`, `print ID at the beginning of the output lines`, &config.printID, false)
 	p.AddBool(`hosts-groups|H`, `group results by host instead of single line sorted output`, &config.hostGroups, false)
 
+	p.AddSeparator(``)
+	p.AddSeparator(`>> Set mode options`)
+	p.AddBool(`add`, `add specified data (tags or description) to the object(s)`, &config.SetAdd, false)
+	// Show related options
+
 	// Other modes common options
-	p.AddString(`id`, `object unique ID`, &config.ids, anyVal)
+	p.AddSeparator(``)
+	p.AddSeparator(`>> Options common to several modes`)
+	p.AddBool(`tags`, `enable tags-related operations`, &config.UseTags, false)
+	p.AddBool(`descr`, `enable description-related operations`, &config.UseDescr, false)
+	// TODO --dupe
 
 	// Other options
 	//p.AddString(`hostname`, `override real client hostname by provided value`, &config.DBCfg.CliHost, hostname)

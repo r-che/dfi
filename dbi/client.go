@@ -10,6 +10,7 @@ type DBClient interface {
     Commit() (int64, int64, error)
 	LoadHostPaths(FilterFunc) ([]string, error)
 	Query(*QueryArgs, []string) (QueryResults, error)
+	ModifyAII(DBOperator, bool, []string, *AIIArgs) error
 	StopLong()
     Stop()
 }
@@ -22,6 +23,12 @@ type QRKey struct {
 	Path string
 }
 type QueryResults map[QRKey] map[string]any
+
+// Additional information item (AII) arguments
+type AIIArgs struct {
+	Tags	[]string
+	Descr	string
+}
 
 func NewClient(dbCfg *DBConfig) (DBClient, error) {
 	// Initiate database client
