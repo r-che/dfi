@@ -68,5 +68,5 @@ func delTags(dbc dbi.DBClient, tagsStr string, ids []string) error {
 }
 
 func delDescr(dbc dbi.DBClient, ids []string) error {
-	return fmt.Errorf("DEL DESCR Not implemented")
+	return fmt.Errorf("DEL DESCR Not implemented")	// TODO
 }
