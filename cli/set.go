@@ -7,36 +7,35 @@ import (
 
 	"github.com/r-che/dfi/dbi"
 	"github.com/r-che/dfi/cli/internal/cfg"
+
+	"github.com/r-che/log"
 )
 
-func doSet(dbc dbi.DBClient) error {
+func doSet(dbc dbi.DBClient) (int64, error) {
 	// Get configuration
 	c := cfg.Config()
 
 	setValue := c.CmdArgs[0]
 	setIDs := c.CmdArgs[1:]
 
-	var err error
 	switch {
 		case c.UseTags:
-			err = setTags(dbc, setValue, setIDs)
+			return setTags(dbc, setValue, setIDs)
 		case c.UseDescr:
-			err = setDescr(dbc, setValue, setIDs)
+			return setDescr(dbc, setValue, setIDs)
 		default:
 			panic("unexpected set mode")
 	}
 
-	if err == nil {
-		fmt.Println("OK")
-	}
-
-	// OK
-	return err
+	// Unreachable
+	return -1, fmt.Errorf("Unreachable code")
 }
 
-func setTags(dbc dbi.DBClient, tagsStr string, ids []string) error {
+func setTags(dbc dbi.DBClient, tagsStr string, ids []string) (int64, error) {
 	// Get configuration
 	c := cfg.Config()
+
+	log.D("Set tags (append: %t) %q for: %v", c.SetAdd, tagsStr, ids)
 
 	// Split tags string and remove empty lines if exists
 	tags := strings.Split(tagsStr, ",")
@@ -46,7 +45,7 @@ func setTags(dbc dbi.DBClient, tagsStr string, ids []string) error {
 
 		// Check tag for special value forbidden to set
 		if tags[i] == dbi.AIIAllTags {
-			return fmt.Errorf("tag value %q is a special value that cannot be used as a tag", dbi.AIIAllTags)
+			return 0, fmt.Errorf("tag value %q is a special value that cannot be used as a tag", dbi.AIIAllTags)
 		}
 
 		// Remove empty tags
@@ -57,31 +56,34 @@ func setTags(dbc dbi.DBClient, tagsStr string, ids []string) error {
 		}
 	}
 	if len(tags) == 0 {
-		return fmt.Errorf("invalid tags value from command line: %q", tagsStr)
+		return 0, fmt.Errorf("invalid tags value from command line: %q", tagsStr)
 	}
 
 	// Sort list of tags
 	sort.Strings(tags)
 
-	args := &dbi.AIIArgs{Tags: tags}
-	if err := dbc.ModifyAII(dbi.Update, args, ids, c.SetAdd); err != nil {
-		return fmt.Errorf("cannot set tags: %v", err)
+	updated, _, err := dbc.ModifyAII(dbi.Update, &dbi.AIIArgs{Tags: tags}, ids, c.SetAdd)
+	if err != nil {
+		return updated, fmt.Errorf("cannot set tags: %v", err)
 	}
 
 	// OK
-	return nil
+	return updated, nil
 }
 
-func setDescr(dbc dbi.DBClient, descr string, ids []string) error {
+func setDescr(dbc dbi.DBClient, descr string, ids []string) (int64, error) {
 	// Get configuration
 	c := cfg.Config()
 
+	log.D("Set description (append: %t) %q for: %v", c.SetAdd, descr, ids)
+
 	// Trim spaces from description and set it to argumets
 	args := &dbi.AIIArgs{Descr: strings.TrimSpace(descr), NoNL: c.NoNL}
-	if err := dbc.ModifyAII(dbi.Update, args, ids, c.SetAdd); err != nil {
-		return fmt.Errorf("cannot set description: %v", err)
+	_, updated, err := dbc.ModifyAII(dbi.Update, args, ids, c.SetAdd)
+	if err != nil {
+		return updated, fmt.Errorf("cannot set description: %v", err)
 	}
 
 	// OK
-	return nil
+	return updated, nil
 }

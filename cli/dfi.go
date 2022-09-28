@@ -32,15 +32,17 @@ func main() {
 		log.F("Cannot initialize database client: %v", err)
 	}
 
+	var changed int64
+
 	switch {
 	case c.Search():
 		err = doSearch(dbc)
 	case c.Show():
 		err = fmt.Errorf("not implemented") // TODO
 	case c.Set():
-		err = doSet(dbc)
+		changed, err = doSet(dbc)
 	case c.Del():
-		err = doDel(dbc)
+		changed, err = doDel(dbc)
 	case c.Admin():
 		err = fmt.Errorf("not implemented") // TODO
 	default:
@@ -48,8 +50,13 @@ func main() {
 	}
 
 	if err != nil {
+		if changed != 0 {
+			log.W("%d records were changed", changed)
+		}
 		log.F("Command error - %v", err)
 	}
+
+	fmt.Printf("OK - %d changed\n", changed)
 
 	log.D("%s %s finished normally", ProgNameLong, ProgVers)
 	log.Close()

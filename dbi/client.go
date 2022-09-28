@@ -10,7 +10,7 @@ type DBClient interface {
     Commit() (int64, int64, error)
 	LoadHostPaths(FilterFunc) ([]string, error)
 	Query(*QueryArgs, []string) (QueryResults, error)
-	ModifyAII(DBOperator, *AIIArgs, []string, bool) error
+	ModifyAII(DBOperator, *AIIArgs, []string, bool) (int64, int64, error)
 	StopLong()
     Stop()
 }
