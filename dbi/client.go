@@ -28,6 +28,7 @@ type QueryResults map[QRKey] map[string]any
 type AIIArgs struct {
 	Tags	[]string
 	Descr	string
+	NoNL	bool
 }
 
 func NewClient(dbCfg *DBConfig) (DBClient, error) {

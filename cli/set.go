@@ -19,9 +19,9 @@ func doSet(dbc dbi.DBClient) error {
 	var err error
 	switch {
 		case c.UseTags:
-			err = setTags(dbc, setValue, setIDs, c.SetAdd)
+			err = setTags(dbc, setValue, setIDs)
 		case c.UseDescr:
-			// TODO
+			err = setDescr(dbc, setValue, setIDs)
 		default:
 			panic("unexpected set mode")
 	}
@@ -34,7 +34,10 @@ func doSet(dbc dbi.DBClient) error {
 	return nil
 }
 
-func setTags(dbc dbi.DBClient, tagsStr string, ids []string, add bool) error {
+func setTags(dbc dbi.DBClient, tagsStr string, ids []string) error {
+	// Get configuration
+	c := cfg.Config()
+
 	// Split tags string and remove empty lines if exists
 	tags := strings.Split(tagsStr, ",")
 	for i := 0; i < len(tags); {
@@ -53,8 +56,22 @@ func setTags(dbc dbi.DBClient, tagsStr string, ids []string, add bool) error {
 	}
 
 	args := &dbi.AIIArgs{Tags: tags}
-	if err := dbc.ModifyAII(dbi.Update, args, ids, add); err != nil {
+	if err := dbc.ModifyAII(dbi.Update, args, ids, c.SetAdd); err != nil {
 		return fmt.Errorf("cannot set tags: %v", err)
+	}
+
+	// OK
+	return nil
+}
+
+func setDescr(dbc dbi.DBClient, descr string, ids []string) error {
+	// Get configuration
+	c := cfg.Config()
+
+	// Trim spaces from description and set it to argumets
+	args := &dbi.AIIArgs{Descr: strings.TrimSpace(descr), NoNL: c.NoNL}
+	if err := dbc.ModifyAII(dbi.Update, args, ids, c.SetAdd); err != nil {
+		return fmt.Errorf("cannot set description: %v", err)
 	}
 
 	// OK

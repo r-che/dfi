@@ -33,6 +33,9 @@ type progConfig struct {
 	printID		bool
 	hostGroups	bool
 
+	// Set mode options
+	NoNL		bool
+
 	// Other modes common options
 	UseTags		bool
 	UseDescr	bool

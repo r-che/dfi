@@ -86,7 +86,13 @@ func (rc *RedisClient) updateAII(args *AIIArgs, ids map[string]QRKey, add bool) 
 	}
 
 	// Update description if exist
-	// TODO
+	if args.Descr != "" {
+		if add {
+			err = rc.addDescr(args.Descr, ids, args.NoNL)
+		} else {
+			err = rc.setDescr(args.Descr, ids)
+		}
+	}
 
 	return err
 }
@@ -128,9 +134,10 @@ func (rc *RedisClient) addTags(tags []string, ids map[string]QRKey) error {
 			return err
 		}
 	}
+
+	// OK
 	return nil
 }
-
 
 func (rc *RedisClient) setTags(tags []string, ids map[string]QRKey) error {
 	// Make tags field value
@@ -138,19 +145,77 @@ func (rc *RedisClient) setTags(tags []string, ids map[string]QRKey) error {
 
 	// Do for each identifier
 	for id, objKey := range ids {
-		// Set tags
-		res := rc.c.HSet(rc.ctx,
-			// Make AII key in 'aii:OBJECT_ID' format
-			RedisAIIPrefix + id,
-			// Set tags field
-			AIIFieldTags, tagsVal,
-			// Set OID field to have ability to identify AII if the object will be deleted
-			AIIFieldOID, objKey.Host + `:` + objKey.Path,
-		)
-		if err := res.Err(); err != nil {
-			return fmt.Errorf("HSET for key %s (%s = %s) returned error: %v",
-				RedisAIIPrefix + id, AIIFieldTags, tagsVal, err)
+		if err := rc.setAIIField(id, AIIFieldTags, tagsVal, objKey); err != nil {
+			return err
 		}
+	}
+
+	// OK
+	return nil
+}
+
+func (rc *RedisClient) addDescr(descr string, ids map[string]QRKey, noNL bool) error {
+	// Do for each identifier
+	for id, objKey := range ids {
+		// AII key
+		key := RedisAIIPrefix + id
+
+		// Full description
+		var fullDescr string
+
+		// Load existing values of description field
+		if oldDescr, err := rc.c.HGet(rc.ctx, key, AIIFieldDescr).Result(); err == nil {
+			// Append new description line to existing
+			if noNL {
+				fullDescr = oldDescr + "; " + descr
+			} else {
+				fullDescr = oldDescr + "\n" + descr
+			}
+		} else if err == RedisNotFound {
+			// Ok, currently no description for this object
+			fullDescr = descr
+		} else {
+			// Something went wrong
+			return fmt.Errorf("cannot get description field %q for key %q: %v", AIIFieldDescr, key, err)
+		}
+
+		// Set description for the current identifier
+		if err := rc.setDescr(fullDescr, map[string]QRKey{id: objKey}); err != nil {
+			return err
+		}
+	}
+
+	// OK
+	return nil
+}
+
+func (rc *RedisClient) setDescr(descr string, ids map[string]QRKey) error {
+	// Do for each identifier
+	for id, objKey := range ids {
+		if err := rc.setAIIField(id, AIIFieldDescr, descr, objKey); err != nil {
+			return err
+		}
+	}
+
+	// OK
+	return nil
+}
+
+func (rc *RedisClient) setAIIField(id, field, value string, objKey QRKey) error {
+	// Set tags
+	res := rc.c.HSet(rc.ctx,
+		// Make AII key in 'aii:OBJECT_ID' format
+		RedisAIIPrefix + id,
+		// Set field
+		field, value,
+		// Set OID field to have ability to identify AII if the object will be deleted
+		AIIFieldOID, objKey.Host + `:` + objKey.Path,
+	)
+
+	// Handle error
+	if err := res.Err(); err != nil {
+		return fmt.Errorf("HSET for key %s (%s = %s) returned error: %v",
+			RedisAIIPrefix + id, field, value, err)
 	}
 
 	// OK
