@@ -137,7 +137,9 @@ func (pc *progConfig) prepare(CmdArgs []string) error {
 				return err
 			}
 		case pc.modeDel:
-			// TODO
+			if err := pc.prepareDel(); err != nil {
+				return err
+			}
 		case pc.modeAdmin:
 			// TODO
 	}
@@ -208,11 +210,9 @@ func (pc *progConfig) prepareSearch() error {
 }
 
 func (pc *progConfig) prepareSet() error {
-	// Expected command line format: TAG1,TAG2,TAG3 ID1 [ID2 ... IDN]
-
 	// Also --tag or --descr mode have to be provided but not both
 	if !pc.UseTags && !pc.UseDescr {
-		return fmt.Errorf("set mode requires field which need to be set: --tags or --descr")
+		return fmt.Errorf("set mode requires field which need to be updated: --tags or --descr")
 	}
 	if pc.UseTags && pc.UseDescr {
 		return fmt.Errorf("cannot set --tags and --descr at the same time")
@@ -221,6 +221,28 @@ func (pc *progConfig) prepareSet() error {
 	// Number of command arguments cannot be lesser than 2
 	if len(pc.CmdArgs) < 2 {
 		return fmt.Errorf("insufficient arguments for --set command")
+	}
+
+	return nil
+}
+
+func (pc *progConfig) prepareDel() error {
+	// Also --tag or --descr mode have to be provided but not both
+	if !pc.UseTags && !pc.UseDescr {
+		return fmt.Errorf("del mode requires field which need to be processed: --tags or --descr")
+	}
+	if pc.UseTags && pc.UseDescr {
+		return fmt.Errorf("cannot del --tags and --descr at the same time")
+	}
+
+	if pc.UseTags && len(pc.CmdArgs) < 2 {
+		// Number of command arguments cannot be lesser than 2
+		return fmt.Errorf("insufficient arguments for --del --tags command")
+	}
+
+	if pc.UseDescr && len(pc.CmdArgs) == 0 {
+		// Need at least one identifier to clear description
+		return fmt.Errorf("insufficient arguments for --del --descr command")
 	}
 
 	return nil

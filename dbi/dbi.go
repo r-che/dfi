@@ -61,6 +61,7 @@ const (
 	AIIFieldOID		=	"oid"
 
 	AIIAllTags		=	"ALL"
+	AIIDelDescr		=	"\u0000\u0000DELETE DESCRIPTION\u0000\u0000"
 )
 
 // makeID makes the identifier (most unique) for a particular filesystem object

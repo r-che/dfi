@@ -40,7 +40,7 @@ func main() {
 	case c.Set():
 		err = doSet(dbc)
 	case c.Del():
-		err = fmt.Errorf("not implemented") // TODO
+		err = doDel(dbc)
 	case c.Admin():
 		err = fmt.Errorf("not implemented") // TODO
 	default:
