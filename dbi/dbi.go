@@ -59,6 +59,8 @@ const (
 	AIIFieldTags	=	"tags"
 	AIIFieldDescr	=	"descr"
 	AIIFieldOID		=	"oid"
+
+	AIIAllTags		=	"ALL"
 )
 
 // makeID makes the identifier (most unique) for a particular filesystem object

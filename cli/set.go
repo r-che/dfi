@@ -31,7 +31,7 @@ func doSet(dbc dbi.DBClient) error {
 	}
 
 	// OK
-	return nil
+	return err
 }
 
 func setTags(dbc dbi.DBClient, tagsStr string, ids []string) error {
@@ -43,6 +43,11 @@ func setTags(dbc dbi.DBClient, tagsStr string, ids []string) error {
 	for i := 0; i < len(tags); {
 		// Remove leading/trailing spaces from tag
 		tags[i] = strings.TrimSpace(tags[i])
+
+		// Check tag for special value forbidden to set
+		if tags[i] == dbi.AIIAllTags {
+			return fmt.Errorf("tag value %q is a special value that cannot be used as a tag", dbi.AIIAllTags)
+		}
 
 		// Remove empty tags
 		if tags[i] == "" {
