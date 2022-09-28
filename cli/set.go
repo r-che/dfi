@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"strings"
+	"sort"
 
 	"github.com/r-che/dfi/dbi"
 	"github.com/r-che/dfi/cli/internal/cfg"
@@ -59,6 +60,9 @@ func setTags(dbc dbi.DBClient, tagsStr string, ids []string) error {
 	if len(tags) == 0 {
 		return fmt.Errorf("invalid tags value from command line: %q", tagsStr)
 	}
+
+	// Sort list of tags
+	sort.Strings(tags)
 
 	args := &dbi.AIIArgs{Tags: tags}
 	if err := dbc.ModifyAII(dbi.Update, args, ids, c.SetAdd); err != nil {
