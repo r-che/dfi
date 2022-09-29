@@ -21,7 +21,7 @@ func doDel(dbc dbi.DBClient) (int64, error) {
 		case c.UseTags:
 			changed, err = delTags(dbc, c.CmdArgs[0], c.CmdArgs[1:])
 		case c.UseDescr:
-			err = delDescr(dbc, c.CmdArgs)
+			changed, err = delDescr(dbc, c.CmdArgs)
 		default:
 			panic("unexpected set mode")
 	}
@@ -69,6 +69,16 @@ func delTags(dbc dbi.DBClient, tagsStr string, ids []string) (int64, error) {
 	return changed, nil
 }
 
-func delDescr(dbc dbi.DBClient, ids []string) error {
-	return fmt.Errorf("DEL DESCR Not implemented")	// TODO
+func delDescr(dbc dbi.DBClient, ids []string) (int64, error) {
+	log.D("Delete description for: %v", ids)
+
+	// Trim spaces from description and set it to argumets
+	args := &dbi.AIIArgs{Descr: dbi.AIIDelDescr}
+	_, updated, err := dbc.ModifyAII(dbi.Delete, args, ids, false)
+	if err != nil {
+		return updated, fmt.Errorf("cannot delete description: %v", err)
+	}
+
+	// OK
+	return updated, nil
 }

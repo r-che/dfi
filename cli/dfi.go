@@ -49,14 +49,15 @@ func main() {
 		panic("Unexpected application state - no one operating mode are set")
 	}
 
-	if err != nil {
+	if err == nil {
+		fmt.Printf("OK - %d changed\n", changed)
+	} else {
 		if changed != 0 {
 			log.W("%d records were changed", changed)
 		}
 		log.F("Command error - %v", err)
 	}
 
-	fmt.Printf("OK - %d changed\n", changed)
 
 	log.D("%s %s finished normally", ProgNameLong, ProgVers)
 	log.Close()
