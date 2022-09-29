@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"strings"
+	"time"
+	"strconv"
 
 	"github.com/r-che/dfi/dbi"
 	"github.com/r-che/dfi/cli/internal/cfg"
@@ -149,5 +151,43 @@ func printObjOL(objKey dbi.QRKey, fields map[string]any, aii map[string]string) 
 }
 
 func printObj(objKey dbi.QRKey, fields map[string]any, aii map[string]string) {
-	// TODO
+	// Object header
+	fmt.Printf(">>> [ID: %s]\n", fields[dbi.FieldID])
+
+	// Common object's information
+	fmt.Printf("Host:      %s\n", objKey.Host)
+	fmt.Printf("Path:      %s\n", objKey.Path)
+	// Is real path was set
+	if rp := fields[dbi.FieldRPath]; rp != "" {
+		fmt.Printf("Real path: %s\n", rp)
+	}
+	fmt.Printf("Type:      %s\n", fields[dbi.FieldType])
+	fmt.Printf("Size:      %s\n", fields[dbi.FieldSize])
+	// Convert string Unix timestamp to integer value
+	ts, err := strconv.ParseInt(fields[dbi.FieldMTime].(string), 10, 64)
+	if err == nil {
+		fmt.Printf("MTime:     %s (Unix: %s)\n",
+			time.Unix(ts, 0).Format("2006-01-02 15:04:05 MST"),
+			fields[dbi.FieldMTime])
+	} else {
+		fmt.Printf("MTime:    INVALID VALUE %q - %v\n", fields[dbi.FieldMTime], err)
+	}
+	// Is checksum was set
+	if csum := fields[dbi.FieldChecksum]; csum != "" {
+		fmt.Printf("Checksum:  %s\n", csum)
+	}
+
+	// Print additional information if exists
+	if len(aii) != 0 {
+		fmt.Println("-- Additional information --")
+		if tags := aii[dbi.AIIFieldTags]; tags != "" {
+			fmt.Printf("Tags:      %s\n", aii[dbi.AIIFieldTags])
+		}
+		if descr := aii[dbi.AIIFieldDescr]; descr != "" {
+			// Prepend each description line by double space
+			fmt.Printf("Description:\n%s\n", `  ` + strings.ReplaceAll(descr, "\n", "\n  "))
+		}
+	}
+
+	fmt.Println()
 }
