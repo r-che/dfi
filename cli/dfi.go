@@ -38,7 +38,7 @@ func main() {
 	case c.Search():
 		err = doSearch(dbc)
 	case c.Show():
-		err = fmt.Errorf("not implemented") // TODO
+		err = doShow(dbc)
 	case c.Set():
 		changed, err = doSet(dbc)
 	case c.Del():
@@ -50,7 +50,9 @@ func main() {
 	}
 
 	if err == nil {
-		fmt.Printf("OK - %d changed\n", changed)
+		if !c.Show() {
+			fmt.Printf("OK - %d changed\n", changed)
+		}
 	} else {
 		if changed != 0 {
 			log.W("%d records were changed", changed)

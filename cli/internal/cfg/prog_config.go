@@ -36,12 +36,19 @@ type progConfig struct {
 	// Set mode options
 	NoNL		bool
 
-	// Other modes common options
+	// Show mdoe options
+	OneLine		bool
+
+	/*
+	 * Other modes common options
+	 */
 	UseTags		bool
 	UseDescr	bool
 	SetAdd		bool
 
-	// Other options
+	/*
+	 * Other options
+	 */
 
 	// Auxiliary options
 	confPath	string
@@ -131,7 +138,9 @@ func (pc *progConfig) prepare(CmdArgs []string) error {
 				return err
 			}
 		case pc.modeShow:
-			// TODO
+			if err := pc.prepareShow(); err != nil {
+				return err
+			}
 		case pc.modeSet:
 			if err := pc.prepareSet(); err != nil {
 				return err
@@ -243,6 +252,15 @@ func (pc *progConfig) prepareDel() error {
 	if pc.UseDescr && len(pc.CmdArgs) == 0 {
 		// Need at least one identifier to clear description
 		return fmt.Errorf("insufficient arguments for --del --descr command")
+	}
+
+	return nil
+}
+
+func (pc *progConfig) prepareShow() error {
+	// Check for list of identifiers exists
+	if len(pc.CmdArgs) == 0 {
+		return fmt.Errorf("insufficient arguments for --show commands - no object identifiers provided")
 	}
 
 	return nil

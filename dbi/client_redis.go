@@ -225,6 +225,14 @@ func (rc *RedisClient) LoadHostPaths(filter FilterFunc) ([]string, error) {
 	}
 }
 
+func (rc *RedisClient) GetObjects(ids, fields []string) (map[string]any, error) {
+	return map[string]any{"a": nil}, fmt.Errorf("GetObjects not implemented")	// TODO
+}
+
+func (rc *RedisClient) GetAIIs(ids, fields []string) (map[string]any, error) {
+	return nil, fmt.Errorf("GetAIIs not implemented")	// TODO
+}
+
 // Auxiliary functions
 
 func prepareHSetValues(host string, fso *types.FSObject) []string {

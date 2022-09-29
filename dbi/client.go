@@ -8,9 +8,14 @@ type DBClient interface {
     UpdateObj(*types.FSObject) error
     DeleteObj(*types.FSObject) error
     Commit() (int64, int64, error)
+
+	ModifyAII(DBOperator, *AIIArgs, []string, bool) (int64, int64, error)
+
 	LoadHostPaths(FilterFunc) ([]string, error)
 	Query(*QueryArgs, []string) (QueryResults, error)
-	ModifyAII(DBOperator, *AIIArgs, []string, bool) (int64, int64, error)
+	GetObjects([]string, []string) (map[string]any, error)	// TODO
+	GetAIIs([]string, []string) (map[string]any, error)
+
 	StopLong()
     Stop()
 }

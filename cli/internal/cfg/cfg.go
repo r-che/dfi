@@ -53,7 +53,10 @@ func Init(name string) {
 	p.AddBool(`append|A`, `append specified data (tags or description) to the object(s)`, &config.SetAdd, false)
 	p.AddBool(`no-newline|n`, `use "; " instead of new line to join existing description with new (affects --add)`, &config.NoNL, false)
 
-	// Show related options
+	p.AddSeparator(``)
+	p.AddSeparator(`>> Show mode options`)
+	p.AddBool(`one-line|o`, `print information about each object in one line`, &config.OneLine, false)
+
 
 	// Other modes common options
 	p.AddSeparator(``)
