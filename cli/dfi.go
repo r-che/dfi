@@ -50,7 +50,7 @@ func main() {
 	}
 
 	if err == nil {
-		if !c.Show() {
+		if !c.Show() && !c.Search() {
 			fmt.Printf("OK - %d changed\n", changed)
 		}
 	} else {

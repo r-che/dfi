@@ -240,9 +240,9 @@ func prepareHSetValues(host string, fso *types.FSObject) []string {
 	// Replace underscores by spaces to improve RediSearch full-text search results
 	// due to default tokenizator does not use underscores as separator[1]
 	// [1]https://redis.io/docs/stack/search/reference/escaping/
-	fpathPrepared = strings.Replace(fpathPrepared, "_", " ", -1)
+	fpathPrepared = strings.ReplaceAll(fpathPrepared, "_", " ")
 	// Do the same for the name field
-	namePrepared := strings.Replace(strings.ToLower(fso.Name), "_", " ", -1)
+	namePrepared := strings.ReplaceAll(strings.ToLower(fso.Name), "_", " ")
 
 	values = append(values,
 		FieldID, makeID(host, fso),
