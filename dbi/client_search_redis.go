@@ -40,6 +40,20 @@ func (rc *RedisClient) Query(qa *QueryArgs, retFields []string) (QueryResults, e
 	return qr, nil
 }
 
+func (rc *RedisClient) GetObjects(ids, retFields []string) (QueryResults, error) {
+	// Get RediSearch client
+	rsc, err := rc.rschInit()
+	if err != nil {
+		return nil, fmt.Errorf("(RedisCli:GetObjects) cannot initialize RediSearch client: %v", err)
+	}
+
+	// Make initial query
+	q := rsh.NewQuery(rshQueryIDs(ids, &QueryArgs{}))
+
+	// Do search and return
+	return rshSearch(rsc, q, retFields), nil
+}
+
 func (rc *RedisClient) rschInit() (*rsh.Client, error) {
 	// Client pointer
 	var c *rsh.Client

@@ -13,8 +13,8 @@ type DBClient interface {
 
 	LoadHostPaths(FilterFunc) ([]string, error)
 	Query(*QueryArgs, []string) (QueryResults, error)
-	GetObjects([]string, []string) (map[string]any, error)	// TODO
-	GetAIIs([]string, []string) (map[string]any, error)
+	GetObjects([]string, []string) (QueryResults, error)
+	GetAIIs([]string, []string) (map[string]map[string]string, error)
 
 	StopLong()
     Stop()
@@ -27,6 +27,10 @@ type QRKey struct {
 	Host string
 	Path string
 }
+func (k QRKey) String() string {
+	return k.Host + `:` + k.Path
+}
+
 type QueryResults map[QRKey] map[string]any
 
 // Additional information item (AII) arguments

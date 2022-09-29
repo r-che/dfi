@@ -85,6 +85,36 @@ func (rc *RedisClient) ModifyAII(op DBOperator, args *AIIArgs, ids []string, add
 	return -1, -1, nil
 }
 
+func (rc *RedisClient) GetAIIs(ids, retFields []string) (map[string]map[string]string, error) {
+	result := make(map[string]map[string]string, len(ids))
+
+	// Get requested fields for each ID
+	for _, id := range ids {
+		key := RedisAIIPrefix + id
+
+		res, err := rc.c.HGetAll(rc.ctx, key).Result()
+		if err != nil {
+			return result, fmt.Errorf("cannot get AII for %q: %v", key, err)
+		}
+
+		// Check for nothing was found
+		if len(res) == 0 {
+			// No AII data for this id
+			continue
+		}
+
+		result[id] = make(map[string]string, len(retFields))
+		for _, field := range retFields {
+			if v, ok := res[field]; ok {
+				result[id][field] = v
+			}
+		}
+	}
+
+	// OK
+	return result, nil
+}
+
 func (rc *RedisClient) updateAII(args *AIIArgs, ids idKeyMap, add bool) (int64, int64, error) {
 	var err error
 
