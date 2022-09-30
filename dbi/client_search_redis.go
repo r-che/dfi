@@ -71,6 +71,14 @@ func (rc *RedisClient) rschInit() (*rsh.Client, error) {
 		return nil, fmt.Errorf("(RedisCli:rschInit) cannot convert database identifier value to unsigned integer: %v", err)
 	}
 
+	// Check for DB ID is not 0
+	if dbid != 0 {
+		// It may cause problems
+		log.W("(RedisCli:rschInit) WARNING! Redis DB ID is set to %d - it may cause incorrect results " +
+			"due to RediSearch does not work on DBs with non-zero ID, see: %s",
+			dbid, `https://github.com/RediSearch/RediSearch/issues/367`)
+	}
+
 	// Create pool to have ability to provide authentication and database identifier
 	pool := &redis.Pool{
 		Dial: func() (redis.Conn, error) {
