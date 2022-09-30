@@ -20,9 +20,11 @@ func doSearch(dbc dbi.DBClient) *types.CmdRV {
 		rqFields = append(rqFields, dbi.FieldID)
 	}
 
+	rv := types.NewCmdRV()
+
 	qr, err := dbc.Query(c.QueryArgs(), rqFields)
 	if err != nil {
-		return types.NewCmdRV().AddErr("cannot execute DB query to show requested objects: %v", err)
+		rv.AddErr("cannot execute DB query to show requested objects: %v", err)
 	}
 
 	// Print results

@@ -24,17 +24,20 @@ func (rc *RedisClient) Query(qa *QueryArgs, retFields []string) (QueryResults, e
 	q := rsh.NewQuery(rshQuerySP(qa))
 
 	// Do search
-	qr := rshSearch(rsc, q, retFields)
+	qr, err := rshSearch(rsc, q, retFields)
+	if err != nil {
+		return qr, err
+	}
 
 	// Check for deep search required
 	if qa.deep {
 		// Do additional standard SCAN search
 		log.D("(RedisCli) Running deep search using SCAN operation...")
-		if n, err := rc.scanSearch(rsc, qa, retFields, &qr); err != nil {
-			log.E("(RedisCli) SCAN search failed: %v", err)
-		} else {
-			log.D("(RedisCli) Total of %d records were found with a deep (SCAN) search", n)
+		n, err := rc.scanSearch(rsc, qa, retFields, &qr)
+		if err != nil {
+			return qr, fmt.Errorf("(RedisCli) SCAN search failed: %v", err)
 		}
+		log.D("(RedisCli) Total of %d records were found with a deep (SCAN) search", n)
 	}
 
 	return qr, nil
@@ -51,7 +54,7 @@ func (rc *RedisClient) GetObjects(ids, retFields []string) (QueryResults, error)
 	q := rsh.NewQuery(rshQueryIDs(ids, &QueryArgs{}))
 
 	// Do search and return
-	return rshSearch(rsc, q, retFields), nil
+	return rshSearch(rsc, q, retFields)
 }
 
 func (rc *RedisClient) rschInit() (*rsh.Client, error) {
@@ -87,7 +90,7 @@ func (rc *RedisClient) rschInit() (*rsh.Client, error) {
 	return c, err
 }
 
-func rshSearch(cli *rsh.Client, q *rsh.Query, retFields []string) QueryResults {
+func rshSearch(cli *rsh.Client, q *rsh.Query, retFields []string) (QueryResults, error) {
 	// Offset from which matched documents should be selected
 	offset := 0
 
@@ -113,8 +116,7 @@ func rshSearch(cli *rsh.Client, q *rsh.Query, retFields []string) QueryResults {
 		// Do search
 		docs, total, err := cli.Search(q)
 		if err != nil {
-			log.D("(RedisCli) RediSearch returned %d records with error: %v", len(qr))
-			return qr
+			return qr, fmt.Errorf("(RedisCli) RediSearch returned %d records and failed: %v", len(qr), err)
 		}
 
 		log.D("(RedisCli) Scanned offset: %d .. %d, selected %d (total matched %d)", offset, offset + objsPerQuery, len(docs), total)
@@ -143,7 +145,8 @@ func rshSearch(cli *rsh.Client, q *rsh.Query, retFields []string) QueryResults {
 	// Return results
 	log.D("(RedisCli) RediSearch returned %d records", len(qr))
 
-	return qr
+	// OK
+	return qr, nil
 }
 
 func rshQueryIDs(ids []string, qa *QueryArgs) string {
@@ -352,13 +355,13 @@ func (rc *RedisClient) scanSearch(rsc *rsh.Client, qa *QueryArgs, retFields []st
 	// Make redisearch initial query
 	q := rsh.NewQuery(rshQueryIDs(ids, qa))
 	// Run search to get results by IDs
-	qr := rshSearch(rsc, q, retFields)
+	qr, err := rshSearch(rsc, q, retFields)
 	// Merge selected results with the previous results
 	for k, v := range qr {
 		(*qrTop)[k] = v
 	}
 
-	return len(qr), nil
+	return len(qr), err
 }
 
 func (rc *RedisClient) scanKeyMatch(match string, filter FilterFunc) ([]string, error) {

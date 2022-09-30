@@ -38,7 +38,10 @@ func (rc *RedisClient) ModifyAII(op DBOperator, args *AIIArgs, ids []string, add
 	// Create RediSearch query to get identifiers
 	q := rsh.NewQuery(rshQueryIDs(ids, qa))
 	// Run search to get results by IDs
-	qr := rshSearch(rsc, q, []string{FieldID})
+	qr, err := rshSearch(rsc, q, []string{FieldID})
+	if err != nil {
+		return 0, 0, fmt.Errorf("(RedisCli:ModifyAII) search failed: %v", err)
+	}
 
 	// Create map indentifiers found in DB
 	fids := make(idKeyMap, len(ids))
@@ -79,7 +82,6 @@ func (rc *RedisClient) ModifyAII(op DBOperator, args *AIIArgs, ids []string, add
 		default:
 			panic(fmt.Sprintf("Unsupported AAI modification operator %v", op))
 	}
-
 
 	// Unreachable
 	return -1, -1, nil
