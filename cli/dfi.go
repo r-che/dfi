@@ -38,7 +38,8 @@ func main() {
 	case c.Search():
 		err = doSearch(dbc)
 	case c.Show():
-		err = doShow(dbc)
+		rv := doShow(dbc)
+		err = rv.ErrsJoin(";")
 	case c.Set():
 		rv := doSet(dbc)
 		err = rv.ErrsJoin(";")	// TODO
@@ -49,6 +50,8 @@ func main() {
 	default:
 		panic("Unexpected application state - no one operating mode are set")
 	}
+
+	// TODO Need to process rv: Changed, errors, warnings
 
 	if err == nil {
 		if !c.Show() && !c.Search() {

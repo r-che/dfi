@@ -6,10 +6,10 @@ import (
 	"time"
 	"strconv"
 
+	"github.com/r-che/dfi/types"
 	"github.com/r-che/dfi/dbi"
 	"github.com/r-che/dfi/cli/internal/cfg"
 
-	"github.com/r-che/log"
 )
 
 var showObjFields = []string{
@@ -26,18 +26,28 @@ var showAIIFields = []string{
 	dbi.AIIFieldDescr,
 }
 
-func doShow(dbc dbi.DBClient) error {
+func doShow(dbc dbi.DBClient) *types.CmdRV {
 	// Get configuration
 	c := cfg.Config()
 
 	// Get identifiers list from configuration
 	ids := c.CmdArgs
 
+	// Function's return value
+	rv := types.NewCmdRV()
+
 	// Get objects list from DB
-	objs, errObjs := dbc.GetObjects(ids, showObjFields)
-	if errObjs != nil && len(objs) == 0 {
-		return fmt.Errorf("cannot get requested objects from DB: %v", errObjs)
+	objs, err := dbc.GetObjects(ids, showObjFields)
+	if err != nil {
+		// Append the error
+		rv.AddErr("cannot get requested objects from DB: %v", err)
+
+		if len(objs) == 0 {
+			// Nothing to do in such a case, just return error
+			return rv
+		}
 	}
+
 	// Check for not-found objects
 	if len(objs) != len(ids) {
 		// Some objects were not found
@@ -46,8 +56,7 @@ func doShow(dbc dbi.DBClient) error {
 			for objKey, fields := range objs {
 				id, ok := fields[dbi.FieldID]
 				if !ok {
-					// TODO Need to add output non-fatal errors to return instead of log message
-					log.E("Skip loaded object %q without identifier field %q", objKey, dbi.FieldID)
+					rv.AddWarn("Skip loaded object %q without identifier field %q", objKey, dbi.FieldID)
 					// Delete the invalid entry
 					delete(objs, objKey)
 
@@ -61,37 +70,24 @@ func doShow(dbc dbi.DBClient) error {
 				}
 			}
 			// rqId was not found in loaded identifiers
-			// TODO Need to add output non-fatal errors to return instead of log message
-			log.W("Object with id %q was not found", ids[i])
+			rv.AddWarn("Object with id %q was not found", ids[i])
 			// Remove not-found ID from ids slice
 			ids = append(ids[:i], ids[i+1:]...)
 		}
 	}
 
 	// Get AII for objects
-	aiis, errAIIs := dbc.GetAIIs(ids, showAIIFields)
-
-	printObjs(ids, objs, aiis, c.OneLine)
-
-	switch {
-	// No errors
-	case errObjs == nil && errAIIs == nil:
-		return nil
-	// Only objects related errors
-	case errAIIs == nil:
-		return fmt.Errorf("cannot get some objects from DB: %v", errObjs)
-	// Only AIIs related errors
-	case errObjs == nil:
-		return fmt.Errorf("cannot get additional information about some objects: %v", errAIIs)
-	// Both get operations returned errors
-	default:
-		return fmt.Errorf("cannot get some objects from DB: %v; " +
-			"cannot get additional information about some objects: %v",
-			errObjs, errAIIs)
+	aiis, err := dbc.GetAIIs(ids, showAIIFields)
+	if err != nil {
+		// Append error to return value
+		rv.AddErr("cannot get additional information about some objects: %v", err)
 	}
 
-	// Unreachable
-	return fmt.Errorf("Unreachable code")
+	// Print all found objects
+	printObjs(ids, objs, aiis, c.OneLine)
+
+	// Return results
+	return rv
 }
 
 func printObjs(ids []string, objs dbi.QueryResults, aiis map[string]map[string]string, oneLine bool) {

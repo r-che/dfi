@@ -9,7 +9,7 @@ import (
 type CmdRV struct {
 	Changed	int64
 	errs	[]string
-	Warns	[]string
+	wrns	[]string
 }
 
 func NewCmdRV() *CmdRV {
@@ -17,24 +17,13 @@ func NewCmdRV() *CmdRV {
 }
 
 func (rv *CmdRV) AddErr(args ...any) *CmdRV {
-	if rv.errs == nil {
-		rv.errs = []string{}
-	}
+	appendMsg(&rv.errs, args...)
+	return rv
+}
 
-	switch len(args) {
-		case 0:
-			// Do nothing
-		case 1:
-			rv.errs = append(rv.errs, fmt.Sprintf("%v", args[0]))
-		default:
-			if format, ok := args[0].(string); ok {
-				rv.errs = append(rv.errs, fmt.Sprintf(format, args[1:]...))
-			} else {
-				// Invalid value provided as format
-				rv.errs = append(rv.errs, fmt.Sprintf("!s(%v) %v", args[0], args[1:]))
-			}
-	}
 
+func (rv *CmdRV) AddWarn(args ...any) *CmdRV {
+	appendMsg(&rv.wrns, args...)
 	return rv
 }
 
@@ -49,4 +38,27 @@ func (rv *CmdRV) ErrsJoin(sep string) error {
 	}
 
 	return fmt.Errorf("%s", strings.Join(rv.errs, sep))
+}
+
+/*
+ * Auxiliary functions
+ */
+
+func appendMsg(list *[]string, args ...any) {
+	if *list == nil {
+		*list = []string{}
+	}
+	switch len(args) {
+		case 0:
+			// Do nothing
+		case 1:
+			(*list) = append(*list, fmt.Sprintf("%v", args[0]))
+		default:
+			if format, ok := args[0].(string); ok {
+				(*list) = append(*list, fmt.Sprintf(format, args[1:]...))
+			} else {
+				// Invalid value provided as format
+				(*list) = append(*list, fmt.Sprintf("!s(%v) %v", args[0], args[1:]))
+			}
+	}
 }
