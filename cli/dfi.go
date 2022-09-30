@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"os"
+
 	"github.com/r-che/dfi/types"
 	"github.com/r-che/dfi/cli/internal/cfg"
 	"github.com/r-che/dfi/dbi"
@@ -33,43 +35,64 @@ func main() {
 		log.F("Cannot initialize database client: %v", err)
 	}
 
-	var changed int64
-
 	var rv *types.CmdRV
 
 	switch {
 	case c.Search():
 		rv = doSearch(dbc)
-		err = rv.ErrsJoin(";")	// TODO
 	case c.Show():
 		rv = doShow(dbc)
-		err = rv.ErrsJoin(";")	// TODO
 	case c.Set():
 		rv = doSet(dbc)
-		err = rv.ErrsJoin(";")	// TODO
 	case c.Del():
 		rv = doDel(dbc)
-		err = rv.ErrsJoin(";")	// TODO
 	case c.Admin():
 		err = fmt.Errorf("not implemented") // TODO
 	default:
 		panic("Unexpected application state - no one operating mode are set")
 	}
 
-	// TODO Need to process rv: changed, found, errors, warnings
+	os.Exit(printStatus(rv))
+}
 
-	if err == nil {
-		if !c.Show() && !c.Search() {
-			fmt.Printf("OK - %d changed\n", changed)
-		}
+func printStatus(rv *types.CmdRV) int {
+	c := cfg.Config()
+
+	// Print warnings if occurred
+	for _, w := range rv.Warns() {
+		fmt.Println("WRN:", w)
+	}
+
+	// Print errors if occurred
+	for _, e := range rv.Errs() {
+		fmt.Println("ERR:", e)
+	}
+
+	pref := ""
+	if rv.OK() {
+		pref = "OK - "
+	}
+
+	if c.Show() || c.Search() {
+		fmt.Printf("%s%d objects found\n", pref, rv.Found())
 	} else {
-		if changed != 0 {
-			log.W("%d records were changed", changed)
-		}
-		log.F("Command error - %v", err)
+		fmt.Printf("%s%d changed\n", pref, rv.Changed())
 	}
 
 
-	log.D("%s %s finished normally", ProgNameLong, ProgVers)
+	log.D("%s %s finished", ProgNameLong, ProgVers)
 	log.Close()
+
+	if rv.OK() {
+		// OK
+		return 0
+	}
+
+	// Something went wrong
+	if len(rv.Errs()) != 0 {
+		return 3
+	}
+
+	// Only warnings otherwise
+	return 2
 }

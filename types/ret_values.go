@@ -45,6 +45,26 @@ func (rv *CmdRV) ErrsJoin(sep string) error {
 	return fmt.Errorf("%s", strings.Join(rv.errs, sep))
 }
 
+func (rv *CmdRV) Errs() []string {
+	return rv.errs
+}
+
+func (rv *CmdRV) Warns() []string {
+	return rv.wrns
+}
+
+func (rv *CmdRV) Changed() int64 {
+	return rv.changed
+}
+
+func (rv *CmdRV) Found() int64 {
+	return rv.found
+}
+
+func (rv *CmdRV) OK() bool {
+	return len(rv.errs) == 0 && len(rv.wrns) == 0
+}
+
 /*
  * Auxiliary functions
  */

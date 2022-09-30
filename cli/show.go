@@ -47,6 +47,7 @@ func doShow(dbc dbi.DBClient) *types.CmdRV {
 			return rv
 		}
 	}
+	rv.AddFound(int64(len(objs)))
 
 	// Check for not-found objects
 	if len(objs) != len(ids) {
