@@ -4,6 +4,7 @@ package dbi
 import (
 	"fmt"
 	"strings"
+	"strconv"
 
 	"github.com/r-che/log"
 	"github.com/gomodule/redigo/redis"
@@ -58,36 +59,36 @@ func (rc *RedisClient) GetObjects(ids, retFields []string) (QueryResults, error)
 }
 
 func (rc *RedisClient) rschInit() (*rsh.Client, error) {
-	// Client pointer
-	var c *rsh.Client
-
 	// Read username/password from private data if set
 	user, passw, err := userPasswd(rc.cfg.PrivCfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load username/password from private configuration: %v", err)
 	}
 
-	// Is password set?
-	if passw != "" {
-		// Need to create pool to provide authentication ability
-		pool := &redis.Pool{
-			Dial: func() (redis.Conn, error) {
-				return redis.Dial("tcp", rc.cfg.HostPort,
-					redis.DialUsername(user),
-					redis.DialPassword(passw),
-				)
-			},
-		}
-
-		// Create client from pool
-		c = rsh.NewClientFromPool(pool, metaRschIdx)
-	} else {
-		// Create a simple client
-		c = rsh.NewClient(rc.cfg.HostPort, metaRschIdx)
+	// Convert string representation of database identifier to numeric database index
+	dbid, err := strconv.ParseUint(rc.cfg.ID, 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("(RedisCli:rschInit) cannot convert database identifier value to unsigned integer: %v", err)
 	}
 
-	// OK
-	return c, err
+	// Create pool to have ability to provide authentication and database identifier
+	pool := &redis.Pool{
+		Dial: func() (redis.Conn, error) {
+			if passw == "" {
+				// Simple dial
+				return redis.Dial("tcp", rc.cfg.HostPort, redis.DialDatabase(int(dbid)))
+			}
+			// Dial with authentication
+			return redis.Dial("tcp", rc.cfg.HostPort,
+				redis.DialDatabase(int(dbid)),
+				redis.DialUsername(user),
+				redis.DialPassword(passw),
+			)
+		},
+	}
+
+	// OK, return client from pool
+	return rsh.NewClientFromPool(pool, metaRschIdx), nil
 }
 
 func rshSearch(cli *rsh.Client, q *rsh.Query, retFields []string) (QueryResults, error) {
