@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/r-che/dfi/types"
 	"github.com/r-che/dfi/cli/internal/cfg"
 	"github.com/r-che/dfi/dbi"
 
@@ -34,14 +35,17 @@ func main() {
 
 	var changed int64
 
+	var rv *types.CmdRV
+
 	switch {
 	case c.Search():
-		err = doSearch(dbc)
+		rv = doSearch(dbc)
+		err = rv.ErrsJoin(";")
 	case c.Show():
-		rv := doShow(dbc)
+		rv = doShow(dbc)
 		err = rv.ErrsJoin(";")
 	case c.Set():
-		rv := doSet(dbc)
+		rv = doSet(dbc)
 		err = rv.ErrsJoin(";")	// TODO
 	case c.Del():
 		changed, err = doDel(dbc)
@@ -51,7 +55,7 @@ func main() {
 		panic("Unexpected application state - no one operating mode are set")
 	}
 
-	// TODO Need to process rv: Changed, errors, warnings
+	// TODO Need to process rv: changed, found, errors, warnings
 
 	if err == nil {
 		if !c.Show() && !c.Search() {

@@ -4,11 +4,12 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/r-che/dfi/types"
 	"github.com/r-che/dfi/dbi"
 	"github.com/r-che/dfi/cli/internal/cfg"
 )
 
-func doSearch(dbc dbi.DBClient) error {
+func doSearch(dbc dbi.DBClient) *types.CmdRV {
 	// Get configuration
 	c := cfg.Config()
 
@@ -21,7 +22,7 @@ func doSearch(dbc dbi.DBClient) error {
 
 	qr, err := dbc.Query(c.QueryArgs(), rqFields)
 	if err != nil {
-		return err
+		return types.NewCmdRV().AddErr("cannot execute DB query to show requested objects: %v", err)
 	}
 
 	// Print results
@@ -34,7 +35,7 @@ func doSearch(dbc dbi.DBClient) error {
 	}
 
 	// OK
-	return nil
+	return types.NewCmdRV().AddFound(int64(len(qr)))
 }
 
 func printResHG(qr dbi.QueryResults, printID bool) {

@@ -7,7 +7,8 @@ import (
 
 // Command return value
 type CmdRV struct {
-	Changed	int64
+	changed	int64
+	found	int64
 	errs	[]string
 	wrns	[]string
 }
@@ -21,14 +22,18 @@ func (rv *CmdRV) AddErr(args ...any) *CmdRV {
 	return rv
 }
 
-
 func (rv *CmdRV) AddWarn(args ...any) *CmdRV {
 	appendMsg(&rv.wrns, args...)
 	return rv
 }
 
 func (rv *CmdRV) AddChanged(v int64) *CmdRV {
-	rv.Changed += v
+	rv.changed += v
+	return rv
+}
+
+func (rv *CmdRV) AddFound(v int64) *CmdRV {
+	rv.found += v
 	return rv
 }
 
