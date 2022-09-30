@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/r-che/dfi/types"
@@ -15,24 +14,23 @@ func doDel(dbc dbi.DBClient) *types.CmdRV {
 	// Get configuration
 	c := cfg.Config()
 
-	var err error
-	var changed int64
-
 	switch {
 		case c.UseTags:
-			changed, err = delTags(dbc, c.CmdArgs[0], c.CmdArgs[1:])
+			return delTags(dbc, c.CmdArgs[0], c.CmdArgs[1:])
 		case c.UseDescr:
-			changed, err = delDescr(dbc, c.CmdArgs)
+			return delDescr(dbc, c.CmdArgs)
 		default:
 			panic("unexpected set mode")
 	}
 
-	return types.NewCmdRV().AddChanged(changed).AddErr(err)
+	return types.NewCmdRV().AddErr("unreacable code reached")
 }
 
-func delTags(dbc dbi.DBClient, tagsStr string, ids []string) (int64, error) {
+func delTags(dbc dbi.DBClient, tagsStr string, ids []string) *types.CmdRV {
 	// Get configuration
 	c := cfg.Config()
+
+	rv := types.NewCmdRV()
 
 	log.D("Delete tags %q from: %v", tagsStr, ids)
 
@@ -57,29 +55,30 @@ func delTags(dbc dbi.DBClient, tagsStr string, ids []string) (int64, error) {
 		}
 	}
 	if len(tags) == 0 {
-		return 0, fmt.Errorf("invalid tags value from command line: %q", tagsStr)
+		return rv.AddErr("invalid tags value from command line: %q", tagsStr)
 	}
 
 	args := &dbi.AIIArgs{Tags: tags}
 	changed, _, err := dbc.ModifyAII(dbi.Delete, args, ids, c.SetAdd)
 	if err != nil {
-		return changed, fmt.Errorf("cannot delete tags: %v", err)
+		rv.AddErr("cannot delete tags: %v", err)
 	}
 
-	// OK
-	return changed, nil
+	return rv.AddChanged(changed)
 }
 
-func delDescr(dbc dbi.DBClient, ids []string) (int64, error) {
+func delDescr(dbc dbi.DBClient, ids []string) *types.CmdRV {
 	log.D("Delete description for: %v", ids)
+
+	rv := types.NewCmdRV()
 
 	// Trim spaces from description and set it to argumets
 	args := &dbi.AIIArgs{Descr: dbi.AIIDelDescr}
 	_, updated, err := dbc.ModifyAII(dbi.Delete, args, ids, false)
 	if err != nil {
-		return updated, fmt.Errorf("cannot delete description: %v", err)
+		rv.AddErr("cannot delete description: %v", err)
 	}
 
 	// OK
-	return updated, nil
+	return rv.AddChanged(updated)
 }
