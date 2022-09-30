@@ -60,12 +60,12 @@ func printStatus(rv *types.CmdRV) int {
 
 	// Print warnings if occurred
 	for _, w := range rv.Warns() {
-		fmt.Println("WRN:", w)
+		fmt.Fprintf(os.Stderr, "WRN: %s\n", w)
 	}
 
 	// Print errors if occurred
 	for _, e := range rv.Errs() {
-		fmt.Println("ERR:", e)
+		fmt.Fprintf(os.Stderr, "ERR: %s\n", e)
 	}
 
 	pref := ""
@@ -74,7 +74,10 @@ func printStatus(rv *types.CmdRV) int {
 	}
 
 	if c.Show() || c.Search() {
-		fmt.Printf("%s%d objects found\n", pref, rv.Found())
+		// Ignore status output in show mode with --one-line key
+		if !(c.Show() && c.OneLine) {
+			fmt.Printf("%s%d objects found\n", pref, rv.Found())
+		}
 	} else {
 		fmt.Printf("%s%d changed\n", pref, rv.Changed())
 	}
