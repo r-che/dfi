@@ -1,17 +1,17 @@
 package main
 
 import (
-	"fmt"
 	"strings"
 	"sort"
 
+	"github.com/r-che/dfi/types"
 	"github.com/r-che/dfi/dbi"
 	"github.com/r-che/dfi/cli/internal/cfg"
 
 	"github.com/r-che/log"
 )
 
-func doSet(dbc dbi.DBClient) (int64, error) {
+func doSet(dbc dbi.DBClient) *types.CmdRV {
 	// Get configuration
 	c := cfg.Config()
 
@@ -28,10 +28,10 @@ func doSet(dbc dbi.DBClient) (int64, error) {
 	}
 
 	// Unreachable
-	return -1, fmt.Errorf("Unreachable code")
+	return types.NewCmdRV().AddErr("Unreachable code")
 }
 
-func setTags(dbc dbi.DBClient, tagsStr string, ids []string) (int64, error) {
+func setTags(dbc dbi.DBClient, tagsStr string, ids []string) *types.CmdRV {
 	// Get configuration
 	c := cfg.Config()
 
@@ -45,7 +45,8 @@ func setTags(dbc dbi.DBClient, tagsStr string, ids []string) (int64, error) {
 
 		// Check tag for special value forbidden to set
 		if tags[i] == dbi.AIIAllTags {
-			return 0, fmt.Errorf("tag value %q is a special value that cannot be used as a tag", dbi.AIIAllTags)
+			return types.NewCmdRV().
+				AddErr("tag value %q is a special value that cannot be used as a tag", dbi.AIIAllTags)
 		}
 
 		// Remove empty tags
@@ -56,7 +57,7 @@ func setTags(dbc dbi.DBClient, tagsStr string, ids []string) (int64, error) {
 		}
 	}
 	if len(tags) == 0 {
-		return 0, fmt.Errorf("invalid tags value from command line: %q", tagsStr)
+		return types.NewCmdRV().AddErr("invalid tags value from command line: %q", tagsStr)
 	}
 
 	// Sort list of tags
@@ -64,14 +65,16 @@ func setTags(dbc dbi.DBClient, tagsStr string, ids []string) (int64, error) {
 
 	updated, _, err := dbc.ModifyAII(dbi.Update, &dbi.AIIArgs{Tags: tags}, ids, c.SetAdd)
 	if err != nil {
-		return updated, fmt.Errorf("cannot set tags: %v", err)
+		return types.NewCmdRV().
+			AddChanged(updated).
+			AddErr("cannot set tags: %v", err)
 	}
 
 	// OK
-	return updated, nil
+	return types.NewCmdRV().AddChanged(updated)
 }
 
-func setDescr(dbc dbi.DBClient, descr string, ids []string) (int64, error) {
+func setDescr(dbc dbi.DBClient, descr string, ids []string) *types.CmdRV {
 	// Get configuration
 	c := cfg.Config()
 
@@ -81,9 +84,11 @@ func setDescr(dbc dbi.DBClient, descr string, ids []string) (int64, error) {
 	args := &dbi.AIIArgs{Descr: strings.TrimSpace(descr), NoNL: c.NoNL}
 	_, updated, err := dbc.ModifyAII(dbi.Update, args, ids, c.SetAdd)
 	if err != nil {
-		return updated, fmt.Errorf("cannot set description: %v", err)
+		return types.NewCmdRV().
+			AddChanged(updated).
+			AddErr("cannot set description: %v", err)
 	}
 
 	// OK
-	return updated, nil
+	return types.NewCmdRV().AddChanged(updated)
 }

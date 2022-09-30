@@ -40,7 +40,8 @@ func main() {
 	case c.Show():
 		err = doShow(dbc)
 	case c.Set():
-		changed, err = doSet(dbc)
+		rv := doSet(dbc)
+		err = rv.ErrsJoin(";")	// TODO
 	case c.Del():
 		changed, err = doDel(dbc)
 	case c.Admin():
