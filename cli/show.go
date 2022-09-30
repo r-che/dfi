@@ -49,29 +49,40 @@ func doShow(dbc dbi.DBClient) *types.CmdRV {
 	}
 	rv.AddFound(int64(len(objs)))
 
+	// Check loaded object for correctness
+	for objKey, fields := range objs {
+		id, ok := fields[dbi.FieldID]
+		if !ok {
+			rv.AddWarn("Skip loaded object %q without identifier field %q", objKey, dbi.FieldID)
+			// Delete the invalid entry
+			delete(objs, objKey)
+
+			continue
+		}
+
+		// Check that ID has a correct type
+		if _, ok := id.(string); !ok {
+			rv.AddWarn("Skip loaded object %q due to identifier field %q is not a string: %v", objKey, dbi.FieldID, id)
+			// Delete the invalid entry
+			delete(objs, objKey)
+		}
+	}
+
 	// Check for not-found objects
 	if len(objs) != len(ids) {
 		// Some objects were not found
 		checkId:
 		for i := 0; i < len(ids); {
-			for objKey, fields := range objs {
-				id, ok := fields[dbi.FieldID]
-				if !ok {
-					rv.AddWarn("Skip loaded object %q without identifier field %q", objKey, dbi.FieldID)
-					// Delete the invalid entry
-					delete(objs, objKey)
-
-					continue
-				}
+			for _, fields := range objs {
 				// Check that extracted identifier is equal requested identifier
-				if id == ids[i] {
+				if fields[dbi.FieldID] == ids[i] {
 					// Ok, requested identifier found, check next
 					i++
 					continue checkId
 				}
 			}
 			// rqId was not found in loaded identifiers
-			rv.AddWarn("Object with id %q was not found", ids[i])
+			rv.AddWarn("Object with ID %q was not found or is incorrect", ids[i])
 			// Remove not-found ID from ids slice
 			ids = append(ids[:i], ids[i+1:]...)
 		}
@@ -154,21 +165,35 @@ func printObj(objKey dbi.QRKey, fields map[string]any, aii map[string]string) {
 	// Common object's information
 	fmt.Printf("Host:      %s\n", objKey.Host)
 	fmt.Printf("Path:      %s\n", objKey.Path)
+
 	// Is real path was set
 	if rp := fields[dbi.FieldRPath]; rp != "" {
 		fmt.Printf("Real path: %s\n", rp)
 	}
+
 	fmt.Printf("Type:      %s\n", fields[dbi.FieldType])
 	fmt.Printf("Size:      %s\n", fields[dbi.FieldSize])
-	// Convert string Unix timestamp to integer value
-	ts, err := strconv.ParseInt(fields[dbi.FieldMTime].(string), 10, 64)
-	if err == nil {
-		fmt.Printf("MTime:     %s (Unix: %s)\n",
-			time.Unix(ts, 0).Format("2006-01-02 15:04:05 MST"),
-			fields[dbi.FieldMTime])
-	} else {
-		fmt.Printf("MTime:    INVALID VALUE %q - %v\n", fields[dbi.FieldMTime], err)
+
+	// Check for mtime field found
+	if mtime, ok := fields[dbi.FieldMTime]; ok {
+		// Convert interface{} to string
+		mtimeStr, ok := mtime.(string)
+		if !ok {
+			// Set mtimeStr to invalid value
+			mtimeStr = fmt.Sprintf("non-string %v", mtime)
+		}
+
+		// Convert string Unix timestamp to integer value
+		ts, err := strconv.ParseInt(mtimeStr, 10, 64)
+		if err == nil {
+			fmt.Printf("MTime:     %s (Unix: %s)\n",
+				time.Unix(ts, 0).Format("2006-01-02 15:04:05 MST"),
+				mtimeStr)
+		} else {
+			fmt.Printf("MTime:    INVALID VALUE %q - %v\n", mtimeStr, err)
+		}
 	}
+
 	// Is checksum was set
 	if csum := fields[dbi.FieldChecksum]; csum != "" {
 		fmt.Printf("Checksum:  %s\n", csum)
@@ -176,7 +201,6 @@ func printObj(objKey dbi.QRKey, fields map[string]any, aii map[string]string) {
 
 	// Print additional information if exists
 	if len(aii) != 0 {
-		fmt.Println("-- Additional information --")
 		if tags := aii[dbi.AIIFieldTags]; tags != "" {
 			fmt.Printf("Tags:      %s\n", aii[dbi.AIIFieldTags])
 		}
