@@ -40,15 +40,16 @@ func main() {
 	switch {
 	case c.Search():
 		rv = doSearch(dbc)
-		err = rv.ErrsJoin(";")
+		err = rv.ErrsJoin(";")	// TODO
 	case c.Show():
 		rv = doShow(dbc)
-		err = rv.ErrsJoin(";")
+		err = rv.ErrsJoin(";")	// TODO
 	case c.Set():
 		rv = doSet(dbc)
 		err = rv.ErrsJoin(";")	// TODO
 	case c.Del():
-		changed, err = doDel(dbc)
+		rv = doDel(dbc)
+		err = rv.ErrsJoin(";")	// TODO
 	case c.Admin():
 		err = fmt.Errorf("not implemented") // TODO
 	default:

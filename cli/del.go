@@ -4,13 +4,14 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/r-che/dfi/types"
 	"github.com/r-che/dfi/dbi"
 	"github.com/r-che/dfi/cli/internal/cfg"
 
 	"github.com/r-che/log"
 )
 
-func doDel(dbc dbi.DBClient) (int64, error) {
+func doDel(dbc dbi.DBClient) *types.CmdRV {
 	// Get configuration
 	c := cfg.Config()
 
@@ -26,7 +27,7 @@ func doDel(dbc dbi.DBClient) (int64, error) {
 			panic("unexpected set mode")
 	}
 
-	return changed, err
+	return types.NewCmdRV().AddChanged(changed).AddErr(err)
 }
 
 func delTags(dbc dbi.DBClient, tagsStr string, ids []string) (int64, error) {
