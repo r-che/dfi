@@ -148,7 +148,7 @@ func printObjOL(objKey dbi.QRKey, fields map[string]any, aii map[string]string) 
 		val, ok := aii[field]
 		// If value empty/not set
 		if !ok {
-			res = append(res, `""`)
+			res = append(res, field + `:""`)
 			continue
 		}
 
