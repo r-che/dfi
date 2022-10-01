@@ -29,6 +29,7 @@ type progConfig struct {
 	orExpr		bool
 	negExpr		bool
 	onlyName	bool
+	onlyTags	bool
 	deepSearch	bool
 	printID		bool
 	hostGroups	bool
@@ -208,6 +209,8 @@ func (pc *progConfig) prepareSearch() error {
 	pc.qArgs.SetOr(pc.orExpr)
 	pc.qArgs.SetNeg(pc.negExpr)
 	pc.qArgs.SetOnlyName(pc.onlyName)
+	pc.qArgs.SetUseTags(pc.UseTags)
+	pc.qArgs.SetOnlyTags(pc.onlyTags)
 	pc.qArgs.SetDeep(pc.deepSearch)
 
 	// Check for sufficient conditions for search

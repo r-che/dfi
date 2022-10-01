@@ -37,7 +37,7 @@ func doSearch(dbc dbi.DBClient) *types.CmdRV {
 	}
 
 	// OK
-	return types.NewCmdRV().AddFound(int64(len(qr)))
+	return rv.AddFound(int64(len(qr)))
 }
 
 func printResHG(qr dbi.QueryResults, printID bool) {

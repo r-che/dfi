@@ -42,7 +42,8 @@ func Init(name string) {
 	p.AddString(`host`, `set of hosts when object may be located`, &config.hosts, anyVal)
 	p.AddBool(`or`, `use OR instead of AND between conditions`, &config.orExpr, false)
 	p.AddBool(`not`, `use negative expression`, &config.negExpr, false)
-	p.AddBool(`only-name|O`, `use only file name to match search phrases`, &config.onlyName, false)
+	p.AddBool(`only-name|N`, `use only file name to match search phrases`, &config.onlyName, false)
+	p.AddBool(`only-tags|T`, `use only tags field to match search phrases, implicitly enables --tags`, &config.onlyTags, false)
 	p.AddBool(`deep|D`, `use additional DBMS dependent features (can slow down)`, &config.deepSearch, false)
 	// Output related options
 	p.AddBool(`with-ids|I`, `print ID at the beginning of the output lines`, &config.printID, false)
@@ -73,7 +74,7 @@ func Init(name string) {
 	p.AddSeparator(">> General options")
 	p.AddString(`cfg|c`, `path to configuration file`, &config.confPath, progConfigDefault)
 	p.AddBool(`debug|d`, `enable debug logging`, &config.Debug, false)
-	p.AddBool(`nologts|N`, `disable log timestamps`, &config.NoLogTS, false)
+	p.AddBool(`nologts`, `disable log timestamps`, &config.NoLogTS, false)
 
 	// Parse options
 	p.Parse()

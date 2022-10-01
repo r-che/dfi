@@ -11,14 +11,26 @@ import (
     rsh "github.com/RediSearch/redisearch-go/redisearch"
 )
 
-const metaRschIdx = "obj-meta-idx"
-const objsPerQuery = 1000
+const (
+	metaRschIdx		=	"obj-meta-idx"
+	aiiRschIdx		=	"aii-idx"
+	objsPerQuery	=	1000
+)
 
 func (rc *RedisClient) Query(qa *QueryArgs, retFields []string) (QueryResults, error) {
 	// Get RediSearch client
-	rsc, err := rc.rschInit()
+	rsc, err := rc.rschInit(metaRschIdx)
 	if err != nil {
 		return nil, fmt.Errorf("(RedisCli) cannot initialize RediSearch client: %v", err)
+	}
+
+	// Check for search by AII enabled
+	if qa.UseAII() {
+		// TODO Need to handle return values
+		_, err := rc.queryAII(qa)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Make initial query
@@ -44,9 +56,94 @@ func (rc *RedisClient) Query(qa *QueryArgs, retFields []string) (QueryResults, e
 	return qr, nil
 }
 
+func (rc *RedisClient) queryAII(qa *QueryArgs) (any, error) {
+	// Get RediSearch client to search by additional information items
+	rsc, err := rc.rschInit(aiiRschIdx)
+	if err != nil {
+		return nil, fmt.Errorf("(RedisCli:queryAII) cannot initialize RediSearch client: %v", err)
+	}
+
+	var chunks []string
+
+	// Check for need to use tags
+	if qa.useTags {
+		chunks = append(chunks, `@` + AIIFieldTags + `:{` +  strings.Join(qa.sp, `|`) + `}`)
+	}
+
+	// TODO Check for need to use description
+
+	// Make query to search by AII fields
+	q := rsh.NewQuery(strings.Join(chunks, ` | `))
+
+	keys, err := rshSearchAII(rsc, q)
+	if err != nil {
+		return nil, fmt.Errorf("(RedisCli:queryAII) cannot execute query: %v", err)
+	}
+
+	fmt.Println(keys)	// TODO
+
+	// TODO
+	return nil, nil
+}
+
+func rshSearchAII(cli *rsh.Client, q *rsh.Query) ([]string, error) {
+	// Offset from which matched documents should be selected
+	offset := 0
+
+	// Content is not needed - only keys should be returned
+	q.SetFlags(rsh.QueryNoContent)
+
+	// log.D("(RedisCli:rshSearchAII) Prepared RediSearch query string: %v", q.Raw)	// XXX Raw query may be too long
+
+	// Output result
+	ids := make([]string, 0, 32)	// 32 - should probably be enough for most cases on average
+
+	// Total selected docs
+	totDocs := 0
+
+	// Key prefix length
+	kpl := len(RedisAIIPrefix)
+
+	for {
+		// Update query to set offset/limit
+		q.Limit(offset, objsPerQuery)
+
+		// Do search
+		docs, total, err := cli.Search(q)
+		if err != nil {
+			return ids, fmt.Errorf("(RedisCli:rshSearchAII) RediSearch returned %d records and failed: %v", len(ids), err)
+		}
+
+		log.D("(RedisCli) Scanned offset: %d .. %d, selected %d (total matched %d)", offset, offset + objsPerQuery, len(docs), total)
+
+		// Convert scanned documents to output result
+		for _, doc := range docs {
+			if len(doc.Id) <= kpl {
+				log.E("RedisCli:rshSearchAII) Found invalid AII with too short key %q, skip it", doc.Id)
+				continue
+			}
+			ids = append(ids, doc.Id[len(RedisAIIPrefix):])
+		}
+
+		// Check for number of total matched documents reached total - no more docs to scan
+		if totDocs += len(docs); totDocs >= total {
+			break
+		}
+
+		// Update offset
+		offset += objsPerQuery
+	}
+
+	// Return results
+	log.D("(RedisCli:rshSearchAII) RediSearch returned %d records", len(ids))
+
+	// OK
+	return ids, nil
+}
+
 func (rc *RedisClient) GetObjects(ids, retFields []string) (QueryResults, error) {
 	// Get RediSearch client
-	rsc, err := rc.rschInit()
+	rsc, err := rc.rschInit(metaRschIdx)
 	if err != nil {
 		return nil, fmt.Errorf("(RedisCli:GetObjects) cannot initialize RediSearch client: %v", err)
 	}
@@ -58,7 +155,7 @@ func (rc *RedisClient) GetObjects(ids, retFields []string) (QueryResults, error)
 	return rshSearch(rsc, q, retFields)
 }
 
-func (rc *RedisClient) rschInit() (*rsh.Client, error) {
+func (rc *RedisClient) rschInit(rschIdx string) (*rsh.Client, error) {
 	// Read username/password from private data if set
 	user, passw, err := userPasswd(rc.cfg.PrivCfg)
 	if err != nil {
@@ -96,7 +193,7 @@ func (rc *RedisClient) rschInit() (*rsh.Client, error) {
 	}
 
 	// OK, return client from pool
-	return rsh.NewClientFromPool(pool, metaRschIdx), nil
+	return rsh.NewClientFromPool(pool, rschIdx), nil
 }
 
 func rshSearch(cli *rsh.Client, q *rsh.Query, retFields []string) (QueryResults, error) {

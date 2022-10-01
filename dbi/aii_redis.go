@@ -24,7 +24,7 @@ func (ikm idKeyMap) String() string {
 
 func (rc *RedisClient) ModifyAII(op DBOperator, args *AIIArgs, ids []string, add bool) (int64, int64, error) {
 	// 0. Get RediSearch client
-	rsc, err := rc.rschInit()
+	rsc, err := rc.rschInit(metaRschIdx)
 	if err != nil {
 		return 0, 0, fmt.Errorf("(RedisCli:ModifyAII) cannot initialize RediSearch client: %v", err)
 	}

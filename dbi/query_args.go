@@ -33,12 +33,20 @@ type QueryArgs struct {
 	orExpr		bool
 	negExpr		bool
 	onlyName	bool
+	useTags		bool
+	onlyTags	bool
 	deep		bool
 }
 
 func NewQueryArgs(searchPhrases []string) *QueryArgs {
+	// Trim possible leading and trailing white spaces
+	sp := make([]string, 0, len(searchPhrases))
+	for _, s := range searchPhrases {
+		sp = append(sp, strings.TrimSpace(s))
+	}
+
 	return &QueryArgs{
-		sp: searchPhrases,
+		sp: sp,
 	}
 }
 
@@ -104,6 +112,10 @@ func (qa *QueryArgs) CanSearch(searchPhrases []string) bool {
 
 	// Insufficient
 	return false
+}
+
+func (qa *QueryArgs) UseAII() bool {
+	return qa.useTags /* TODO || qa.useDescr */
 }
 
 func (qa *QueryArgs) ParseMtimes(mtimeLine string) error {
@@ -391,18 +403,29 @@ func (qa *QueryArgs) ParseHosts(hostsLine string) error {
 	return nil
 }
 
-func (qa *QueryArgs) SetNeg(neg bool) {
-	qa.negExpr = neg
+func (qa *QueryArgs) SetNeg(v bool) {
+	qa.negExpr = v
 }
 
-func (qa *QueryArgs) SetOnlyName(onlyName bool) {
-	qa.onlyName = onlyName
+func (qa *QueryArgs) SetOnlyName(v bool) {
+	qa.onlyName = v
 }
 
-func (qa *QueryArgs) SetOr(or bool) {
-	qa.orExpr = or
+func (qa *QueryArgs) SetUseTags(v bool) {
+	qa.useTags = v
 }
 
-func (qa *QueryArgs) SetDeep(deep bool) {
-	qa.deep = deep
+func (qa *QueryArgs) SetOnlyTags(v bool) {
+	if v {
+		qa.useTags = true
+	}
+	qa.onlyTags = v
+}
+
+func (qa *QueryArgs) SetOr(v bool) {
+	qa.orExpr = v
+}
+
+func (qa *QueryArgs) SetDeep(v bool) {
+	qa.deep = v
 }
