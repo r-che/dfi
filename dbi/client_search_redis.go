@@ -66,7 +66,14 @@ func (rc *RedisClient) queryAII(qa *QueryArgs) ([]string, error) {
 
 	// Check for need to use tags
 	if qa.useTags {
-		chunks = append(chunks, `@` + AIIFieldTags + `:{` +  strings.Join(qa.sp, `|`) + `}`)
+		// Tags should be escaped to avoid syntax error on stop words
+		// * https://redis.io/docs/stack/search/reference/tags/ - Tags that contain multiple words
+		// ** https://redis.io/docs/stack/search/reference/stopwords/
+		escapedTags := make([]string, 0, len(qa.sp))	// TODO commit this
+		for _, tag := range qa.sp {
+			escapedTags= append(escapedTags, strings.ReplaceAll(tag, " ", `\ `))
+		}
+		chunks = append(chunks, `@` + AIIFieldTags + `:{` +  strings.Join(escapedTags, `|`) + `}`)
 	}
 
 	// TODO Check for need to use description
@@ -90,6 +97,8 @@ func rshSearchAII(cli *rsh.Client, q *rsh.Query) ([]string, error) {
 
 	// Content is not needed - only keys should be returned
 	q.SetFlags(rsh.QueryNoContent)
+
+	//log.D("(RedisCli) Prepared RediSearch query string: %v", q.Raw)	// XXX Raw query may be too long
 
 	// Output result
 	ids := make([]string, 0, 32)	// 32 - should probably be enough for most cases on average
@@ -203,7 +212,7 @@ func rshSearch(cli *rsh.Client, q *rsh.Query, retFields []string) (QueryResults,
 		q.SetFlags(rsh.QueryNoContent)
 	}
 
-	// log.D("(RedisCli) Prepared RediSearch query string: %v", q.Raw)	// XXX Raw query may be too long
+	//log.D("(RedisCli) Prepared RediSearch query string: %v", q.Raw)	// XXX Raw query may be too long
 
 	// Output result
 	qr := make(QueryResults, 32)	// 32 - should probably be enough for most cases on average
@@ -285,7 +294,7 @@ func rshQuerySP(qa *QueryArgs) string {
 		} else {
 			// Use the found path and real path fields to search
 			chunks = append(chunks,
-				fmt.Sprintf(`@%[1]s:%[3]s | @%[2]s:%[3]s`, FieldFPath, FieldRPath, strings.Join(spLower, `|`)))
+				fmt.Sprintf(`(@%[1]s|%[2]s:%[3]s)`, FieldFPath, FieldRPath, strings.Join(spLower, `|`)))
 		}
 	}
 
