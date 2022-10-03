@@ -30,6 +30,12 @@ func (rc *RedisClient) Query(qa *QueryArgs, retFields []string) (QueryResults, e
 		if err != nil {
 			return nil, err
 		}
+
+		// Check for only AII should be used in search
+		if qa.onlyAII() && !qa.isIds() {
+			// No identifiers, the nothing was found in AII - return empty result
+			return nil, nil
+		}
 	}
 
 	// Make initial query
@@ -66,27 +72,23 @@ func (rc *RedisClient) queryAII(qa *QueryArgs) ([]string, error) {
 
 	// Check for need to use tags
 	if qa.useTags {
-		// Tags should be escaped to avoid syntax error on stop words
-		// * https://redis.io/docs/stack/search/reference/tags/ - Tags that contain multiple words
-		// ** https://redis.io/docs/stack/search/reference/stopwords/
-		escapedTags := make([]string, 0, len(qa.sp))	// TODO commit this
-		for _, tag := range qa.sp {
-			escapedTags= append(escapedTags, strings.ReplaceAll(tag, " ", `\ `))
-		}
-		chunks = append(chunks, `@` + AIIFieldTags + `:{` +  strings.Join(escapedTags, `|`) + `}`)
+		chunks = append(chunks, `(@` + AIIFieldTags + `:{` +  strings.Join(qa.sp, `|`) + `})`)
 	}
 
-	// TODO Check for need to use description
+	// Check for need to use description
+	if qa.useDescr {
+		chunks = append(chunks, `(@` + AIIFieldDescr + `:` +  strings.Join(qa.sp, `|`) + `)` )
+	}
 
 	// Make query to search by AII fields
 	q := rsh.NewQuery(strings.Join(chunks, ` | `))
 
 	ids, err := rshSearchAII(rsc, q)
 	if err != nil {
-		return nil, fmt.Errorf("(RedisCli:queryAII) cannot execute query: %v", err)
+		return nil, fmt.Errorf("(RedisCli:queryAII) cannot execute query %q: %v", q.Raw, err)
 	}
 
-	log.D("(RedisCli:queryAII) AII search (tags: %t descr: %t) found identifiers: %v", qa.useTags, false /*TODO*/, ids)
+	log.D("(RedisCli:queryAII) AII search (tags: %t descr: %t) found identifiers: %v", qa.useTags, qa.useDescr, ids)
 
 	return ids, nil
 }
@@ -279,7 +281,7 @@ func rshQuerySP(qa *QueryArgs) string {
 
 	chunks := make([]string, 0, 2)
 
-	if len(qa.sp) != 0 && !qa.onlyTags {
+	if len(qa.sp) != 0 && !qa.onlyAII() {
 		// XXX Convert of search phrase values to lowercase because RediSearch
 		// XXX does not fully support case insensitivity for non-English locales
 		spLower := make([]string, 0, len(qa.sp))
@@ -290,7 +292,7 @@ func rshQuerySP(qa *QueryArgs) string {
 		// Make search phrases query - try to search them in found path and real path
 		if qa.onlyName {
 			// Use only the "name" field to search
-			chunks = append(chunks, fmt.Sprintf(`@%s:%s`, FieldName, strings.Join(spLower, `|`)))
+			chunks = append(chunks, fmt.Sprintf(`(@%s:%s)`, FieldName, strings.Join(spLower, `|`)))
 		} else {
 			// Use the found path and real path fields to search
 			chunks = append(chunks,
@@ -302,7 +304,12 @@ func rshQuerySP(qa *QueryArgs) string {
 		chunks = append(chunks, `@` + FieldID + `:{` +  strings.Join(qa.ids, `|`) + `}`)
 	}
 
-	// Make a summary query with search phrases
+	if len(chunks) == 0 {
+		// No search phrases/AII data was provided, use only query arguments
+		return rshArgsQuery(qa)
+	}
+
+	// Make a summary query with search phrases/AII data + query arguments
 	return `(` + strings.Join(chunks, ` | `) + `)` + ` ` + rshArgsQuery(qa)
 }
 

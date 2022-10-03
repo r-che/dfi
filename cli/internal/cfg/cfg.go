@@ -44,6 +44,7 @@ func Init(name string) {
 	p.AddBool(`not`, `use negative expression`, &config.negExpr, false)
 	p.AddBool(`only-name|N`, `use only file name to match search phrases`, &config.onlyName, false)
 	p.AddBool(`only-tags|T`, `use only tags field to match search phrases, implicitly enables --tags`, &config.onlyTags, false)
+	p.AddBool(`only-descr`, `use only description field to match search phrases, implicitly enables --descr`, &config.onlyDescr, false)
 	p.AddBool(`deep|D`, `use additional DBMS dependent features (can slow down)`, &config.deepSearch, false)
 	// Output related options
 	p.AddBool(`with-ids|I`, `print ID at the beginning of the output lines`, &config.printID, false)
@@ -62,8 +63,8 @@ func Init(name string) {
 	// Other modes common options
 	p.AddSeparator(``)
 	p.AddSeparator(`>> Options common to several modes`)
-	p.AddBool(`tags|t`, `enable tags-related operations`, &config.UseTags, false)
-	p.AddBool(`descr`, `enable description-related operations`, &config.UseDescr, false)
+	p.AddBool(`tags|t`, `enable tags-related operations, requires at least one command line argument`, &config.UseTags, false)
+	p.AddBool(`descr`, `enable description-related operations, requires at least one command line argument`, &config.UseDescr, false)
 	// TODO --dupe
 
 	// Other options

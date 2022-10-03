@@ -30,6 +30,7 @@ type progConfig struct {
 	negExpr		bool
 	onlyName	bool
 	onlyTags	bool
+	onlyDescr	bool
 	deepSearch	bool
 	printID		bool
 	hostGroups	bool
@@ -206,11 +207,14 @@ func (pc *progConfig) prepareSearch() error {
 		}
 	}
 
+	// TODO Need to refactor this - convert to internal field like "Flags" and pass it directly to qArgs
 	pc.qArgs.SetOr(pc.orExpr)
 	pc.qArgs.SetNeg(pc.negExpr)
 	pc.qArgs.SetOnlyName(pc.onlyName)
 	pc.qArgs.SetUseTags(pc.UseTags)
 	pc.qArgs.SetOnlyTags(pc.onlyTags)
+	pc.qArgs.SetUseDescr(pc.UseDescr)
+	pc.qArgs.SetOnlyDescr(pc.onlyDescr)
 	pc.qArgs.SetDeep(pc.deepSearch)
 
 	// Check for sufficient conditions for search

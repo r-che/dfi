@@ -35,6 +35,8 @@ type QueryArgs struct {
 	onlyName	bool
 	useTags		bool
 	onlyTags	bool
+	useDescr	bool
+	onlyDescr	bool
 	deep		bool
 }
 
@@ -100,6 +102,10 @@ func (qa *QueryArgs) isIds() bool {
 	return len(qa.ids) != 0
 }
 
+func (qa *QueryArgs) onlyAII() bool {
+	return qa.onlyTags || qa.onlyDescr
+}
+
 func (qa *QueryArgs) CanSearch(searchPhrases []string) bool {
 	// Check for any search phrases
 	for _, sp := range searchPhrases {
@@ -119,7 +125,7 @@ func (qa *QueryArgs) CanSearch(searchPhrases []string) bool {
 }
 
 func (qa *QueryArgs) UseAII() bool {
-	return qa.useTags /* TODO || qa.useDescr */
+	return qa.useTags || qa.useDescr
 }
 
 func (qa *QueryArgs) ParseMtimes(mtimeLine string) error {
@@ -412,6 +418,17 @@ func (qa *QueryArgs) SetOnlyTags(v bool) {
 		qa.useTags = true
 	}
 	qa.onlyTags = v
+}
+
+func (qa *QueryArgs) SetUseDescr(v bool) {
+	qa.useDescr = v
+}
+
+func (qa *QueryArgs) SetOnlyDescr(v bool) {
+	if v {
+		qa.useDescr = true
+	}
+	qa.onlyDescr = v
 }
 
 func (qa *QueryArgs) SetOr(v bool) {
