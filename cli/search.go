@@ -15,20 +15,20 @@ func doSearch(dbc dbms.Client) *types.CmdRV {
 
 	// Set of requested fields
 	rqFields := []string{}
-	if c.PrintID() || c.OnlyIds {
+	if c.PrintID || c.OnlyIds {
 		// Add object identifier field to requested list
 		rqFields = append(rqFields, dbms.FieldID)
 	}
 
 	rv := types.NewCmdRV()
 
-	qr, err := dbc.Query(c.QueryArgs(), rqFields)
+	qr, err := dbc.Query(c.QueryArgs, rqFields)
 	if err != nil {
 		rv.AddErr("cannot execute DB query to show requested objects: %v", err)
 	}
 
 	// Print results
-	if c.HostGroups() {
+	if c.HostGroups {
 		// Print results grouped by hosts
 		printResHG(qr)
 	} else {
@@ -80,7 +80,7 @@ func printResHG(qr dbms.QueryResults) {
 			for _, path := range paths {
 				fmt.Printf("  %v\n", qr[types.ObjKey{host, path}][dbms.FieldID])
 			}
-		case c.PrintID():
+		case c.PrintID:
 			for _, path := range paths {
 				fmt.Printf("  %v %s\n", qr[types.ObjKey{host, path}][dbms.FieldID], path)
 			}
@@ -116,7 +116,7 @@ func printResSingle(qr dbms.QueryResults) {
 		for _, k := range qrKeys {
 			fmt.Printf("%v\n", qr[k][dbms.FieldID])
 		}
-	case c.PrintID():
+	case c.PrintID:
 		for _, k := range qrKeys {
 			fmt.Printf("%v %s:%s\n", qr[k][dbms.FieldID], k.Host, k.Path)
 		}

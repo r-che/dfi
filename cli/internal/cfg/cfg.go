@@ -25,11 +25,11 @@ func Init(name string) {
 
 	// Get real hostname
 	p.AddSeparator(`>> Opearting mode (only one can be set)`)
-	p.AddBool(`search`, `enable search mode, used by default if no other modes are set`, &config.modeSearch, false)
-	p.AddBool(`show`, `enable show mode`, &config.modeShow, false)
-	p.AddBool(`set`, `enable set mode`, &config.modeSet, false)
-	p.AddBool(`del`, `enable del mode`, &config.modeDel, false)
-	p.AddBool(`admin`, `enable admin mode`, &config.modeAdmin, false)
+	p.AddBool(`search`, `enable search mode, used by default if no other modes are set`, &config.Search, false)
+	p.AddBool(`show`, `enable show mode`, &config.Show, false)
+	p.AddBool(`set`, `enable set mode`, &config.Set, false)
+	p.AddBool(`del`, `enable del mode`, &config.Del, false)
+	p.AddBool(`admin`, `enable admin mode`, &config.Admin, false)
 
 	// Modes options
 
@@ -40,16 +40,16 @@ func Init(name string) {
 	p.AddString(`type`, `set of object types, possible values: ` + strings.Join(knownTypes, ", "), &config.oTypes, anyVal)
 	p.AddString(`checksum`, `set of objects checksums`, &config.csums, anyVal)
 	p.AddString(`host`, `set of hosts when object may be located`, &config.hosts, anyVal)
-	p.AddBool(`or`, `use OR instead of AND between conditions`, &config.orExpr, false)
-	p.AddBool(`not`, `use negative expression`, &config.negExpr, false)
-	p.AddBool(`only-name|N`, `use only file name to match search phrases`, &config.onlyName, false)
-	p.AddBool(`only-tags|T`, `use only tags field to match search phrases, implicitly enables --tags`, &config.onlyTags, false)
-	p.AddBool(`only-descr`, `use only description field to match search phrases, implicitly enables --descr`, &config.onlyDescr, false)
-	p.AddBool(`deep|D`, `use additional DBMS dependent features (can slow down)`, &config.deepSearch, false)
+	p.AddBool(`or`, `use OR instead of AND between conditions`, &config.OrExpr, false)
+	p.AddBool(`not`, `use negative expression`, &config.NegExpr, false)
+	p.AddBool(`only-name|N`, `use only file name to match search phrases`, &config.OnlyName, false)
+	p.AddBool(`only-tags|T`, `use only tags field to match search phrases, implicitly enables --tags`, &config.OnlyTags, false)
+	p.AddBool(`only-descr`, `use only description field to match search phrases, implicitly enables --descr`, &config.OnlyDescr, false)
+	p.AddBool(`deep|D`, `use additional DBMS dependent features (can slow down)`, &config.DeepSearch, false)
 	// Output related options
 	p.AddBool(`only-ids|I`, `print only identifiers of found objects`, &config.OnlyIds, false)
-	p.AddBool(`with-ids|i`, `print identifier of object at the beginning of the output lines`, &config.printID, false)
-	p.AddBool(`hosts-groups|H`, `group results by host instead of single line sorted output`, &config.hostGroups, false)
+	p.AddBool(`with-ids|i`, `print identifier of object at the beginning of the output lines`, &config.PrintID, false)
+	p.AddBool(`hosts-groups|H`, `group results by host instead of single line sorted output`, &config.HostGroups, false)
 
 	p.AddSeparator(``)
 	p.AddSeparator(`>> Set mode options`)

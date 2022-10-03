@@ -38,15 +38,15 @@ func main() {
 	var rv *types.CmdRV
 
 	switch {
-	case c.Search():
+	case c.Search:
 		rv = doSearch(dbc)
-	case c.Show():
+	case c.Show:
 		rv = doShow(dbc)
-	case c.Set():
+	case c.Set:
 		rv = doSet(dbc)
-	case c.Del():
+	case c.Del:
 		rv = doDel(dbc)
-	case c.Admin():
+	case c.Admin:
 		err = fmt.Errorf("not implemented") // TODO
 	default:
 		panic("Unexpected application state - no one operating mode are set")
@@ -73,9 +73,9 @@ func printStatus(rv *types.CmdRV) int {
 		pref = "OK - "
 	}
 
-	if c.Show() || c.Search() {
+	if c.Show || c.Search {
 		// Ignore status output in show mode with --one-line key
-		if !(c.Show() && c.OneLine) {
+		if !(c.Show && c.OneLine) {
 			fmt.Printf("%s%d objects found\n", pref, rv.Found())
 		}
 	} else {

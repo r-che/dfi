@@ -14,11 +14,11 @@ const anyVal = "any"
 
 type progConfig struct {
 	// Flag values
-	modeSearch	bool
-	modeShow	bool
-	modeSet		bool
-	modeDel		bool
-	modeAdmin	bool
+	Search	bool
+	Show	bool
+	Set		bool
+	Del		bool
+	Admin	bool
 
 	// Search mode options
 	strMtime	string
@@ -26,15 +26,15 @@ type progConfig struct {
 	oTypes		string
 	csums		string
 	hosts		string
-	orExpr		bool
-	negExpr		bool
-	onlyName	bool
-	onlyTags	bool
-	onlyDescr	bool
-	deepSearch	bool
+	OrExpr		bool
+	NegExpr		bool
+	OnlyName	bool
+	OnlyTags	bool
+	OnlyDescr	bool
+	DeepSearch	bool
 	OnlyIds		bool
-	printID		bool
-	hostGroups	bool
+	PrintID		bool
+	HostGroups	bool
 
 	// Set mode options
 	NoNL		bool
@@ -64,42 +64,14 @@ type progConfig struct {
 	// Internal filled options
 
 	// Query arguments
-	qArgs		*dbms.QueryArgs
+	QueryArgs		*dbms.QueryArgs
 	// Program configuration loaded from file
 	fConf		fileCfg
 
 }
 
-func (pc *progConfig) Search() bool {
-	return pc.modeSearch
-}
-func (pc *progConfig) Show() bool {
-	return pc.modeShow
-}
-func (pc *progConfig) Set() bool {
-	return pc.modeSet
-}
-func (pc *progConfig) Del() bool {
-	return pc.modeDel
-}
-func (pc *progConfig) Admin() bool {
-	return pc.modeAdmin
-}
-
-func (pc *progConfig) PrintID() bool {
-	return pc.printID
-}
-
-func (pc *progConfig) HostGroups() bool {
-	return pc.hostGroups
-}
-
 func (pc *progConfig) DBConfig() *dbms.DBConfig {
 	return &pc.fConf.DB
-}
-
-func (pc *progConfig) QueryArgs() *dbms.QueryArgs {
-	return pc.qArgs
 }
 
 func (pc *progConfig) clone() *progConfig {
@@ -109,8 +81,8 @@ func (pc *progConfig) clone() *progConfig {
 	rv.CmdArgs = make([]string, len(pc.CmdArgs))
 	copy(rv.CmdArgs, pc.CmdArgs)
 
-	if pc.qArgs != nil {
-		rv.qArgs = pc.qArgs.Clone()
+	if pc.QueryArgs != nil {
+		rv.QueryArgs = pc.QueryArgs.Clone()
 	}
 
 	return &rv
@@ -122,37 +94,37 @@ func (pc *progConfig) prepare(CmdArgs []string) error {
 
 	// Check mode
 	mn := 0
-	if pc.modeSearch { mn++ }
-	if pc.modeShow { mn++ }
-	if pc.modeSet { mn++ }
-	if pc.modeDel { mn++ }
-	if pc.modeAdmin { mn++ }
+	if pc.Search { mn++ }
+	if pc.Show { mn++ }
+	if pc.Set { mn++ }
+	if pc.Del { mn++ }
+	if pc.Admin { mn++ }
 	if mn == 0 {
 		// Use search mode as default
-		pc.modeSearch = true
+		pc.Search = true
 	} else if mn > 1 {
 		return fmt.Errorf("only one mode option can be set")
 	}
 
 	// Prepare required options
 	switch {
-		case pc.modeSearch:
+		case pc.Search:
 			if err := pc.prepareSearch(); err != nil {
 				return err
 			}
-		case pc.modeShow:
+		case pc.Show:
 			if err := pc.prepareShow(); err != nil {
 				return err
 			}
-		case pc.modeSet:
+		case pc.Set:
 			if err := pc.prepareSet(); err != nil {
 				return err
 			}
-		case pc.modeDel:
+		case pc.Del:
 			if err := pc.prepareDel(); err != nil {
 				return err
 			}
-		case pc.modeAdmin:
+		case pc.Admin:
 			// TODO
 	}
 
@@ -176,50 +148,50 @@ func (pc *progConfig) prepare(CmdArgs []string) error {
 }
 
 func (pc *progConfig) prepareSearch() error {
-	pc.qArgs = dbms.NewQueryArgs(pc.CmdArgs)
+	pc.QueryArgs = dbms.NewQueryArgs(pc.CmdArgs)
 
 	if pc.strMtime != anyVal {
-		if err := pc.qArgs.ParseMtimes(pc.strMtime); err != nil {
+		if err := pc.QueryArgs.ParseMtimes(pc.strMtime); err != nil {
 			return err
 		}
 	}
 
 	if pc.strSize != anyVal {
-		if err := pc.qArgs.ParseSizes(pc.strSize); err != nil {
+		if err := pc.QueryArgs.ParseSizes(pc.strSize); err != nil {
 			return err
 		}
 	}
 
 	if pc.oTypes != anyVal {
-		if err := pc.qArgs.ParseTypes(pc.oTypes, knownTypes); err != nil {
+		if err := pc.QueryArgs.ParseTypes(pc.oTypes, knownTypes); err != nil {
 			return err
 		}
 	}
 
 	if pc.csums != anyVal {
-		if err := pc.qArgs.ParseSums(pc.csums); err != nil {
+		if err := pc.QueryArgs.ParseSums(pc.csums); err != nil {
 			return err
 		}
 	}
 
 	if pc.hosts != anyVal {
-		if err := pc.qArgs.ParseHosts(pc.hosts); err != nil {
+		if err := pc.QueryArgs.ParseHosts(pc.hosts); err != nil {
 			return err
 		}
 	}
 
-	// TODO Need to refactor this - convert to internal field like "Flags" and pass it directly to qArgs
-	pc.qArgs.SetOr(pc.orExpr)
-	pc.qArgs.SetNeg(pc.negExpr)
-	pc.qArgs.SetOnlyName(pc.onlyName)
-	pc.qArgs.SetUseTags(pc.UseTags)
-	pc.qArgs.SetOnlyTags(pc.onlyTags)
-	pc.qArgs.SetUseDescr(pc.UseDescr)
-	pc.qArgs.SetOnlyDescr(pc.onlyDescr)
-	pc.qArgs.SetDeep(pc.deepSearch)
+	// TODO Need to refactor this - convert to internal field like "Flags" and pass it directly to QueryArgs
+	pc.QueryArgs.SetOr(pc.OrExpr)
+	pc.QueryArgs.SetNeg(pc.NegExpr)
+	pc.QueryArgs.SetOnlyName(pc.OnlyName)
+	pc.QueryArgs.SetUseTags(pc.UseTags)
+	pc.QueryArgs.SetOnlyTags(pc.OnlyTags)
+	pc.QueryArgs.SetUseDescr(pc.UseDescr)
+	pc.QueryArgs.SetOnlyDescr(pc.OnlyDescr)
+	pc.QueryArgs.SetDeep(pc.DeepSearch)
 
 	// Check for sufficient conditions for search
-	if !pc.qArgs.CanSearch(pc.CmdArgs) {
+	if !pc.QueryArgs.CanSearch(pc.CmdArgs) {
 		return fmt.Errorf("insufficient arguments to make search")
 	}
 	// OK
