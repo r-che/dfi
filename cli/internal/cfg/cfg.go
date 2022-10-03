@@ -62,7 +62,7 @@ func Init(name string) {
 	// Other modes common options
 	p.AddSeparator(``)
 	p.AddSeparator(`>> Options common to several modes`)
-	p.AddBool(`tags`, `enable tags-related operations`, &config.UseTags, false)
+	p.AddBool(`tags|t`, `enable tags-related operations`, &config.UseTags, false)
 	p.AddBool(`descr`, `enable description-related operations`, &config.UseDescr, false)
 	// TODO --dupe
 

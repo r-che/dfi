@@ -96,6 +96,10 @@ func (qa *QueryArgs) isHost() bool {
 	return len(qa.hosts) != 0
 }
 
+func (qa *QueryArgs) isIds() bool {
+	return len(qa.ids) != 0
+}
+
 func (qa *QueryArgs) CanSearch(searchPhrases []string) bool {
 	// Check for any search phrases
 	for _, sp := range searchPhrases {
@@ -373,18 +377,6 @@ func (qa *QueryArgs) ParseSums(cSumsLine string) error {
 	for _, csum := range qa.csums {
 		if csum == "" {
 			return fmt.Errorf("empty checksum value in checksums line %q", cSumsLine)
-		}
-	}
-
-	return nil
-}
-
-func (qa *QueryArgs) ParseIDs(idsLine string) error {
-	qa.ids = strings.Split(idsLine, ",")
-
-	for _, id := range qa.ids {
-		if id == "" {
-			return fmt.Errorf("empty ID value in ids line %q", idsLine)
 		}
 	}
 
