@@ -52,7 +52,7 @@ func (rc *RedisClient) Query(qa *dbms.QueryArgs, retFields []string) (dbms.Query
 	}
 
 	// Check for deep search required
-	if qa.Deep {
+	if qa.DeepSearch {
 		// Do additional standard SCAN search
 		log.D("(RedisCli) Running deep search using SCAN operation...")
 		n, err := rc.scanSearch(rsc, qa, retFields, &qr)

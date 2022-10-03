@@ -5,6 +5,8 @@ import (
 	"strings"
 	"strconv"
 	"time"
+
+	"github.com/r-che/dfi/types"
 )
 
 // Separator between start/end of some range passed by command line
@@ -29,14 +31,8 @@ type QueryArgs struct {
 	Ids			[]string
 	Hosts		[]string
 
-	OrExpr		bool
-	NegExpr		bool
-	OnlyName	bool
-	UseTags		bool
-	OnlyTags	bool
-	UseDescr	bool
-	OnlyDescr	bool
-	Deep		bool
+	types.QueryFlags
+	types.CommonFlags
 }
 
 func NewQueryArgs(searchPhrases []string) *QueryArgs {
@@ -439,5 +435,5 @@ func (qa *QueryArgs) SetOr(v bool) {
 }
 
 func (qa *QueryArgs) SetDeep(v bool) {
-	qa.Deep = v
+	qa.DeepSearch = v
 }

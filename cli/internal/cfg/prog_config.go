@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/r-che/dfi/types"
 	"github.com/r-che/dfi/types/dbms"
 
 	"github.com/r-che/log"
@@ -26,15 +27,12 @@ type progConfig struct {
 	oTypes		string
 	csums		string
 	hosts		string
-	OrExpr		bool
-	NegExpr		bool
-	OnlyName	bool
-	OnlyTags	bool
-	OnlyDescr	bool
-	DeepSearch	bool
 	OnlyIds		bool
 	PrintID		bool
 	HostGroups	bool
+	// Flags that affect query to DB
+	types.QueryFlags
+
 
 	// Set mode options
 	NoNL		bool
@@ -43,10 +41,9 @@ type progConfig struct {
 	OneLine		bool
 
 	/*
-	 * Other modes common options
+	 * Common options
 	 */
-	UseTags		bool
-	UseDescr	bool
+	types.CommonFlags
 	SetAdd		bool
 
 	/*
@@ -180,15 +177,9 @@ func (pc *progConfig) prepareSearch() error {
 		}
 	}
 
-	// TODO Need to refactor this - convert to internal field like "Flags" and pass it directly to QueryArgs
-	pc.QueryArgs.SetOr(pc.OrExpr)
-	pc.QueryArgs.SetNeg(pc.NegExpr)
-	pc.QueryArgs.SetOnlyName(pc.OnlyName)
-	pc.QueryArgs.SetUseTags(pc.UseTags)
-	pc.QueryArgs.SetOnlyTags(pc.OnlyTags)
-	pc.QueryArgs.SetUseDescr(pc.UseDescr)
-	pc.QueryArgs.SetOnlyDescr(pc.OnlyDescr)
-	pc.QueryArgs.SetDeep(pc.DeepSearch)
+	// Pass arguments from command line to query arguments structure
+	pc.QueryArgs.QueryFlags = pc.QueryFlags
+	pc.QueryArgs.CommonFlags = pc.CommonFlags
 
 	// Check for sufficient conditions for search
 	if !pc.QueryArgs.CanSearch(pc.CmdArgs) {
