@@ -39,3 +39,12 @@ const (
 	ObjDirectory	=	"dir"
 	ObjSymlink		=	"sym"
 )
+
+// Values of this map represents key-value pairs with requested objects properties
+type ObjKey struct {
+	Host string
+	Path string
+}
+func (k ObjKey) String() string {
+	return k.Host + `:` + k.Path
+}

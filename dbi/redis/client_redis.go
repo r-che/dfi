@@ -1,5 +1,5 @@
 //go:build dbi_redis
-package dbi
+package redis
 
 import (
 	"fmt"
@@ -8,6 +8,8 @@ import (
 	"strings"
 
 	"github.com/r-che/dfi/types"
+	"github.com/r-che/dfi/types/dbms"
+	"github.com/r-che/dfi/dbi/common"
 
 	"github.com/r-che/log"
 
@@ -33,7 +35,7 @@ type RedisClient struct {
 	stop		context.CancelFunc
 	cliHost		string
 	// Provided configuration
-	cfg			*DBConfig
+	cfg			*dbms.DBConfig
 
 	c		*redis.Client
 
@@ -44,7 +46,7 @@ type RedisClient struct {
 	stopLongVal int		// should be incremented when need to terminate long-term operation
 }
 
-func newDBClient(dbCfg *DBConfig) (DBClient, error) {
+func NewClient(dbCfg *dbms.DBConfig) (dbms.Client, error) {
 	// Convert string representation of database identifier to numeric database index
 	dbid, err := strconv.ParseUint(dbCfg.ID, 10, 64)
 	if err != nil {
@@ -177,7 +179,7 @@ func (rc *RedisClient) Stop() {
 	rc.stop()
 }
 
-func (rc *RedisClient) LoadHostPaths(filter FilterFunc) ([]string, error) {
+func (rc *RedisClient) LoadHostPaths(filter dbms.FilterFunc) ([]string, error) {
 	// Make prefix of objects keys
 	pref := RedisObjPrefix + rc.cliHost + ":*"
 
@@ -245,15 +247,15 @@ func prepareHSetValues(host string, fso *types.FSObject) []string {
 	namePrepared := strings.ReplaceAll(strings.ToLower(fso.Name), "_", " ")
 
 	values = append(values,
-		FieldID, makeID(host, fso),
-		FieldHost, host,
-		FieldName, namePrepared,
-		FieldFPath, fpathPrepared,
-		FieldRPath, fso.RPath,
-		FieldType, fso.Type,
-		FieldSize, strconv.FormatInt(fso.Size, 10),
-		FieldMTime, strconv.FormatInt(fso.MTime, 10),
-		FieldChecksum, fso.Checksum,
+		dbms.FieldID, common.MakeID(host, fso),
+		dbms.FieldHost, host,
+		dbms.FieldName, namePrepared,
+		dbms.FieldFPath, fpathPrepared,
+		dbms.FieldRPath, fso.RPath,
+		dbms.FieldType, fso.Type,
+		dbms.FieldSize, strconv.FormatInt(fso.Size, 10),
+		dbms.FieldMTime, strconv.FormatInt(fso.MTime, 10),
+		dbms.FieldChecksum, fso.Checksum,
 	)
 
 	return values

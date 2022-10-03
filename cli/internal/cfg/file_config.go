@@ -9,13 +9,13 @@ import (
 	"encoding/json"
 
 	"github.com/r-che/dfi/common/fschecks"
-	"github.com/r-che/dfi/dbi"
+	"github.com/r-che/dfi/types/dbms"
 
 	"github.com/r-che/log"
 )
 
 type fileCfg struct {
-	DB	dbi.DBConfig
+	DB	dbms.DBConfig
 }
 
 func (pc *progConfig) loadConf() error {

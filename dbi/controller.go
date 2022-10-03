@@ -6,24 +6,25 @@ import (
 	"sync"
 
 	"github.com/r-che/log"
+	"github.com/r-che/dfi/types/dbms"
 )
 
 type DBController struct {
 	// Internal fields
 	ctx context.Context
 
-	dbChan		DBChan
+	dbChan		dbms.DBChan
 
-	dbCli		DBClient
+	dbCli		dbms.Client
 
 	wg			*sync.WaitGroup
 	cancel		context.CancelFunc
 	stopLongVal int		// should be incremented when need to terminate long-term operation
 }
 
-func NewController(dbCfg *DBConfig) (*DBController, error) {
+func NewController(dbCfg *dbms.DBConfig) (*DBController, error) {
 	// Initiate database client
-	dbCli, err := newDBClient(dbCfg)
+	dbCli, err := NewClient(dbCfg)
 	if err != nil {
 		return nil, err
 	}
@@ -33,7 +34,7 @@ func NewController(dbCfg *DBConfig) (*DBController, error) {
 
 	return &DBController{
 		ctx:		ctx,
-		dbChan:		make(DBChan),
+		dbChan:		make(dbms.DBChan),
 		dbCli:		dbCli,
 		wg:			&sync.WaitGroup{},
 		cancel:		cancel,
@@ -91,11 +92,11 @@ func (dbc *DBController) Run() {
 	}()
 }
 
-func (dbc *DBController) Channel() DBChan {
+func (dbc *DBController) Channel() dbms.DBChan {
 	return dbc.dbChan
 }
 
-func (dbc *DBController) update(dbOps []*DBOperation) error {
+func (dbc *DBController) update(dbOps []*dbms.DBOperation) error {
 	// Keep current stopLong value to have ability to compare during long-term updates
 	initStopLong := dbc.stopLongVal
 
@@ -106,12 +107,12 @@ func (dbc *DBController) update(dbOps []*DBOperation) error {
 		}
 
         switch op.Op {
-		case Update:
+		case dbms.Update:
 			// Add/update data in DB
 			if err := dbc.dbCli.UpdateObj(op.ObjectInfo); err != nil {
 				return err
 			}
-		case Delete:
+		case dbms.Delete:
 			// Delete data from DB
 			if err := dbc.dbCli.DeleteObj(op.ObjectInfo); err != nil {
 				return err

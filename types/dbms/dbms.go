@@ -1,11 +1,25 @@
-package dbi
+package dbms
 
 import (
 	"fmt"
-	"crypto/sha1"
-
 	"github.com/r-che/dfi/types"
 )
+
+type Client interface {
+    UpdateObj(*types.FSObject) error
+    DeleteObj(*types.FSObject) error
+    Commit() (int64, int64, error)
+
+	ModifyAII(DBOperator, *AIIArgs, []string, bool) (int64, int64, error)
+
+	LoadHostPaths(FilterFunc) ([]string, error)
+	Query(*QueryArgs, []string) (QueryResults, error)
+	GetObjects([]string, []string) (QueryResults, error)
+	GetAIIs([]string, []string) (map[string]map[string]string, error)
+
+	StopLong()
+    Stop()
+}
 
 // Standard database connection configuration
 type DBConfig struct {
@@ -41,6 +55,18 @@ type DBOperation struct {
 
 type DBChan chan []*DBOperation
 
+// Additional information item (AII) arguments
+type AIIArgs struct {
+	Tags	[]string
+	Descr	string
+	NoNL	bool
+}
+
+type FilterFunc func(string) bool
+
+// Map to return query results indexed host + found path
+type QueryResults map[types.ObjKey] map[string]any
+
 // Database object fields
 const (
 	FieldID = "id"			// Unique object identifier (sha1 of found path)
@@ -63,9 +89,3 @@ const (
 	AIIAllTags		=	"ALL"
 	AIIDelDescr		=	"\u0000\u0000DELETE DESCRIPTION\u0000\u0000"
 )
-
-// makeID makes the identifier (most unique) for a particular filesystem object
-func makeID(host string, fso *types.FSObject) string {
-	// Use found path as value to generate the identifier
-	return fmt.Sprintf("%x", sha1.Sum([]byte(host + ":" + fso.FPath)))
-}

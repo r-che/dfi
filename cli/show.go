@@ -7,26 +7,26 @@ import (
 	"strconv"
 
 	"github.com/r-che/dfi/types"
-	"github.com/r-che/dfi/dbi"
+	"github.com/r-che/dfi/types/dbms"
 	"github.com/r-che/dfi/cli/internal/cfg"
 
 )
 
 var showObjFields = []string{
-	dbi.FieldID,
-	dbi.FieldRPath,
-	dbi.FieldType,
-	dbi.FieldSize,
-	dbi.FieldMTime,
-	dbi.FieldChecksum,
+	dbms.FieldID,
+	dbms.FieldRPath,
+	dbms.FieldType,
+	dbms.FieldSize,
+	dbms.FieldMTime,
+	dbms.FieldChecksum,
 }
 
 var showAIIFields = []string{
-	dbi.AIIFieldTags,
-	dbi.AIIFieldDescr,
+	dbms.AIIFieldTags,
+	dbms.AIIFieldDescr,
 }
 
-func doShow(dbc dbi.DBClient) *types.CmdRV {
+func doShow(dbc dbms.Client) *types.CmdRV {
 	// Get configuration
 	c := cfg.Config()
 
@@ -51,9 +51,9 @@ func doShow(dbc dbi.DBClient) *types.CmdRV {
 
 	// Check loaded object for correctness
 	for objKey, fields := range objs {
-		id, ok := fields[dbi.FieldID]
+		id, ok := fields[dbms.FieldID]
 		if !ok {
-			rv.AddWarn("Skip loaded object %q without identifier field %q", objKey, dbi.FieldID)
+			rv.AddWarn("Skip loaded object %q without identifier field %q", objKey, dbms.FieldID)
 			// Delete the invalid entry
 			delete(objs, objKey)
 
@@ -62,7 +62,7 @@ func doShow(dbc dbi.DBClient) *types.CmdRV {
 
 		// Check that ID has a correct type
 		if _, ok := id.(string); !ok {
-			rv.AddWarn("Skip loaded object %q due to identifier field %q is not a string: %v", objKey, dbi.FieldID, id)
+			rv.AddWarn("Skip loaded object %q due to identifier field %q is not a string: %v", objKey, dbms.FieldID, id)
 			// Delete the invalid entry
 			delete(objs, objKey)
 		}
@@ -75,7 +75,7 @@ func doShow(dbc dbi.DBClient) *types.CmdRV {
 		for i := 0; i < len(ids); {
 			for _, fields := range objs {
 				// Check that extracted identifier is equal requested identifier
-				if fields[dbi.FieldID] == ids[i] {
+				if fields[dbms.FieldID] == ids[i] {
 					// Ok, requested identifier found, check next
 					i++
 					continue checkId
@@ -102,14 +102,14 @@ func doShow(dbc dbi.DBClient) *types.CmdRV {
 	return rv
 }
 
-func showObjs(ids []string, objs dbi.QueryResults, aiis map[string]map[string]string) {
+func showObjs(ids []string, objs dbms.QueryResults, aiis map[string]map[string]string) {
 	// Get configuration
 	c := cfg.Config()
 
 	// Print objects in the same order as input identifiers list
-	ikm := make(map[string]dbi.QRKey, len(ids))	// id->key map
+	ikm := make(map[string]types.ObjKey, len(ids))	// id->key map
 	for objKey, fields := range objs {
-		ikm[fields[dbi.FieldID].(string)] = objKey
+		ikm[fields[dbms.FieldID].(string)] = objKey
 	}
 
 	if c.OneLine {
@@ -123,7 +123,7 @@ func showObjs(ids []string, objs dbi.QueryResults, aiis map[string]map[string]st
 	}
 }
 
-func showObjOL(objKey dbi.QRKey, fields map[string]any, aii map[string]string) {
+func showObjOL(objKey types.ObjKey, fields map[string]any, aii map[string]string) {
 	res := make([]string, 0, len(showObjFields) + len(showAIIFields) + 2 /* host + path */)
 	res = append(res,
 		fmt.Sprintf("host:%q", objKey.Host),
@@ -158,24 +158,24 @@ func showObjOL(objKey dbi.QRKey, fields map[string]any, aii map[string]string) {
 	fmt.Println(strings.Join(res, " "))
 }
 
-func showObj(objKey dbi.QRKey, fields map[string]any, aii map[string]string) {
+func showObj(objKey types.ObjKey, fields map[string]any, aii map[string]string) {
 	// Object header
-	fmt.Printf(">>> [ID: %s]\n", fields[dbi.FieldID])
+	fmt.Printf(">>> [ID: %s]\n", fields[dbms.FieldID])
 
 	// Common object's information
 	fmt.Printf("Host:      %s\n", objKey.Host)
 	fmt.Printf("Path:      %s\n", objKey.Path)
 
 	// Is real path was set
-	if rp := fields[dbi.FieldRPath]; rp != "" {
+	if rp := fields[dbms.FieldRPath]; rp != "" {
 		fmt.Printf("Real path: %s\n", rp)
 	}
 
-	fmt.Printf("Type:      %s\n", fields[dbi.FieldType])
-	fmt.Printf("Size:      %s\n", fields[dbi.FieldSize])
+	fmt.Printf("Type:      %s\n", fields[dbms.FieldType])
+	fmt.Printf("Size:      %s\n", fields[dbms.FieldSize])
 
 	// Check for mtime field found
-	if mtime, ok := fields[dbi.FieldMTime]; ok {
+	if mtime, ok := fields[dbms.FieldMTime]; ok {
 		// Convert interface{} to string
 		mtimeStr, ok := mtime.(string)
 		if !ok {
@@ -195,16 +195,16 @@ func showObj(objKey dbi.QRKey, fields map[string]any, aii map[string]string) {
 	}
 
 	// Is checksum was set
-	if csum := fields[dbi.FieldChecksum]; csum != "" {
+	if csum := fields[dbms.FieldChecksum]; csum != "" {
 		fmt.Printf("Checksum:  %s\n", csum)
 	}
 
 	// Print additional information if exists
 	if len(aii) != 0 {
-		if tags := aii[dbi.AIIFieldTags]; tags != "" {
-			fmt.Printf("Tags:      %s\n", aii[dbi.AIIFieldTags])
+		if tags := aii[dbms.AIIFieldTags]; tags != "" {
+			fmt.Printf("Tags:      %s\n", aii[dbms.AIIFieldTags])
 		}
-		if descr := aii[dbi.AIIFieldDescr]; descr != "" {
+		if descr := aii[dbms.AIIFieldDescr]; descr != "" {
 			// Prepend each description line by double space
 			fmt.Printf("Description:\n%s\n", `  ` + strings.ReplaceAll(descr, "\n", "\n  "))
 		}

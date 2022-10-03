@@ -1,10 +1,13 @@
 //go:build dbi_redis
-package dbi
+package redis
 
 import (
 	"fmt"
 	"strings"
 	"strconv"
+
+	"github.com/r-che/dfi/types"
+	"github.com/r-che/dfi/types/dbms"
 
 	"github.com/r-che/log"
 	"github.com/gomodule/redigo/redis"
@@ -17,7 +20,7 @@ const (
 	objsPerQuery	=	1000
 )
 
-func (rc *RedisClient) Query(qa *QueryArgs, retFields []string) (QueryResults, error) {
+func (rc *RedisClient) Query(qa *dbms.QueryArgs, retFields []string) (dbms.QueryResults, error) {
 	// Get RediSearch client
 	rsc, err := rc.rschInit(metaRschIdx)
 	if err != nil {
@@ -26,13 +29,14 @@ func (rc *RedisClient) Query(qa *QueryArgs, retFields []string) (QueryResults, e
 
 	// Check for search by AII enabled
 	if qa.UseAII() {
-		qa.ids, err = rc.queryAII(qa)
+		ids, err := rc.queryAII(qa)
 		if err != nil {
 			return nil, err
 		}
+		qa.SetIds(ids)
 
 		// Check for only AII should be used in search
-		if qa.onlyAII() && !qa.isIds() {
+		if qa.OnlyAII() && !qa.IsIds() {
 			// No identifiers, the nothing was found in AII - return empty result
 			return nil, nil
 		}
@@ -48,7 +52,7 @@ func (rc *RedisClient) Query(qa *QueryArgs, retFields []string) (QueryResults, e
 	}
 
 	// Check for deep search required
-	if qa.deep {
+	if qa.Deep {
 		// Do additional standard SCAN search
 		log.D("(RedisCli) Running deep search using SCAN operation...")
 		n, err := rc.scanSearch(rsc, qa, retFields, &qr)
@@ -61,7 +65,7 @@ func (rc *RedisClient) Query(qa *QueryArgs, retFields []string) (QueryResults, e
 	return qr, nil
 }
 
-func (rc *RedisClient) queryAII(qa *QueryArgs) ([]string, error) {
+func (rc *RedisClient) queryAII(qa *dbms.QueryArgs) ([]string, error) {
 	// Get RediSearch client to search by additional information items
 	rsc, err := rc.rschInit(aiiRschIdx)
 	if err != nil {
@@ -71,13 +75,13 @@ func (rc *RedisClient) queryAII(qa *QueryArgs) ([]string, error) {
 	var chunks []string
 
 	// Check for need to use tags
-	if qa.useTags {
-		chunks = append(chunks, `(@` + AIIFieldTags + `:{` +  strings.Join(qa.sp, `|`) + `})`)
+	if qa.UseTags {
+		chunks = append(chunks, `(@` + dbms.AIIFieldTags + `:{` +  strings.Join(qa.SP, `|`) + `})`)
 	}
 
 	// Check for need to use description
-	if qa.useDescr {
-		chunks = append(chunks, `(@` + AIIFieldDescr + `:` +  strings.Join(qa.sp, `|`) + `)` )
+	if qa.UseDescr {
+		chunks = append(chunks, `(@` + dbms.AIIFieldDescr + `:` +  strings.Join(qa.SP, `|`) + `)` )
 	}
 
 	// Make query to search by AII fields
@@ -88,7 +92,7 @@ func (rc *RedisClient) queryAII(qa *QueryArgs) ([]string, error) {
 		return nil, fmt.Errorf("(RedisCli:queryAII) cannot execute query %q: %v", q.Raw, err)
 	}
 
-	log.D("(RedisCli:queryAII) AII search (tags: %t descr: %t) found identifiers: %v", qa.useTags, qa.useDescr, ids)
+	log.D("(RedisCli:queryAII) AII search (tags: %t descr: %t) found identifiers: %v", qa.UseTags, qa.UseDescr, ids)
 
 	return ids, nil
 }
@@ -148,7 +152,7 @@ func rshSearchAII(cli *rsh.Client, q *rsh.Query) ([]string, error) {
 	return ids, nil
 }
 
-func (rc *RedisClient) GetObjects(ids, retFields []string) (QueryResults, error) {
+func (rc *RedisClient) GetObjects(ids, retFields []string) (dbms.QueryResults, error) {
 	// Get RediSearch client
 	rsc, err := rc.rschInit(metaRschIdx)
 	if err != nil {
@@ -156,7 +160,7 @@ func (rc *RedisClient) GetObjects(ids, retFields []string) (QueryResults, error)
 	}
 
 	// Make initial query
-	q := rsh.NewQuery(rshQueryIDs(ids, &QueryArgs{}))
+	q := rsh.NewQuery(rshQueryIDs(ids, &dbms.QueryArgs{}))
 
 	// Do search and return
 	return rshSearch(rsc, q, retFields)
@@ -203,7 +207,7 @@ func (rc *RedisClient) rschInit(rschIdx string) (*rsh.Client, error) {
 	return rsh.NewClientFromPool(pool, rschIdx), nil
 }
 
-func rshSearch(cli *rsh.Client, q *rsh.Query, retFields []string) (QueryResults, error) {
+func rshSearch(cli *rsh.Client, q *rsh.Query, retFields []string) (dbms.QueryResults, error) {
 	// Offset from which matched documents should be selected
 	offset := 0
 
@@ -217,7 +221,7 @@ func rshSearch(cli *rsh.Client, q *rsh.Query, retFields []string) (QueryResults,
 	//log.D("(RedisCli) Prepared RediSearch query string: %v", q.Raw)	// XXX Raw query may be too long
 
 	// Output result
-	qr := make(QueryResults, 32)	// 32 - should probably be enough for most cases on average
+	qr := make(dbms.QueryResults, 32)	// 32 - should probably be enough for most cases on average
 
 	// Total selected docs
 	totDocs := 0
@@ -243,7 +247,7 @@ func rshSearch(cli *rsh.Client, q *rsh.Query, retFields []string) (QueryResults,
 				continue
 			}
 			// Append key without object prefix
-			qr[QRKey{Host: host, Path: path}] = doc.Properties
+			qr[types.ObjKey{Host: host, Path: path}] = doc.Properties
 		}
 
 		// Check for number of total matched documents reached total - no more docs to scan
@@ -262,10 +266,10 @@ func rshSearch(cli *rsh.Client, q *rsh.Query, retFields []string) (QueryResults,
 	return qr, nil
 }
 
-func rshQueryIDs(ids []string, qa *QueryArgs) string {
+func rshQueryIDs(ids []string, qa *dbms.QueryArgs) string {
 	// Make query to search by IDs
 	idsQuery := fmt.Sprintf(`(@%s:{%s})`,
-		FieldID,
+		dbms.FieldID,
 		strings.Join(ids, `|`),
 	)
 
@@ -273,35 +277,35 @@ func rshQueryIDs(ids []string, qa *QueryArgs) string {
 	return idsQuery + ` ` + rshArgsQuery(qa)
 }
 
-func rshQuerySP(qa *QueryArgs) string {
-	if len(qa.sp) == 0 && !qa.isIds() {
+func rshQuerySP(qa *dbms.QueryArgs) string {
+	if len(qa.SP) == 0 && !qa.IsIds() {
 		// Return only arguments part
 		return rshArgsQuery(qa)
 	}
 
 	chunks := make([]string, 0, 2)
 
-	if len(qa.sp) != 0 && !qa.onlyAII() {
+	if len(qa.SP) != 0 && !qa.OnlyAII() {
 		// XXX Convert of search phrase values to lowercase because RediSearch
 		// XXX does not fully support case insensitivity for non-English locales
-		spLower := make([]string, 0, len(qa.sp))
-		for _, sp := range qa.sp {
+		spLower := make([]string, 0, len(qa.SP))
+		for _, sp := range qa.SP {
 			spLower= append(spLower, strings.ToLower(sp))
 		}
 
 		// Make search phrases query - try to search them in found path and real path
-		if qa.onlyName {
+		if qa.OnlyName {
 			// Use only the "name" field to search
-			chunks = append(chunks, fmt.Sprintf(`(@%s:%s)`, FieldName, strings.Join(spLower, `|`)))
+			chunks = append(chunks, fmt.Sprintf(`(@%s:%s)`, dbms.FieldName, strings.Join(spLower, `|`)))
 		} else {
 			// Use the found path and real path fields to search
 			chunks = append(chunks,
-				fmt.Sprintf(`(@%[1]s|%[2]s:%[3]s)`, FieldFPath, FieldRPath, strings.Join(spLower, `|`)))
+				fmt.Sprintf(`(@%[1]s|%[2]s:%[3]s)`, dbms.FieldFPath, dbms.FieldRPath, strings.Join(spLower, `|`)))
 		}
 	}
 
-	if qa.isIds() {
-		chunks = append(chunks, `@` + FieldID + `:{` +  strings.Join(qa.ids, `|`) + `}`)
+	if qa.IsIds() {
+		chunks = append(chunks, `@` + dbms.FieldID + `:{` +  strings.Join(qa.Ids, `|`) + `}`)
 	}
 
 	if len(chunks) == 0 {
@@ -313,30 +317,30 @@ func rshQuerySP(qa *QueryArgs) string {
 	return `(` + strings.Join(chunks, ` | `) + `)` + ` ` + rshArgsQuery(qa)
 }
 
-func rshArgsQuery(qa *QueryArgs) string {
+func rshArgsQuery(qa *dbms.QueryArgs) string {
 	// Arguments query chunks
 	chunks := []string{}
 
-	if qa.isMtime() {
-		chunks = append(chunks, makeSetRangeQuery(FieldMTime, qa.mtimeStart, qa.mtimeEnd, qa.mtimeSet))
+	if qa.IsMtime() {
+		chunks = append(chunks, makeSetRangeQuery(dbms.FieldMTime, qa.MtimeStart, qa.MtimeEnd, qa.MtimeSet))
 	}
-	if qa.isSize() {
-		chunks = append(chunks, makeSetRangeQuery(FieldSize, qa.sizeStart, qa.sizeEnd, qa.sizeSet))
+	if qa.IsSize() {
+		chunks = append(chunks, makeSetRangeQuery(dbms.FieldSize, qa.SizeStart, qa.SizeEnd, qa.SizeSet))
 	}
-	if qa.isType() {
-		chunks = append(chunks, `@` + FieldType + `:{` +  strings.Join(qa.types, `|`) + `}`)
+	if qa.IsType() {
+		chunks = append(chunks, `@` + dbms.FieldType + `:{` +  strings.Join(qa.Types, `|`) + `}`)
 	}
-	if qa.isChecksum() {
-		chunks = append(chunks, `@` + FieldChecksum + `:{` +  strings.Join(qa.csums, `|`) + `}`)
+	if qa.IsChecksum() {
+		chunks = append(chunks, `@` + dbms.FieldChecksum + `:{` +  strings.Join(qa.CSums, `|`) + `}`)
 	}
-	if qa.isHost() {
+	if qa.IsHost() {
 		// At least need to escape dashes ("-") inside of hostname to avoid split hostnames by RediSearch tokenizer
-		escapedHosts := make([]string, 0, len(qa.hosts))
-		for _, host := range qa.hosts {
+		escapedHosts := make([]string, 0, len(qa.Hosts))
+		for _, host := range qa.Hosts {
 			escapedHosts = append(escapedHosts, rsh.EscapeTextFileString(host))
 		}
 
-		chunks = append(chunks, `@` + FieldHost + `:{` + strings.Join(escapedHosts, `|`) + `}`)
+		chunks = append(chunks, `@` + dbms.FieldHost + `:{` + strings.Join(escapedHosts, `|`) + `}`)
 	}
 
 	// Check that chunks is not empty
@@ -347,11 +351,11 @@ func rshArgsQuery(qa *QueryArgs) string {
 	// Need to build request from chunks
 	var argsQuery string
 	negMark := ""
-	if qa.negExpr {
+	if qa.NegExpr {
 		negMark = "-"
 	}
 
-	if qa.orExpr {
+	if qa.OrExpr {
 		argsQuery = fmt.Sprintf(`%s(%s)`, negMark, strings.Join(chunks, ` | `))
 	} else {
 		argsQuery = fmt.Sprintf(`%s(%s)`, negMark, strings.Join(chunks, ` `))
@@ -393,16 +397,16 @@ func makeSetRangeQuery(field string, min, max int64, set []int64) string {
  * Additional "deep" search mechanism
  */
 
-func (rc *RedisClient) scanSearch(rsc *rsh.Client, qa *QueryArgs, retFields []string, qrTop *QueryResults) (int, error) {
+func (rc *RedisClient) scanSearch(rsc *rsh.Client, qa *dbms.QueryArgs, retFields []string, qrTop *dbms.QueryResults) (int, error) {
 	// Check for empty search phrases
-	if len(qa.sp) == 0 {
+	if len(qa.SP) == 0 {
 		// Nothing to search using SCAN
 		return 0, nil
 	}
 
 	// 1. Prepare matches list for all search phrases
-	matches := make([]string, 0, len(qa.sp) * len(qa.hosts))
-	for _, sp := range qa.sp {
+	matches := make([]string, 0, len(qa.SP) * len(qa.Hosts))
+	for _, sp := range qa.SP {
 		if !strings.HasPrefix(sp, "*") {
 			sp = "*" + sp
 		}
@@ -410,12 +414,12 @@ func (rc *RedisClient) scanSearch(rsc *rsh.Client, qa *QueryArgs, retFields []st
 			sp += "*"
 		}
 
-		if len(qa.hosts) == 0 {
+		if len(qa.Hosts) == 0 {
 			// All hosts match
 			matches = append(matches, RedisObjPrefix + sp)
 		} else {
 			// Prepare search phrases for each host separately
-			for _, host := range qa.hosts {
+			for _, host := range qa.Hosts {
 				matches = append(matches, RedisObjPrefix + host + ":" + sp)
 			}
 		}
@@ -433,7 +437,7 @@ func (rc *RedisClient) scanSearch(rsc *rsh.Client, qa *QueryArgs, retFields []st
 			}
 
 			// Check for key does not exist in the query results
-			if _, ok := (*qrTop)[QRKey{Host: host, Path: path}]; !ok {
+			if _, ok := (*qrTop)[types.ObjKey{Host: host, Path: path}]; !ok {
 				// Then - need to append it
 				return true
 			}
@@ -460,10 +464,10 @@ func (rc *RedisClient) scanSearch(rsc *rsh.Client, qa *QueryArgs, retFields []st
 	log.D("(RedisCli) Loading identifiers for all matched keys...")
 	ids := make([]string, 0, len(matched))
 	for _, k := range matched {
-		id, err := rc.c.HGet(rc.ctx, k, FieldID).Result()
+		id, err := rc.c.HGet(rc.ctx, k, dbms.FieldID).Result()
 		if err != nil {
 			if err == RedisNotFound {
-				return 0, fmt.Errorf("identificator field %q does not exist for key %q", FieldID, k)
+				return 0, fmt.Errorf("identificator field %q does not exist for key %q", dbms.FieldID, k)
 			}
 			return 0, fmt.Errorf("cannot get ID for key %q: %v", k, err)
 		}
@@ -486,7 +490,7 @@ func (rc *RedisClient) scanSearch(rsc *rsh.Client, qa *QueryArgs, retFields []st
 	return len(qr), err
 }
 
-func (rc *RedisClient) scanKeyMatch(match string, filter FilterFunc) ([]string, error) {
+func (rc *RedisClient) scanKeyMatch(match string, filter dbms.FilterFunc) ([]string, error) {
 	// Output slice
 	out := []string{}
 

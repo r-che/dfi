@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/r-che/dfi/dbi"
+	"github.com/r-che/dfi/types/dbms"
 
 	"github.com/r-che/log"
 )
@@ -64,7 +64,7 @@ type progConfig struct {
 	// Internal filled options
 
 	// Query arguments
-	qArgs		*dbi.QueryArgs
+	qArgs		*dbms.QueryArgs
 	// Program configuration loaded from file
 	fConf		fileCfg
 
@@ -94,11 +94,11 @@ func (pc *progConfig) HostGroups() bool {
 	return pc.hostGroups
 }
 
-func (pc *progConfig) DBConfig() *dbi.DBConfig {
+func (pc *progConfig) DBConfig() *dbms.DBConfig {
 	return &pc.fConf.DB
 }
 
-func (pc *progConfig) QueryArgs() *dbi.QueryArgs {
+func (pc *progConfig) QueryArgs() *dbms.QueryArgs {
 	return pc.qArgs
 }
 
@@ -176,7 +176,7 @@ func (pc *progConfig) prepare(CmdArgs []string) error {
 }
 
 func (pc *progConfig) prepareSearch() error {
-	pc.qArgs = dbi.NewQueryArgs(pc.CmdArgs)
+	pc.qArgs = dbms.NewQueryArgs(pc.CmdArgs)
 
 	if pc.strMtime != anyVal {
 		if err := pc.qArgs.ParseMtimes(pc.strMtime); err != nil {

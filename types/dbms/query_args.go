@@ -1,11 +1,10 @@
-package dbi
+package dbms
 
 import (
 	"fmt"
 	"strings"
 	"strconv"
 	"time"
-
 )
 
 // Separator between start/end of some range passed by command line
@@ -13,31 +12,31 @@ const dataRangeSep = ".."
 
 type QueryArgs struct {
 	// Search phrases
-	sp			[]string
+	SP			[]string
 
 	// Mtime related
-	mtimeStart	int64
-	mtimeEnd	int64
-	mtimeSet	[]int64
+	MtimeStart	int64
+	MtimeEnd	int64
+	MtimeSet	[]int64
 
 	// Size related
-	sizeStart	int64
-	sizeEnd		int64
-	sizeSet		[]int64
+	SizeStart	int64
+	SizeEnd		int64
+	SizeSet		[]int64
 
-	types		[]string
-	csums		[]string
-	ids			[]string
-	hosts		[]string
+	Types		[]string
+	CSums		[]string
+	Ids			[]string
+	Hosts		[]string
 
-	orExpr		bool
-	negExpr		bool
-	onlyName	bool
-	useTags		bool
-	onlyTags	bool
-	useDescr	bool
-	onlyDescr	bool
-	deep		bool
+	OrExpr		bool
+	NegExpr		bool
+	OnlyName	bool
+	UseTags		bool
+	OnlyTags	bool
+	UseDescr	bool
+	OnlyDescr	bool
+	Deep		bool
 }
 
 func NewQueryArgs(searchPhrases []string) *QueryArgs {
@@ -48,62 +47,62 @@ func NewQueryArgs(searchPhrases []string) *QueryArgs {
 	}
 
 	return &QueryArgs{
-		sp: sp,
+		SP: sp,
 	}
 }
 
 func (qa *QueryArgs) Clone() *QueryArgs {
 	rv := *qa
 
-	rv.sp = make([]string, len(qa.sp))
-	copy(rv.sp, qa.sp)
+	rv.SP = make([]string, len(qa.SP))
+	copy(rv.SP, qa.SP)
 
-	rv.mtimeSet = make([]int64, len(qa.mtimeSet))
-	copy(rv.mtimeSet, qa.mtimeSet)
-	rv.sizeSet = make([]int64, len(qa.sizeSet))
-	copy(rv.sizeSet, qa.sizeSet)
+	rv.MtimeSet = make([]int64, len(qa.MtimeSet))
+	copy(rv.MtimeSet, qa.MtimeSet)
+	rv.SizeSet = make([]int64, len(qa.SizeSet))
+	copy(rv.SizeSet, qa.SizeSet)
 
-	rv.types = make([]string, len(qa.types))
-	copy(rv.types, qa.types)
+	rv.Types = make([]string, len(qa.Types))
+	copy(rv.Types, qa.Types)
 
-	rv.csums = make([]string, len(qa.csums))
-	copy(rv.csums, qa.csums)
+	rv.CSums = make([]string, len(qa.CSums))
+	copy(rv.CSums, qa.CSums)
 
-	rv.ids = make([]string, len(qa.ids))
-	copy(rv.ids, qa.ids)
+	rv.Ids = make([]string, len(qa.Ids))
+	copy(rv.Ids, qa.Ids)
 
-	rv.hosts = make([]string, len(qa.hosts))
-	copy(rv.hosts, qa.hosts)
+	rv.Hosts = make([]string, len(qa.Hosts))
+	copy(rv.Hosts, qa.Hosts)
 
 	return &rv
 }
 
-func (qa *QueryArgs) isMtime() bool {
-	return len(qa.mtimeSet) != 0 || qa.mtimeStart != 0 || qa.mtimeEnd != 0
+func (qa *QueryArgs) IsMtime() bool {
+	return len(qa.MtimeSet) != 0 || qa.MtimeStart != 0 || qa.MtimeEnd != 0
 }
 
-func (qa *QueryArgs) isSize() bool {
-	return len(qa.sizeSet) != 0 || qa.sizeStart != 0 || qa.sizeEnd != 0
+func (qa *QueryArgs) IsSize() bool {
+	return len(qa.SizeSet) != 0 || qa.SizeStart != 0 || qa.SizeEnd != 0
 }
 
-func (qa *QueryArgs) isType() bool {
-	return len(qa.types) != 0
+func (qa *QueryArgs) IsType() bool {
+	return len(qa.Types) != 0
 }
 
-func (qa *QueryArgs) isChecksum() bool {
-	return len(qa.csums) != 0
+func (qa *QueryArgs) IsChecksum() bool {
+	return len(qa.CSums) != 0
 }
 
-func (qa *QueryArgs) isHost() bool {
-	return len(qa.hosts) != 0
+func (qa *QueryArgs) IsHost() bool {
+	return len(qa.Hosts) != 0
 }
 
-func (qa *QueryArgs) isIds() bool {
-	return len(qa.ids) != 0
+func (qa *QueryArgs) IsIds() bool {
+	return len(qa.Ids) != 0
 }
 
-func (qa *QueryArgs) onlyAII() bool {
-	return qa.onlyTags || qa.onlyDescr
+func (qa *QueryArgs) OnlyAII() bool {
+	return qa.OnlyTags || qa.OnlyDescr
 }
 
 func (qa *QueryArgs) CanSearch(searchPhrases []string) bool {
@@ -115,7 +114,7 @@ func (qa *QueryArgs) CanSearch(searchPhrases []string) bool {
 		}
 	}
 
-	if qa.isMtime() || qa.isSize() || qa.isType() || qa.isChecksum() || qa.isHost() {
+	if qa.IsMtime() || qa.IsSize() || qa.IsType() || qa.IsChecksum() || qa.IsHost() {
 		// Sufficient conditions to search query
 		return true
 	}
@@ -125,7 +124,7 @@ func (qa *QueryArgs) CanSearch(searchPhrases []string) bool {
 }
 
 func (qa *QueryArgs) UseAII() bool {
-	return qa.useTags || qa.useDescr
+	return qa.UseTags || qa.UseDescr
 }
 
 func (qa *QueryArgs) ParseMtimes(mtimeLine string) error {
@@ -149,24 +148,24 @@ func (qa *QueryArgs) ParseMtimes(mtimeLine string) error {
 		switch {
 			// Start and end both set
 			case tsRange[0] != "" && tsRange[1] != "":
-				if qa.mtimeStart, err = parseTime(tsRange[0]); err != nil {
+				if qa.MtimeStart, err = parseTime(tsRange[0]); err != nil {
 					return fmt.Errorf("invalid mtime range start in %q: %v", mtimeLine, err)
 				}
-				if qa.mtimeEnd, err = parseTime(tsRange[1]); err != nil {
+				if qa.MtimeEnd, err = parseTime(tsRange[1]); err != nil {
 					return fmt.Errorf("invalid mtime range end in %q: %v", mtimeLine, err)
 				}
 				// Check that start < end
-				if qa.mtimeEnd <= qa.mtimeStart {
+				if qa.MtimeEnd <= qa.MtimeStart {
 					return fmt.Errorf("invalid mtime range %q - end of the range must be greater than start", mtimeLine)
 				}
 			// Only start is set
 			case tsRange[0] != "" && tsRange[1] == "":
-				if qa.mtimeStart, err = parseTime(tsRange[0]); err != nil {
+				if qa.MtimeStart, err = parseTime(tsRange[0]); err != nil {
 					return fmt.Errorf("invalid mtime range start in %q: %v", mtimeLine, err)
 				}
 			// Only end is set
 			case tsRange[0] == "" && tsRange[1] != "":
-				if qa.mtimeEnd, err = parseTime(tsRange[1]); err != nil {
+				if qa.MtimeEnd, err = parseTime(tsRange[1]); err != nil {
 					return fmt.Errorf("invalid mtime range end in %q: %v", mtimeLine, err)
 				}
 			default:
@@ -180,7 +179,7 @@ func (qa *QueryArgs) ParseMtimes(mtimeLine string) error {
 	// Set of times provided
 
 	// Split set and parse one by one
-	qa.mtimeSet = []int64{}
+	qa.MtimeSet = []int64{}
 	for _, timeStr := range strings.Split(mtimeLine, ",") {
 		ts, err := parseTime(timeStr)
 		if err != nil {
@@ -188,7 +187,7 @@ func (qa *QueryArgs) ParseMtimes(mtimeLine string) error {
 		}
 
 		// Append parsed TS
-		qa.mtimeSet = append(qa.mtimeSet, ts)
+		qa.MtimeSet = append(qa.MtimeSet, ts)
 	}
 
 	// OK
@@ -270,24 +269,24 @@ func (qa *QueryArgs) ParseSizes(sizeLine string) error {
 		switch {
 			// Start and end both set
 			case sizeRange[0] != "" && sizeRange[1] != "":
-				if qa.sizeStart, err = parseSize(sizeRange[0]); err != nil {
+				if qa.SizeStart, err = parseSize(sizeRange[0]); err != nil {
 					return fmt.Errorf("invalid size range start in %q: %v", sizeLine, err)
 				}
-				if qa.sizeEnd, err = parseSize(sizeRange[1]); err != nil {
+				if qa.SizeEnd, err = parseSize(sizeRange[1]); err != nil {
 					return fmt.Errorf("invalid size range end in %q: %v", sizeLine, err)
 				}
 				// Check that start < end
-				if qa.sizeEnd <= qa.sizeStart {
+				if qa.SizeEnd <= qa.SizeStart {
 					return fmt.Errorf("invalid size range %q - end of the range must be greater than start", sizeLine)
 				}
 			// Only start is set
 			case sizeRange[0] != "" && sizeRange[1] == "":
-				if qa.sizeStart, err = parseSize(sizeRange[0]); err != nil {
+				if qa.SizeStart, err = parseSize(sizeRange[0]); err != nil {
 					return fmt.Errorf("invalid size range start in %q: %v", sizeLine, err)
 				}
 			// Only end is set
 			case sizeRange[0] == "" && sizeRange[1] != "":
-				if qa.sizeEnd, err = parseSize(sizeRange[1]); err != nil {
+				if qa.SizeEnd, err = parseSize(sizeRange[1]); err != nil {
 					return fmt.Errorf("invalid size range end in %q: %v", sizeLine, err)
 				}
 			default:
@@ -301,7 +300,7 @@ func (qa *QueryArgs) ParseSizes(sizeLine string) error {
 	// Set of sizes provided
 
 	// Split set and parse one by one
-	qa.sizeSet = []int64{}
+	qa.SizeSet = []int64{}
 	for _, sizeStr := range strings.Split(sizeLine, ",") {
 		ts, err := parseSize(sizeStr)
 		if err != nil {
@@ -309,7 +308,7 @@ func (qa *QueryArgs) ParseSizes(sizeLine string) error {
 		}
 
 		// Append parsed TS
-		qa.sizeSet = append(qa.sizeSet, ts)
+		qa.SizeSet = append(qa.SizeSet, ts)
 	}
 
 	// OK, set parsed successfuly
@@ -360,13 +359,13 @@ func parseSize(sizeStr string) (int64, error) {
 }
 
 func (qa *QueryArgs) ParseTypes(typesLine string, allowed []string) error {
-	qa.types = []string{}
+	qa.Types = []string{}
 
 	argTypes:
 	for _, argType := range strings.Split(typesLine, ",") {
 		for _, kt := range allowed {
 			if argType == kt {
-				qa.types = append(qa.types, argType)
+				qa.Types = append(qa.Types, argType)
 				continue argTypes
 			}
 		}
@@ -377,12 +376,12 @@ func (qa *QueryArgs) ParseTypes(typesLine string, allowed []string) error {
 	return nil
 }
 
-func (qa *QueryArgs) ParseSums(cSumsLine string) error {
-	qa.csums = strings.Split(cSumsLine, ",")
+func (qa *QueryArgs) ParseSums(CSumsLine string) error {
+	qa.CSums = strings.Split(CSumsLine, ",")
 
-	for _, csum := range qa.csums {
+	for _, csum := range qa.CSums {
 		if csum == "" {
-			return fmt.Errorf("empty checksum value in checksums line %q", cSumsLine)
+			return fmt.Errorf("empty checksum value in checksums line %q", CSumsLine)
 		}
 	}
 
@@ -390,9 +389,9 @@ func (qa *QueryArgs) ParseSums(cSumsLine string) error {
 }
 
 func (qa *QueryArgs) ParseHosts(hostsLine string) error {
-	qa.hosts = strings.Split(hostsLine, ",")
+	qa.Hosts = strings.Split(hostsLine, ",")
 
-	for _, host := range qa.hosts {
+	for _, host := range qa.Hosts {
 		if host == "" {
 			return fmt.Errorf("empty host value in hosts line %q", hostsLine)
 		}
@@ -401,40 +400,44 @@ func (qa *QueryArgs) ParseHosts(hostsLine string) error {
 	return nil
 }
 
+func (qa *QueryArgs) SetIds(ids []string) {
+	qa.Ids = ids
+}
+
 func (qa *QueryArgs) SetNeg(v bool) {
-	qa.negExpr = v
+	qa.NegExpr = v
 }
 
 func (qa *QueryArgs) SetOnlyName(v bool) {
-	qa.onlyName = v
+	qa.OnlyName = v
 }
 
 func (qa *QueryArgs) SetUseTags(v bool) {
-	qa.useTags = v
+	qa.UseTags = v
 }
 
 func (qa *QueryArgs) SetOnlyTags(v bool) {
 	if v {
-		qa.useTags = true
+		qa.UseTags = true
 	}
-	qa.onlyTags = v
+	qa.OnlyTags = v
 }
 
 func (qa *QueryArgs) SetUseDescr(v bool) {
-	qa.useDescr = v
+	qa.UseDescr = v
 }
 
 func (qa *QueryArgs) SetOnlyDescr(v bool) {
 	if v {
-		qa.useDescr = true
+		qa.UseDescr = true
 	}
-	qa.onlyDescr = v
+	qa.OnlyDescr = v
 }
 
 func (qa *QueryArgs) SetOr(v bool) {
-	qa.orExpr = v
+	qa.OrExpr = v
 }
 
 func (qa *QueryArgs) SetDeep(v bool) {
-	qa.deep = v
+	qa.Deep = v
 }

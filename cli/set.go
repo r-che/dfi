@@ -5,13 +5,13 @@ import (
 	"sort"
 
 	"github.com/r-che/dfi/types"
-	"github.com/r-che/dfi/dbi"
+	"github.com/r-che/dfi/types/dbms"
 	"github.com/r-che/dfi/cli/internal/cfg"
 
 	"github.com/r-che/log"
 )
 
-func doSet(dbc dbi.DBClient) *types.CmdRV {
+func doSet(dbc dbms.Client) *types.CmdRV {
 	// Get configuration
 	c := cfg.Config()
 
@@ -31,7 +31,7 @@ func doSet(dbc dbi.DBClient) *types.CmdRV {
 	return types.NewCmdRV().AddErr("Unreachable code")
 }
 
-func setTags(dbc dbi.DBClient, tagsStr string, ids []string) *types.CmdRV {
+func setTags(dbc dbms.Client, tagsStr string, ids []string) *types.CmdRV {
 	// Get configuration
 	c := cfg.Config()
 
@@ -44,9 +44,9 @@ func setTags(dbc dbi.DBClient, tagsStr string, ids []string) *types.CmdRV {
 		tags[i] = strings.TrimSpace(tags[i])
 
 		// Check tag for special value forbidden to set
-		if tags[i] == dbi.AIIAllTags {
+		if tags[i] == dbms.AIIAllTags {
 			return types.NewCmdRV().
-				AddErr("tag value %q is a special value that cannot be used as a tag", dbi.AIIAllTags)
+				AddErr("tag value %q is a special value that cannot be used as a tag", dbms.AIIAllTags)
 		}
 
 		// Remove empty tags
@@ -63,7 +63,7 @@ func setTags(dbc dbi.DBClient, tagsStr string, ids []string) *types.CmdRV {
 	// Sort list of tags
 	sort.Strings(tags)
 
-	updated, _, err := dbc.ModifyAII(dbi.Update, &dbi.AIIArgs{Tags: tags}, ids, c.SetAdd)
+	updated, _, err := dbc.ModifyAII(dbms.Update, &dbms.AIIArgs{Tags: tags}, ids, c.SetAdd)
 	if err != nil {
 		return types.NewCmdRV().
 			AddChanged(updated).
@@ -74,15 +74,15 @@ func setTags(dbc dbi.DBClient, tagsStr string, ids []string) *types.CmdRV {
 	return types.NewCmdRV().AddChanged(updated)
 }
 
-func setDescr(dbc dbi.DBClient, descr string, ids []string) *types.CmdRV {
+func setDescr(dbc dbms.Client, descr string, ids []string) *types.CmdRV {
 	// Get configuration
 	c := cfg.Config()
 
 	log.D("Set description (append: %t) %q for: %v", c.SetAdd, descr, ids)
 
 	// Trim spaces from description and set it to argumets
-	args := &dbi.AIIArgs{Descr: strings.TrimSpace(descr), NoNL: c.NoNL}
-	_, updated, err := dbc.ModifyAII(dbi.Update, args, ids, c.SetAdd)
+	args := &dbms.AIIArgs{Descr: strings.TrimSpace(descr), NoNL: c.NoNL}
+	_, updated, err := dbc.ModifyAII(dbms.Update, args, ids, c.SetAdd)
 	if err != nil {
 		return types.NewCmdRV().
 			AddChanged(updated).
