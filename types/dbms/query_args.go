@@ -31,20 +31,18 @@ type QueryArgs struct {
 	Ids			[]string
 	Hosts		[]string
 
-	types.QueryFlags
+	types.SearchFlags
 	types.CommonFlags
 }
 
-func NewQueryArgs(searchPhrases []string) *QueryArgs {
+func (qa *QueryArgs) SetSearchPhrases(searchPhrases []string) {
 	// Trim possible leading and trailing white spaces
 	sp := make([]string, 0, len(searchPhrases))
 	for _, s := range searchPhrases {
 		sp = append(sp, strings.TrimSpace(s))
 	}
 
-	return &QueryArgs{
-		SP: sp,
-	}
+	qa.SP = sp
 }
 
 func (qa *QueryArgs) Clone() *QueryArgs {
@@ -398,42 +396,4 @@ func (qa *QueryArgs) ParseHosts(hostsLine string) error {
 
 func (qa *QueryArgs) SetIds(ids []string) {
 	qa.Ids = ids
-}
-
-func (qa *QueryArgs) SetNeg(v bool) {
-	qa.NegExpr = v
-}
-
-func (qa *QueryArgs) SetOnlyName(v bool) {
-	qa.OnlyName = v
-}
-
-func (qa *QueryArgs) SetUseTags(v bool) {
-	qa.UseTags = v
-}
-
-func (qa *QueryArgs) SetOnlyTags(v bool) {
-	if v {
-		qa.UseTags = true
-	}
-	qa.OnlyTags = v
-}
-
-func (qa *QueryArgs) SetUseDescr(v bool) {
-	qa.UseDescr = v
-}
-
-func (qa *QueryArgs) SetOnlyDescr(v bool) {
-	if v {
-		qa.UseDescr = true
-	}
-	qa.OnlyDescr = v
-}
-
-func (qa *QueryArgs) SetOr(v bool) {
-	qa.OrExpr = v
-}
-
-func (qa *QueryArgs) SetDeep(v bool) {
-	qa.DeepSearch = v
 }

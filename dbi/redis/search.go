@@ -76,7 +76,11 @@ func (rc *RedisClient) queryAII(qa *dbms.QueryArgs) ([]string, error) {
 
 	// Check for need to use tags
 	if qa.UseTags {
-		chunks = append(chunks, `(@` + dbms.AIIFieldTags + `:{` +  strings.Join(qa.SP, `|`) + `})`)
+		et := make([]string, 0, len(qa.SP))	// Escaped tags
+		for _, tag := range qa.SP {
+			et = append(et, rsh.EscapeTextFileString(tag))
+		}
+		chunks = append(chunks, `(@` + dbms.AIIFieldTags + `:{` +  strings.Join(et, `|`) + `})`)
 	}
 
 	// Check for need to use description
@@ -104,7 +108,7 @@ func rshSearchAII(cli *rsh.Client, q *rsh.Query) ([]string, error) {
 	// Content is not needed - only keys should be returned
 	q.SetFlags(rsh.QueryNoContent)
 
-	//log.D("(RedisCli) Prepared RediSearch query string: %v", q.Raw)	// XXX Raw query may be too long
+	log.D("(RedisCli:rshSearchAII) Prepared RediSearch query string: %v", q.Raw)	// XXX Raw query may be too long
 
 	// Output result
 	ids := make([]string, 0, 32)	// 32 - should probably be enough for most cases on average
@@ -218,7 +222,7 @@ func rshSearch(cli *rsh.Client, q *rsh.Query, retFields []string) (dbms.QueryRes
 		q.SetFlags(rsh.QueryNoContent)
 	}
 
-	//log.D("(RedisCli) Prepared RediSearch query string: %v", q.Raw)	// XXX Raw query may be too long
+	log.D("(RedisCli:rshSearch) Prepared RediSearch query string: %v", q.Raw)	// XXX Raw query may be too long
 
 	// Output result
 	qr := make(dbms.QueryResults, 32)	// 32 - should probably be enough for most cases on average

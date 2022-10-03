@@ -30,9 +30,6 @@ type progConfig struct {
 	OnlyIds		bool
 	PrintID		bool
 	HostGroups	bool
-	// Flags that affect query to DB
-	types.QueryFlags
-
 
 	// Set mode options
 	NoNL		bool
@@ -40,15 +37,15 @@ type progConfig struct {
 	// Show mdoe options
 	OneLine		bool
 
-	/*
-	 * Common options
-	 */
+	//
+	// Common options
+	//
 	types.CommonFlags
 	SetAdd		bool
 
-	/*
-	 * Other options
-	 */
+	//
+	// Other options
+	//
 
 	// Auxiliary options
 	confPath	string
@@ -64,7 +61,12 @@ type progConfig struct {
 	QueryArgs		*dbms.QueryArgs
 	// Program configuration loaded from file
 	fConf		fileCfg
+}
 
+func NewConfig() *progConfig {
+	return &progConfig{
+		QueryArgs: &dbms.QueryArgs{},
+	}
 }
 
 func (pc *progConfig) DBConfig() *dbms.DBConfig {
@@ -145,7 +147,7 @@ func (pc *progConfig) prepare(CmdArgs []string) error {
 }
 
 func (pc *progConfig) prepareSearch() error {
-	pc.QueryArgs = dbms.NewQueryArgs(pc.CmdArgs)
+	pc.QueryArgs.SetSearchPhrases(pc.CmdArgs)
 
 	if pc.strMtime != anyVal {
 		if err := pc.QueryArgs.ParseMtimes(pc.strMtime); err != nil {
@@ -177,14 +179,22 @@ func (pc *progConfig) prepareSearch() error {
 		}
 	}
 
-	// Pass arguments from command line to query arguments structure
-	pc.QueryArgs.QueryFlags = pc.QueryFlags
+	// Update values of flags that depend on other flags
+	if pc.QueryArgs.OnlyDescr {
+		pc.CommonFlags.UseDescr = true
+	}
+	if pc.QueryArgs.OnlyTags {
+		pc.CommonFlags.UseTags = true
+	}
+
+	// Pass common flags from command line to query arguments
 	pc.QueryArgs.CommonFlags = pc.CommonFlags
 
 	// Check for sufficient conditions for search
 	if !pc.QueryArgs.CanSearch(pc.CmdArgs) {
 		return fmt.Errorf("insufficient arguments to make search")
 	}
+
 	// OK
 	return nil
 }

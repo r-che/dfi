@@ -10,7 +10,7 @@ import (
 	"github.com/r-che/optsparser"
 )
 
-var config progConfig
+var config *progConfig
 
 // Defaults
 var knownTypes = []string{"reg", "dir", "sym"}
@@ -22,6 +22,8 @@ func Init(name string) {
 	p := optsparser.NewParser(name,
 		// List of required options
 	)
+
+	config = NewConfig()
 
 	// Get real hostname
 	p.AddSeparator(`>> Opearting mode (only one can be set)`)
@@ -40,12 +42,12 @@ func Init(name string) {
 	p.AddString(`type`, `set of object types, possible values: ` + strings.Join(knownTypes, ", "), &config.oTypes, anyVal)
 	p.AddString(`checksum`, `set of objects checksums`, &config.csums, anyVal)
 	p.AddString(`host`, `set of hosts when object may be located`, &config.hosts, anyVal)
-	p.AddBool(`or`, `use OR instead of AND between conditions`, &config.OrExpr, false)
-	p.AddBool(`not`, `use negative expression`, &config.NegExpr, false)
-	p.AddBool(`only-name|N`, `use only file name to match search phrases`, &config.OnlyName, false)
-	p.AddBool(`only-tags|T`, `use only tags field to match search phrases, implicitly enables --tags`, &config.OnlyTags, false)
-	p.AddBool(`only-descr`, `use only description field to match search phrases, implicitly enables --descr`, &config.OnlyDescr, false)
-	p.AddBool(`deep|D`, `use additional DBMS dependent features (can slow down)`, &config.DeepSearch, false)
+	p.AddBool(`or`, `use OR instead of AND between conditions`, &config.QueryArgs.OrExpr, false)
+	p.AddBool(`not`, `use negative expression`, &config.QueryArgs.NegExpr, false)
+	p.AddBool(`only-name|N`, `use only file name to match search phrases`, &config.QueryArgs.OnlyName, false)
+	p.AddBool(`only-tags|T`, `use only tags field to match search phrases, implicitly enables --tags`, &config.QueryArgs.OnlyTags, false)
+	p.AddBool(`only-descr`, `use only description field to match search phrases, implicitly enables --descr`, &config.QueryArgs.OnlyDescr, false)
+	p.AddBool(`deep|D`, `use additional DBMS dependent features (can slow down)`, &config.QueryArgs.DeepSearch, false)
 	// Output related options
 	p.AddBool(`only-ids|I`, `print only identifiers of found objects`, &config.OnlyIds, false)
 	p.AddBool(`with-ids|i`, `print identifier of object at the beginning of the output lines`, &config.PrintID, false)

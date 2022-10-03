@@ -5,7 +5,7 @@ type CommonFlags struct {
 	UseDescr	bool	// Affects query to DB
 }
 
-type QueryFlags struct {
+type SearchFlags struct {
 	OrExpr		bool
 	NegExpr		bool
 	OnlyName	bool

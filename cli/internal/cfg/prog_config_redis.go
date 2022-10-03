@@ -9,8 +9,9 @@ import (
 func (pc *progConfig) prepareDBMS() error {
 	// Check for existing of required command line arguments
 	if (pc.QueryArgs.DeepSearch || pc.QueryArgs.UseTags || pc.QueryArgs.OnlyTags ||
-		pc.QueryArgs.UseDescr || pc.QueryArgs.OnlyDescr) && len(pc.CmdArgs) == 0 {
-		return fmt.Errorf("(Redis) one of the search options requires an command line argument")
+		pc.QueryArgs.UseDescr || pc.QueryArgs.OnlyDescr || pc.QueryArgs.OnlyName) &&
+		len(pc.CmdArgs) == 0 {
+		return fmt.Errorf("one of command line options requires at least one command line argument")
 	}
 
 	// Check for incompatible options
@@ -19,6 +20,7 @@ func (pc *progConfig) prepareDBMS() error {
 		"deep": pc.QueryArgs.DeepSearch,
 		"only-name": pc.QueryArgs.OnlyName,
 		"only-tags": pc.QueryArgs.OnlyTags,
+		"only-descr": pc.QueryArgs.OnlyDescr,
 	} {
 		if v {
 			io = append(io, `--` + k)
@@ -30,5 +32,5 @@ func (pc *progConfig) prepareDBMS() error {
 		return nil
 	}
 
-	return fmt.Errorf("(Redis) search options are incompatible: %s", strings.Join(io, " "))
+	return fmt.Errorf("search options are incompatible: %s", strings.Join(io, " "))
 }
