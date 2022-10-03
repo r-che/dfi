@@ -96,34 +96,34 @@ func doShow(dbc dbi.DBClient) *types.CmdRV {
 	}
 
 	// Print all found objects
-	printObjs(ids, objs, aiis, c.OneLine)
+	showObjs(ids, objs, aiis)
 
 	// Return results
 	return rv
 }
 
-func printObjs(ids []string, objs dbi.QueryResults, aiis map[string]map[string]string, oneLine bool) {
+func showObjs(ids []string, objs dbi.QueryResults, aiis map[string]map[string]string) {
+	// Get configuration
+	c := cfg.Config()
+
 	// Print objects in the same order as input identifiers list
 	ikm := make(map[string]dbi.QRKey, len(ids))	// id->key map
 	for objKey, fields := range objs {
 		ikm[fields[dbi.FieldID].(string)] = objKey
 	}
 
-	for _, id := range ids {
-		// Extract corresponding object key
-		objKey := ikm[id]
-		// Extract object fields
-		fields := objs[objKey]
-		if oneLine {
-			printObjOL(objKey, fields, aiis[id])
-		} else {
-			printObj(objKey, fields, aiis[id])
+	if c.OneLine {
+		for _, id := range ids {
+			showObjOL(ikm[id], objs[ikm[id]], aiis[id])
 		}
-
+	} else {
+		for _, id := range ids {
+			showObj(ikm[id], objs[ikm[id]], aiis[id])
+		}
 	}
 }
 
-func printObjOL(objKey dbi.QRKey, fields map[string]any, aii map[string]string) {
+func showObjOL(objKey dbi.QRKey, fields map[string]any, aii map[string]string) {
 	res := make([]string, 0, len(showObjFields) + len(showAIIFields) + 2 /* host + path */)
 	res = append(res,
 		fmt.Sprintf("host:%q", objKey.Host),
@@ -158,7 +158,7 @@ func printObjOL(objKey dbi.QRKey, fields map[string]any, aii map[string]string) 
 	fmt.Println(strings.Join(res, " "))
 }
 
-func printObj(objKey dbi.QRKey, fields map[string]any, aii map[string]string) {
+func showObj(objKey dbi.QRKey, fields map[string]any, aii map[string]string) {
 	// Object header
 	fmt.Printf(">>> [ID: %s]\n", fields[dbi.FieldID])
 
