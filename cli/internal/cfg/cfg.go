@@ -47,7 +47,8 @@ func Init(name string) {
 	p.AddBool(`only-descr`, `use only description field to match search phrases, implicitly enables --descr`, &config.onlyDescr, false)
 	p.AddBool(`deep|D`, `use additional DBMS dependent features (can slow down)`, &config.deepSearch, false)
 	// Output related options
-	p.AddBool(`with-ids|I`, `print ID at the beginning of the output lines`, &config.printID, false)
+	p.AddBool(`only-ids|I`, `print only identifiers of found objects`, &config.OnlyIds, false)
+	p.AddBool(`with-ids|i`, `print identifier of object at the beginning of the output lines`, &config.printID, false)
 	p.AddBool(`hosts-groups|H`, `group results by host instead of single line sorted output`, &config.hostGroups, false)
 
 	p.AddSeparator(``)

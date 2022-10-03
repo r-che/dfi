@@ -32,6 +32,7 @@ type progConfig struct {
 	onlyTags	bool
 	onlyDescr	bool
 	deepSearch	bool
+	OnlyIds		bool
 	printID		bool
 	hostGroups	bool
 

@@ -15,7 +15,7 @@ func doSearch(dbc dbi.DBClient) *types.CmdRV {
 
 	// Set of requested fields
 	rqFields := []string{}
-	if c.PrintID() {
+	if c.PrintID() || c.OnlyIds {
 		// Add object identifier field to requested list
 		rqFields = append(rqFields, dbi.FieldID)
 	}
@@ -30,17 +30,20 @@ func doSearch(dbc dbi.DBClient) *types.CmdRV {
 	// Print results
 	if c.HostGroups() {
 		// Print results grouped by hosts
-		printResHG(qr, c.PrintID())
+		printResHG(qr)
 	} else {
 		// Print single-line sorted output
-		printResSingle(qr, c.PrintID())
+		printResSingle(qr)
 	}
 
 	// OK
 	return rv.AddFound(int64(len(qr)))
 }
 
-func printResHG(qr dbi.QueryResults, printID bool) {
+func printResHG(qr dbi.QueryResults) {
+	// Get configuration
+	c := cfg.Config()
+
 	// Make lists grouped by hosts
 	hg := map[string][]string{}
 
@@ -72,11 +75,16 @@ func printResHG(qr dbi.QueryResults, printID bool) {
 
 		fmt.Printf("%s(%d):\n", host, len(paths))
 
-		if printID {
+		switch {
+		case c.OnlyIds:
+			for _, path := range paths {
+				fmt.Printf("  %v\n", qr[dbi.QRKey{host, path}][dbi.FieldID])
+			}
+		case c.PrintID():
 			for _, path := range paths {
 				fmt.Printf("  %v %s\n", qr[dbi.QRKey{host, path}][dbi.FieldID], path)
 			}
-		} else {
+		default:
 			for _, path := range paths {
 				fmt.Printf("  %s\n", path)
 			}
@@ -84,7 +92,10 @@ func printResHG(qr dbi.QueryResults, printID bool) {
 	}
 }
 
-func printResSingle(qr dbi.QueryResults, printID bool) {
+func printResSingle(qr dbi.QueryResults) {
+	// Get configuration
+	c := cfg.Config()
+
 	// Make sorted list of query result keys
 	qrKeys := make([]dbi.QRKey, 0, len(qr))
 	for k := range qr {
@@ -100,11 +111,16 @@ func printResSingle(qr dbi.QueryResults, printID bool) {
 		return false
 	})
 
-	if printID {
+	switch {
+	case c.OnlyIds:
+		for _, k := range qrKeys {
+			fmt.Printf("%v\n", qr[k][dbi.FieldID])
+		}
+	case c.PrintID():
 		for _, k := range qrKeys {
 			fmt.Printf("%v %s:%s\n", qr[k][dbi.FieldID], k.Host, k.Path)
 		}
-	} else {
+	default:
 		for _, k := range qrKeys {
 			fmt.Printf("%s:%s\n", k.Host, k.Path)
 		}
