@@ -27,9 +27,10 @@ type progConfig struct {
 	oTypes		string
 	csums		string
 	hosts		string
-	ShowOnlyIds		bool
+	ShowOnlyIds	bool
 	ShowID		bool
 	HostGroups	bool
+	SearchDupes	bool
 
 	// Set mode options
 	NoNL		bool
@@ -148,6 +149,13 @@ func (pc *progConfig) prepare(CmdArgs []string) error {
 	if pc.ShowOnlyIds {
 		// Enable quiet mode
 		pc.Quiet = true
+	}
+
+	// Check for existing of required command line arguments
+	if (pc.QueryArgs.DeepSearch || pc.QueryArgs.UseTags || pc.QueryArgs.OnlyTags ||
+		pc.QueryArgs.UseDescr || pc.QueryArgs.OnlyDescr || pc.QueryArgs.OnlyName || pc.SearchDupes) &&
+		len(pc.CmdArgs) == 0 {
+		return fmt.Errorf("one of command line options requires at least one command line argument")
 	}
 
 	// Do DBMS specific preparations/checks

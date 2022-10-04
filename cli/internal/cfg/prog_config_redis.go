@@ -7,17 +7,11 @@ import (
 )
 
 func (pc *progConfig) prepareDBMS() error {
-	// Check for existing of required command line arguments
-	if (pc.QueryArgs.DeepSearch || pc.QueryArgs.UseTags || pc.QueryArgs.OnlyTags ||
-		pc.QueryArgs.UseDescr || pc.QueryArgs.OnlyDescr || pc.QueryArgs.OnlyName) &&
-		len(pc.CmdArgs) == 0 {
-		return fmt.Errorf("one of command line options requires at least one command line argument")
-	}
-
 	// Check for incompatible options
 	io := make([]string, 0, 3)	// Incompatible options
 	for k, v := range map[string]bool{
 		"deep": pc.QueryArgs.DeepSearch,
+		"dupes": pc.SearchDupes,
 		"only-name": pc.QueryArgs.OnlyName,
 		"only-tags": pc.QueryArgs.OnlyTags,
 		"only-descr": pc.QueryArgs.OnlyDescr,

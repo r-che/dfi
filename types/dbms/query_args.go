@@ -33,9 +33,19 @@ type QueryArgs struct {
 
 	types.SearchFlags
 	types.CommonFlags
+
+	//
+	// Runtime filled fields
+	//
+
+	dupesRefs	map[string]string
 }
 
-func (qa *QueryArgs) SetSearchPhrases(searchPhrases []string) {
+func NewQueryArgs() *QueryArgs {
+	return &QueryArgs{}
+}
+
+func (qa *QueryArgs) SetSearchPhrases(searchPhrases []string) *QueryArgs {
 	// Trim possible leading and trailing white spaces
 	sp := make([]string, 0, len(searchPhrases))
 	for _, s := range searchPhrases {
@@ -43,6 +53,8 @@ func (qa *QueryArgs) SetSearchPhrases(searchPhrases []string) {
 	}
 
 	qa.SP = sp
+
+	return qa
 }
 
 func (qa *QueryArgs) Clone() *QueryArgs {
@@ -394,6 +406,12 @@ func (qa *QueryArgs) ParseHosts(hostsLine string) error {
 	return nil
 }
 
-func (qa *QueryArgs) SetIds(ids []string) {
-	qa.Ids = ids
+func (qa *QueryArgs) AppendIds(ids []string) *QueryArgs {
+	qa.Ids = append(qa.Ids, ids...)
+	return qa
+}
+
+func (qa *QueryArgs) SetDupesRefs(dr map[string]string) *QueryArgs {
+	qa.dupesRefs = dr
+	return qa
 }

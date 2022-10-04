@@ -42,12 +42,13 @@ func Init(name string) {
 	p.AddString(`type`, `set of object types, possible values: ` + strings.Join(knownTypes, ", "), &config.oTypes, anyVal)
 	p.AddString(`checksum`, `set of objects checksums`, &config.csums, anyVal)
 	p.AddString(`host`, `set of hosts when object may be located`, &config.hosts, anyVal)
-	p.AddBool(`or`, `use OR instead of AND between conditions`, &config.QueryArgs.OrExpr, false)
-	p.AddBool(`not`, `use negative expression`, &config.QueryArgs.NegExpr, false)
 	p.AddBool(`only-name|N`, `use only file name to match search phrases`, &config.QueryArgs.OnlyName, false)
 	p.AddBool(`only-tags|T`, `use only tags field to match search phrases, implicitly enables --tags`, &config.QueryArgs.OnlyTags, false)
 	p.AddBool(`only-descr`, `use only description field to match search phrases, implicitly enables --descr`, &config.QueryArgs.OnlyDescr, false)
 	p.AddBool(`deep|D`, `use additional DBMS dependent features (can slow down)`, &config.QueryArgs.DeepSearch, false)
+	p.AddBool(`dupes`, `search for duplicates, command line arguments will be treated as objects identifiers`, &config.SearchDupes, false)
+	p.AddBool(`or`, `use OR instead of AND between conditions`, &config.QueryArgs.OrExpr, false)
+	p.AddBool(`not`, `use negative expression`, &config.QueryArgs.NegExpr, false)
 	// Output related options
 	p.AddBool(`show-only-ids|I`, `print only identifiers of found objects, implicitly enables --quiet`, &config.ShowOnlyIds, false)
 	p.AddBool(`show-ids|i`, `print identifier of object at the beginning of the output lines`, &config.ShowID, false)
@@ -68,7 +69,6 @@ func Init(name string) {
 	p.AddSeparator(`>> Options common to several modes`)
 	p.AddBool(`tags|t`, `enable tags-related operations, requires at least one command line argument`, &config.UseTags, false)
 	p.AddBool(`descr`, `enable description-related operations, requires at least one command line argument`, &config.UseDescr, false)
-	// TODO --dupe
 
 	// Other options
 	//p.AddString(`hostname`, `override real client hostname by provided value`, &config.DBCfg.CliHost, hostname)
