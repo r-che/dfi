@@ -48,14 +48,17 @@ type progConfig struct {
 	//
 
 	// Auxiliary options
-	confPath	string
 	Debug		bool
 	NoLogTS		bool
+	Quiet		bool
+	confPath	string
 
 	// Non-flags arguments from command line
 	CmdArgs []string
 
+	//
 	// Internal filled options
+	//
 
 	// Query arguments
 	QueryArgs		*dbms.QueryArgs

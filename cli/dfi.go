@@ -68,20 +68,23 @@ func printStatus(rv *types.CmdRV) int {
 		fmt.Fprintf(os.Stderr, "ERR: %s\n", e)
 	}
 
-	pref := ""
-	if rv.OK() {
-		pref = "OK - "
-	}
-
-	if c.Show || c.Search {
-		// Ignore status output in show mode with --one-line key
-		if !(c.Show && c.OneLine) {
-			fmt.Printf("%s%d objects found\n", pref, rv.Found())
+	if !c.Quiet {
+		pref := ""
+		if rv.OK() {
+			pref = "OK - "
 		}
-	} else {
-		fmt.Printf("%s%d changed\n", pref, rv.Changed())
-	}
 
+		if c.Show || c.Search {
+			// Ignore status output in show mode with --one-line key
+			if c.Show && c.OneLine {
+				// Print nothing
+			} else {
+				fmt.Printf("%s%d objects found\n", pref, rv.Found())
+			}
+		} else {
+			fmt.Printf("%s%d changed\n", pref, rv.Changed())
+		}
+	}
 
 	log.D("%s %s finished", ProgNameLong, ProgVers)
 	log.Close()

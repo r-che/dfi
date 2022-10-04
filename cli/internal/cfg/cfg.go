@@ -79,6 +79,7 @@ func Init(name string) {
 	p.AddString(`cfg|c`, `path to configuration file`, &config.confPath, progConfigDefault)
 	p.AddBool(`debug|d`, `enable debug logging`, &config.Debug, false)
 	p.AddBool(`nologts`, `disable log timestamps`, &config.NoLogTS, false)
+	p.AddBool(`quiet|q`, `be quiet, do not print additional information`, &config.Quiet, false)
 
 	// Parse options
 	p.Parse()
