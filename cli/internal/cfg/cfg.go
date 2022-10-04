@@ -7,13 +7,14 @@ import (
 	"path/filepath"
 
 	"github.com/r-che/log"
+	"github.com/r-che/dfi/types"
 	"github.com/r-che/optsparser"
 )
 
 var config *progConfig
 
 // Defaults
-var knownTypes = []string{"reg", "dir", "sym"}
+var knownTypes = []string{types.ObjRegular, types.ObjDirectory, types.ObjSymlink}
 var progConfigSuff = filepath.Join(".dfi", "cli.json")
 var progConfigDefault = filepath.Join("${HOME}", progConfigSuff)
 

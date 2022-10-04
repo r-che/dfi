@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"strconv"
 
 	"github.com/r-che/dfi/types"
 	"github.com/r-che/dfi/types/dbms"
@@ -21,17 +22,15 @@ func doSearch(dbc dbms.Client) *types.CmdRV {
 		rqFields = append(rqFields, dbms.FieldID)
 	}
 
+	if c.SearchDupes {
+		return searchDupes(dbc, c.QueryArgs, rqFields)
+	}
+
 	rv := types.NewCmdRV()
 
-	if c.SearchDupes {
-		// TODO
-		// Need to load information about objects for which need to search duplicates
-		_, err := loadDupesRefs(dbc, rv)
-		_=err
-	}
 	qr, err := dbc.Query(c.QueryArgs, rqFields)
 	if err != nil {
-		rv.AddErr("cannot execute DB query to show requested objects: %v", err)
+		rv.AddErr("cannot execute search query: %v", err)
 	}
 
 	// Print results
@@ -47,28 +46,148 @@ func doSearch(dbc dbms.Client) *types.CmdRV {
 	return rv.AddFound(int64(len(qr)))
 }
 
-func loadDupesRefs(dbc dbms.Client, rv *types.CmdRV) (any, error) {
+func searchDupes(dbc dbms.Client, qa *dbms.QueryArgs, rqFields []string) *types.CmdRV {
+	rv := types.NewCmdRV()
+
+	// Need to load information about reference objects which will use to found duplicates
+	refObjs, err := loadDupesRefs(dbc, rv)
+	if err != nil {
+		return rv.AddErr(err)
+	}
+
+	// Append checksums to query arguments
+	for _, fso := range refObjs {
+		qa.AddChecksums(fso.Checksum)
+	}
+
+	// Clear search phrases due to them contain identifiers that should not be used in search
+	qa.SetSearchPhrases(nil)
+
+	// Append checksum field to return fields set, to have ability
+	// to match found duplicates with provided refrences
+	rqFields = append(rqFields, dbms.FieldChecksum)
+	// Run query to get duplicates
+	qr, err := dbc.Query(qa, rqFields)
+	if err != nil {
+		rv.AddErr("cannot execute search query to find duplicates: %v", err)
+	}
+
+	// Create a map of duplicates
+	dm := map[string][]string{}
+
+	// Dupes counter
+	var nd int64
+	for objKey, fields := range qr {
+		//
+		// Extract identifier
+		//
+		idVal, ok := fields[dbms.FieldID]
+		if !ok {
+			// Skip incorrect object
+			rv.AddWarn("Skip invalid object %q without identifier field %q", objKey, dbms.FieldID)
+			continue
+		}
+
+		// Convert identifier to string representation
+		id, ok := idVal.(string)
+		if !ok {
+			// Skip incorrect object
+			rv.AddWarn("Skip invalid object %q with non-string identifier value: %#v", objKey, idVal)
+			continue
+		}
+
+		// Lookup identifier in refObjs
+		if _, ok := refObjs[id]; ok {
+			// This is one of the referenced objects, skip
+			continue
+		}
+
+		//
+		// Extract checksum
+		//
+		csumVal, ok := fields[dbms.FieldChecksum]
+		if !ok {
+			// Skip incorrect object
+			rv.AddWarn("Skip invalid object %s (%s) without checksum field %q", id, objKey, dbms.FieldChecksum)
+			continue
+		}
+
+		// Convert checksum to string representation
+		csum, ok := csumVal.(string)
+		if !ok {
+			// Skip incorrect object
+			rv.AddWarn("Skip invalid object %s (%s) with non-string checksum value: %#v", id, objKey, csumVal)
+			continue
+		}
+
+		// Push identifier to duplicates map
+		dm[csum] = append(dm[csum], id)
+		// Increment dupes counter
+		nd++
+	}
+
+	// Make output
+	printDupes(refObjs, dm)
+
+	return rv.AddFound(nd)
+}
+
+func printDupes(refObjs map[string]*types.FSObject, dm map[string][]string) {
+	// Get configuration
+	c := cfg.Config()
+	// Get list of requested identifiers to print results in the same order
+	ids := c.CmdArgs
+
+	if c.OneLine {
+		// Produce oneline output
+		for _, id := range ids {
+			// Check for any duplicates of reference id were found
+			dupes, ok := dm[refObjs[id].Checksum]
+			if !ok {
+				// Skip
+				continue
+			}
+
+			// Print refrence identifier
+			fmt.Print(id)
+			// Sort identifiers
+			sort.Strings(dupes)
+			// Print all dupes of id
+			for _, did := range dupes {
+				fmt.Printf(" %s", did)
+			}
+			// Print new line
+			fmt.Println()
+		}
+	} else {
+		// TODO Produce normal output
+	}
+}
+
+func loadDupesRefs(dbc dbms.Client, rv *types.CmdRV) (map[string]*types.FSObject, error) {
 	// Get configuration
 	c := cfg.Config()
 
 	// Create query arguments with identifiers
-	qa := dbms.NewQueryArgs().AppendIds(c.CmdArgs)	// Search phrases used as list of identifiers
+	qa := dbms.NewQueryArgs().AddIds(c.CmdArgs...)	// Search phrases used as list of identifiers
 
 	// Run query to get information about the objects
-	qr, err := dbc.Query(qa, []string{dbms.FieldID, dbms.FieldChecksum, dbms.FieldSize})
+	qr, err := dbc.Query(qa, []string{dbms.FieldID, dbms.FieldType, dbms.FieldChecksum, dbms.FieldSize})
 	if err != nil {
 		return nil, err
 	}
 
 	// Make map of requested IDs mapped to corresponding checksum
-	ids := make(map[string]string, len(qa.Ids))
+	ids := make(map[string]*types.FSObject, len(qa.Ids))
 	for _, id := range qa.Ids {
-		ids[id] = ""
+		ids[id] = nil
 	}
 
 	// Assign checksums
 	for objKey, fields := range qr {
+		//
 		// Extract identifier
+		//
 		idVal, ok := fields[dbms.FieldID]
 		if !ok {
 			// Skip incorrect object
@@ -87,14 +206,35 @@ func loadDupesRefs(dbc dbms.Client, rv *types.CmdRV) (any, error) {
 		// Check that this object really was requested
 		if _, ok := ids[id]; !ok {
 			// Skip strange object
-			rv.AddWarn("Skip object %q with ID %q - this ID was not requested! Skip it", objKey, id)
+			rv.AddWarn("Skip object %s (%s) - this ID was not requested! Skip it", id, objKey)
 			continue
 		}
 
+		//
+		// Extract type field
+		//
+		oType, ok := fields[dbms.FieldType]
+		if !ok {
+			// Skip incorrect object
+			rv.AddWarn("Skip invalid object %s (%s) without type field %q", id, objKey, dbms.FieldType)
+			continue
+		}
+		if oType != types.ObjRegular {
+			// Skip incorrect object
+			rv.AddWarn("Object %s (%s) is not a regular file (%s) - cannot search duplicates for it", id, objKey, oType)
+			// Remove it from requested identifiers map
+			delete(ids, id)
+
+			continue
+		}
+
+		//
+		// Extract checksum
+		//
 		csumVal, ok := fields[dbms.FieldChecksum]
 		if !ok {
 			// Skip incorrect object
-			rv.AddWarn("Skip invalid object %q without checksum field %q", objKey, dbms.FieldChecksum)
+			rv.AddWarn("Skip invalid object %s (%s) without checksum field %q", id, objKey, dbms.FieldChecksum)
 			continue
 		}
 
@@ -102,26 +242,66 @@ func loadDupesRefs(dbc dbms.Client, rv *types.CmdRV) (any, error) {
 		csum, ok := csumVal.(string)
 		if !ok {
 			// Skip incorrect object
-			rv.AddWarn("Skip invalid object %q with non-string checksum value: %#v", objKey, idVal)
+			rv.AddWarn("Skip invalid object %s (%s) with non-string checksum value: %#v", id, objKey, csumVal)
+			continue
+		}
+		// Check the value of checksum
+		switch csum {
+		case "":
+			rv.AddWarn("Skip object %s (%s) with empty checksum field", id, objKey)
+			continue
+		case types.CsTooLarge:
+			rv.AddWarn("Skip object %s (%s) - checksum is not set because the file is too large", id, objKey)
+			continue
+		case types.CsErrorStub:
+			rv.AddWarn("Skip object %s (%s) - checksum is not set because an error occurred during calculation", id, objKey)
 			continue
 		}
 
-		// Assign checksum to corresponding ID
-		ids[id] = csum
+		//
+		// Extract size
+		//
+		sizeVal, ok := fields[dbms.FieldSize]
+		if !ok {
+			// Skip incorrect object
+			rv.AddWarn("Skip invalid object %q without size field %q", objKey, dbms.FieldSize)
+			continue
+		}
+
+		// Convert size to string representation
+		sizeStr, ok := sizeVal.(string)
+		if !ok {
+			// Skip incorrect object
+			rv.AddWarn("Skip invalid object %q with non-string size value: %#v", objKey, sizeVal)
+			continue
+		}
+
+		// Convert string size to integer
+		size, err := strconv.ParseInt(sizeStr, 10, 64)
+		if err != nil {
+			// Skip incorrect object
+			rv.AddWarn("Skip invalid object %q with incorrect value of size field %q: %q", objKey, dbms.FieldSize, sizeStr)
+		}
+
+		// Assign collected data to map as FSObject
+		ids[id] = &types.FSObject{
+			Checksum:	csum,
+			Size:		size,
+		}
 	}
 
 	// Check for idenfifiers without checksum value
 	nxIds := make([]string, 0, len(ids))
-	for id, csum := range ids {
-		if csum == "" {
+	for id, v := range ids {
+		if v == nil {
 			nxIds = append(nxIds, id)
 		}
 	}
 	if len(nxIds) != 0 {
-		return nil, fmt.Errorf("(RedisCli:searchDupes) requested objects do not exist: %s", strings.Join(nxIds, ", "))
+		return nil, fmt.Errorf("requested objects do not exist: %s", strings.Join(nxIds, ", "))
 	}
 
-	return nil, nil
+	return ids, nil
 }
 
 func printResHG(qr dbms.QueryResults) {

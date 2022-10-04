@@ -13,12 +13,6 @@ import (
 	"github.com/r-che/log"
 )
 
-const (
-	// Stubs to fill checksum field on special cases
-	csTooLarge = `<FILE TOO LARGE>`
-	csErrorStub = `<FAIL TO CALCULATE CHECKSUM>`
-)
-
 func getObjectInfo(name string) (*types.FSObject, error) {
 	// Get agent configuration
 	c := cfg.Config()
@@ -60,11 +54,11 @@ func getObjectInfo(name string) (*types.FSObject, error) {
 					if fso.Checksum, err = calcSum(name); err != nil {
 						log.W("Checksum calculation problem: %v", err)
 						// Set stub to signal checksum calculation error
-						fso.Checksum = csErrorStub
+						fso.Checksum = types.CsErrorStub
 					}
 				} else {
 					// Set stub because file is too large to calculate checksum
-					fso.Checksum = csTooLarge
+					fso.Checksum = types.CsTooLarge
 				}
 			} else {
 				// Cleanup checksum field

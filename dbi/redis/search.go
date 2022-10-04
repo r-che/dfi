@@ -40,7 +40,7 @@ func (rc *RedisClient) Query(qa *dbms.QueryArgs, retFields []string) (dbms.Query
 			return nil, nil
 		}
 
-		qa.AppendIds(ids)
+		qa.AddIds(ids...)
 	}
 
 	// Make initial query

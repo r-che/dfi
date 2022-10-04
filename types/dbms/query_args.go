@@ -406,12 +406,12 @@ func (qa *QueryArgs) ParseHosts(hostsLine string) error {
 	return nil
 }
 
-func (qa *QueryArgs) AppendIds(ids []string) *QueryArgs {
+func (qa *QueryArgs) AddIds(ids ...string) *QueryArgs {
 	qa.Ids = append(qa.Ids, ids...)
 	return qa
 }
 
-func (qa *QueryArgs) SetDupesRefs(dr map[string]string) *QueryArgs {
-	qa.dupesRefs = dr
+func (qa *QueryArgs) AddChecksums(csums ...string) *QueryArgs {
+	qa.CSums = append(qa.CSums, csums...)
 	return qa
 }

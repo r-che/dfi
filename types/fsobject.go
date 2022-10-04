@@ -2,6 +2,12 @@ package types
 
 import "fmt"
 
+const (
+	// Stubs to fill checksum field on special cases
+	CsTooLarge = `<FILE TOO LARGE>`
+	CsErrorStub = `<FAIL TO CALCULATE CHECKSUM>`
+)
+
 type FSObject struct {
 	// XXX Do not forget to update FSObjectFieldsNum on changing number of fields in this structure
 	Name		string
