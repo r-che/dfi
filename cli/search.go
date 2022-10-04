@@ -11,19 +11,36 @@ import (
 	"github.com/r-che/dfi/cli/internal/cfg"
 )
 
+//
+// Dupes search related types
+//
+
+// Data corresponding to checksum of some object
+type csData struct {
+	id		string
+	size	int64
+}
+type dupeInfo struct {
+	id		string
+	objKey	types.ObjKey
+}
+func (di dupeInfo) String() string {
+	return di.id + ` ` + di.objKey.String()
+}
+
 func doSearch(dbc dbms.Client) *types.CmdRV {
 	// Get configuration
 	c := cfg.Config()
+
+	if c.SearchDupes {
+		return searchDupes(dbc, c.QueryArgs)
+	}
 
 	// Set of requested fields
 	rqFields := []string{}
 	if c.NeedID() {
 		// Add object identifier field to requested list
 		rqFields = append(rqFields, dbms.FieldID)
-	}
-
-	if c.SearchDupes {
-		return searchDupes(dbc, c.QueryArgs, rqFields)
 	}
 
 	rv := types.NewCmdRV()
@@ -46,38 +63,42 @@ func doSearch(dbc dbms.Client) *types.CmdRV {
 	return rv.AddFound(int64(len(qr)))
 }
 
-func searchDupes(dbc dbms.Client, qa *dbms.QueryArgs, rqFields []string) *types.CmdRV {
+func searchDupes(dbc dbms.Client, qa *dbms.QueryArgs) *types.CmdRV {
 	rv := types.NewCmdRV()
 
-	// Need to load information about reference objects which will use to found duplicates
+	// Need to load information about referred objects which will use to found duplicates
 	refObjs, err := loadDupesRefs(dbc, rv)
 	if err != nil {
 		return rv.AddErr(err)
 	}
 
-	// Append checksums to query arguments
-	for _, fso := range refObjs {
+	// Map contains the correspondence between checksum<=>referred object
+	cr := make(map[string]csData, len(refObjs))
+
+	for id, fso := range refObjs {
+		// Append checksums to query arguments
 		qa.AddChecksums(fso.Checksum)
+		// Make checksum<=>csData pair
+		cr[fso.Checksum] = csData{id: id, size: fso.Size}
 	}
 
 	// Clear search phrases due to them contain identifiers that should not be used in search
 	qa.SetSearchPhrases(nil)
 
-	// Append checksum field to return fields set, to have ability
-	// to match found duplicates with provided refrences
-	rqFields = append(rqFields, dbms.FieldChecksum)
-	// Run query to get duplicates
-	qr, err := dbc.Query(qa, rqFields)
+	// Run query to get duplicates. Append checksum field to return fields set,
+	// to have ability to match found duplicates with provided refrences
+	qr, err := dbc.Query(qa, []string{dbms.FieldID, dbms.FieldChecksum, dbms.FieldSize})
 	if err != nil {
 		rv.AddErr("cannot execute search query to find duplicates: %v", err)
 	}
 
 	// Create a map of duplicates
-	dm := map[string][]string{}
+	dm := map[string][]dupeInfo{}
 
 	// Dupes counter
 	var nd int64
 	for objKey, fields := range qr {
+		// TODO Need to create unified extraction function
 		//
 		// Extract identifier
 		//
@@ -98,7 +119,7 @@ func searchDupes(dbc dbms.Client, qa *dbms.QueryArgs, rqFields []string) *types.
 
 		// Lookup identifier in refObjs
 		if _, ok := refObjs[id]; ok {
-			// This is one of the referenced objects, skip
+			// This is one of the referred objects, skip
 			continue
 		}
 
@@ -120,8 +141,47 @@ func searchDupes(dbc dbms.Client, qa *dbms.QueryArgs, rqFields []string) *types.
 			continue
 		}
 
+		//
+		// Extract size
+		//
+		sizeVal, ok := fields[dbms.FieldSize]
+		if !ok {
+			// Skip incorrect object
+			rv.AddWarn("Skip invalid object %s (%s) without size field %q", id, objKey, dbms.FieldSize)
+			continue
+		}
+
+		// Convert size to string representation
+		sizeStr, ok := sizeVal.(string)
+		if !ok {
+			// Skip incorrect object
+			rv.AddWarn("Skip invalid object %s (%s) with non-string size value: %#v", id, objKey, sizeVal)
+			continue
+		}
+
+		// Convert string size to integer
+		size, err := strconv.ParseInt(sizeStr, 10, 64)
+		if err != nil {
+			// Skip incorrect object
+			rv.AddWarn("Skip invalid object %s (%s) with incorrect value of size field %q: %q", id, objKey, dbms.FieldSize, sizeStr)
+		}
+
+		//
+		// Check for extracted size differ than size of the refrenced object
+		//
+		if cr[csum].size != size {
+			// Such strange situation, it looks like
+			// we found checksum collision, add warning and skip it
+			rv.AddWarn("An object %s (%s) was found that has the same checksum as referred object %s, " +
+						"but size of this object (%d) is different that the referenced object (%d) - " +
+						"looks like a hash function collision! So, we skip this object",
+						id, objKey, cr[csum].id, size, cr[csum].size)
+			// Skip it
+			continue
+		}
+
 		// Push identifier to duplicates map
-		dm[csum] = append(dm[csum], id)
+		dm[csum] = append(dm[csum], dupeInfo{id: id, objKey: objKey})
 		// Increment dupes counter
 		nd++
 	}
@@ -132,26 +192,43 @@ func searchDupes(dbc dbms.Client, qa *dbms.QueryArgs, rqFields []string) *types.
 	return rv.AddFound(nd)
 }
 
-func printDupes(refObjs map[string]*types.FSObject, dm map[string][]string) {
+func printDupes(refObjs map[string]*types.FSObject, dm map[string][]dupeInfo) {
 	// Get configuration
 	c := cfg.Config()
 	// Get list of requested identifiers to print results in the same order
 	ids := c.CmdArgs
 
+	// Remove identifiers for which do not have duplicates/were removed as unsuitable to search
+	for i := 0; i < len(ids); {
+		fso, ok := refObjs[ids[i]]
+		if !ok {
+			// Remove from identifiers list
+			ids = append(ids[:i], ids[i+1:]...)
+			continue
+		}
+
+		// Check that we have duplicates for this object
+		if _, ok := dm[fso.Checksum]; !ok {
+			// Remove from identifiers list
+			ids = append(ids[:i], ids[i+1:]...)
+			continue
+		}
+
+		i++
+	}
+
 	if c.OneLine {
 		// Produce oneline output
 		for _, id := range ids {
-			// Check for any duplicates of reference id were found
-			dupes, ok := dm[refObjs[id].Checksum]
-			if !ok {
-				// Skip
-				continue
-			}
+			// Get duplicates for id
+			dupes := dm[refObjs[id].Checksum]
+			// Sort by object keys
+			sort.Slice(dupes, func(i, j int) bool {
+				return dupes[i].objKey.Less(dupes[j].objKey)
+			})
 
 			// Print refrence identifier
 			fmt.Print(id)
-			// Sort identifiers
-			sort.Strings(dupes)
 			// Print all dupes of id
 			for _, did := range dupes {
 				fmt.Printf(" %s", did)
@@ -160,7 +237,25 @@ func printDupes(refObjs map[string]*types.FSObject, dm map[string][]string) {
 			fmt.Println()
 		}
 	} else {
-		// TODO Produce normal output
+		// Produce normal output
+		for _, id := range ids {
+			// Get referred object
+			ro := refObjs[id]
+			// Get duplicates for id
+			dupes := dm[ro.Checksum]
+			// Sort by object keys
+			sort.Slice(dupes, func(i, j int) bool {
+				return dupes[i].objKey.Less(dupes[j].objKey)
+			})
+
+			fmt.Printf("%s %s (%d):\n", id,
+				ro.FPath,	// XXX loadDupesRefs() kept object key in this field
+				len(dupes))
+			// Print all dupes of id
+			for _, did := range dupes {
+				fmt.Printf("  %s\n", did)
+			}
+		}
 	}
 }
 
@@ -178,9 +273,9 @@ func loadDupesRefs(dbc dbms.Client, rv *types.CmdRV) (map[string]*types.FSObject
 	}
 
 	// Make map of requested IDs mapped to corresponding checksum
-	ids := make(map[string]*types.FSObject, len(qa.Ids))
+	objRefs := make(map[string]*types.FSObject, len(qa.Ids))
 	for _, id := range qa.Ids {
-		ids[id] = nil
+		objRefs[id] = nil
 	}
 
 	// Assign checksums
@@ -204,7 +299,7 @@ func loadDupesRefs(dbc dbms.Client, rv *types.CmdRV) (map[string]*types.FSObject
 		}
 
 		// Check that this object really was requested
-		if _, ok := ids[id]; !ok {
+		if _, ok := objRefs[id]; !ok {
 			// Skip strange object
 			rv.AddWarn("Skip object %s (%s) - this ID was not requested! Skip it", id, objKey)
 			continue
@@ -223,7 +318,7 @@ func loadDupesRefs(dbc dbms.Client, rv *types.CmdRV) (map[string]*types.FSObject
 			// Skip incorrect object
 			rv.AddWarn("Object %s (%s) is not a regular file (%s) - cannot search duplicates for it", id, objKey, oType)
 			// Remove it from requested identifiers map
-			delete(ids, id)
+			delete(objRefs, id)
 
 			continue
 		}
@@ -284,15 +379,16 @@ func loadDupesRefs(dbc dbms.Client, rv *types.CmdRV) (map[string]*types.FSObject
 		}
 
 		// Assign collected data to map as FSObject
-		ids[id] = &types.FSObject{
+		objRefs[id] = &types.FSObject{
 			Checksum:	csum,
 			Size:		size,
+			FPath:		objKey.String(),	// XXX Use FPath field to pass refrence object key to printing function
 		}
 	}
 
 	// Check for idenfifiers without checksum value
-	nxIds := make([]string, 0, len(ids))
-	for id, v := range ids {
+	nxIds := make([]string, 0, len(objRefs))
+	for id, v := range objRefs {
 		if v == nil {
 			nxIds = append(nxIds, id)
 		}
@@ -301,7 +397,7 @@ func loadDupesRefs(dbc dbms.Client, rv *types.CmdRV) (map[string]*types.FSObject
 		return nil, fmt.Errorf("requested objects do not exist: %s", strings.Join(nxIds, ", "))
 	}
 
-	return ids, nil
+	return objRefs, nil
 }
 
 func printResHG(qr dbms.QueryResults) {

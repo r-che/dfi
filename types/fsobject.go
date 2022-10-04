@@ -54,3 +54,12 @@ type ObjKey struct {
 func (k ObjKey) String() string {
 	return k.Host + `:` + k.Path
 }
+func (k ObjKey) Less(other ObjKey) bool {
+	if k.Host < other.Host {
+		return true
+	}
+	if k.Host == other.Host {
+		return k.Path < other.Path
+	}
+	return false
+}
