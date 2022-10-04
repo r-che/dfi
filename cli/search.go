@@ -15,7 +15,7 @@ func doSearch(dbc dbms.Client) *types.CmdRV {
 
 	// Set of requested fields
 	rqFields := []string{}
-	if c.PrintID || c.OnlyIds {
+	if c.NeedID() {
 		// Add object identifier field to requested list
 		rqFields = append(rqFields, dbms.FieldID)
 	}
@@ -76,11 +76,11 @@ func printResHG(qr dbms.QueryResults) {
 		fmt.Printf("%s(%d):\n", host, len(paths))
 
 		switch {
-		case c.OnlyIds:
+		case c.ShowOnlyIds:
 			for _, path := range paths {
 				fmt.Printf("  %v\n", qr[types.ObjKey{host, path}][dbms.FieldID])
 			}
-		case c.PrintID:
+		case c.ShowID:
 			for _, path := range paths {
 				fmt.Printf("  %v %s\n", qr[types.ObjKey{host, path}][dbms.FieldID], path)
 			}
@@ -112,11 +112,11 @@ func printResSingle(qr dbms.QueryResults) {
 	})
 
 	switch {
-	case c.OnlyIds:
+	case c.ShowOnlyIds:
 		for _, k := range qrKeys {
 			fmt.Printf("%v\n", qr[k][dbms.FieldID])
 		}
-	case c.PrintID:
+	case c.ShowID:
 		for _, k := range qrKeys {
 			fmt.Printf("%v %s:%s\n", qr[k][dbms.FieldID], k.Host, k.Path)
 		}

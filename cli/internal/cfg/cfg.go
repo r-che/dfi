@@ -49,8 +49,8 @@ func Init(name string) {
 	p.AddBool(`only-descr`, `use only description field to match search phrases, implicitly enables --descr`, &config.QueryArgs.OnlyDescr, false)
 	p.AddBool(`deep|D`, `use additional DBMS dependent features (can slow down)`, &config.QueryArgs.DeepSearch, false)
 	// Output related options
-	p.AddBool(`only-ids|I`, `print only identifiers of found objects`, &config.OnlyIds, false)
-	p.AddBool(`with-ids|i`, `print identifier of object at the beginning of the output lines`, &config.PrintID, false)
+	p.AddBool(`show-only-ids|I`, `print only identifiers of found objects, implicitly enables --quiet`, &config.ShowOnlyIds, false)
+	p.AddBool(`show-ids|i`, `print identifier of object at the beginning of the output lines`, &config.ShowID, false)
 	p.AddBool(`hosts-groups|H`, `group results by host instead of single line sorted output`, &config.HostGroups, false)
 
 	p.AddSeparator(``)

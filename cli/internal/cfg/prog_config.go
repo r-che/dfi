@@ -27,8 +27,8 @@ type progConfig struct {
 	oTypes		string
 	csums		string
 	hosts		string
-	OnlyIds		bool
-	PrintID		bool
+	ShowOnlyIds		bool
+	ShowID		bool
 	HostGroups	bool
 
 	// Set mode options
@@ -74,6 +74,10 @@ func NewConfig() *progConfig {
 
 func (pc *progConfig) DBConfig() *dbms.DBConfig {
 	return &pc.fConf.DB
+}
+
+func (pc *progConfig) NeedID() bool {
+	return pc.ShowID || pc.ShowOnlyIds
 }
 
 func (pc *progConfig) clone() *progConfig {
@@ -138,6 +142,12 @@ func (pc *progConfig) prepare(CmdArgs []string) error {
 		} else {
 			log.E(`Cannot get value of the "HOME", the default path to the program configuration is not determined`)
 		}
+	}
+
+	// Check for --show-only-ids
+	if pc.ShowOnlyIds {
+		// Enable quiet mode
+		pc.Quiet = true
 	}
 
 	// Do DBMS specific preparations/checks
