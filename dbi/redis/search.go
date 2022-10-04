@@ -137,7 +137,7 @@ func rshSearchAII(cli *rsh.Client, q *rsh.Query) ([]string, error) {
 				log.E("RedisCli:rshSearchAII) Found invalid AII with too short key %q, skip it", doc.Id)
 				continue
 			}
-			ids = append(ids, doc.Id[len(RedisAIIPrefix):])
+			ids = append(ids, doc.Id[kpl:])
 		}
 
 		// Check for number of total matched documents reached total - no more docs to scan
@@ -230,6 +230,9 @@ func rshSearch(cli *rsh.Client, q *rsh.Query, retFields []string) (dbms.QueryRes
 	// Total selected docs
 	totDocs := 0
 
+	// Key prefix length
+	kpl := len(RedisObjPrefix)
+
 	for {
 		// Update query to set offset/limit
 		q.Limit(offset, objsPerQuery)
@@ -244,8 +247,12 @@ func rshSearch(cli *rsh.Client, q *rsh.Query, retFields []string) (dbms.QueryRes
 
 		// Convert scanned documents to output result
 		for _, doc := range docs {
+			if len(doc.Id) <= kpl {
+				log.E("RedisCli:rshSearch) Found invalid AII with too short key %q, skip it", doc.Id)
+				continue
+			}
 			// Split identifier without object prefix from host:path format to separate values
-			host, path, ok := strings.Cut(doc.Id[len(RedisObjPrefix):], ":")
+			host, path, ok := strings.Cut(doc.Id[kpl:], ":")
 			if !ok {
 				log.E("(RedisCli) Skip document with invalid key format: %q", doc.Id)
 				continue
