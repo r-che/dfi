@@ -7,7 +7,7 @@ import (
 	"io/ioutil"
 	"encoding/json"
 
-	"github.com/r-che/dfi/dbi"
+	"github.com/r-che/dfi/types/dbms"
 	"github.com/r-che/dfi/common/fschecks"
 )
 
@@ -18,7 +18,7 @@ type progConfig struct {
 	paths		string			// Hidden option to write original value from the command line
 	IdxPaths	[]string
 	DBPriv		string			// Path to file with DBMS-specific private data - username/password, keys and so on
-	DBCfg		dbi.DBConfig
+	DBCfg		dbms.DBConfig
 
 	// Other options
 	LogFile		string	// Set location of log file

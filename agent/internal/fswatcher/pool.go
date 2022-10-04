@@ -8,8 +8,8 @@ import (
 	"sort"
 	"os"
 
-	"github.com/r-che/dfi/dbi"
 	"github.com/r-che/dfi/types"
+	"github.com/r-che/dfi/types/dbms"
 
 	"github.com/r-che/log"
 
@@ -30,7 +30,7 @@ type Pool struct {
 
 	// Preconfigured data
 	paths	[]string					// configured paths for pool
-	dbChan	chan<- []*dbi.DBOperation	// to send operations to DB controller
+	dbChan	chan<- []*dbms.DBOperation	// to send operations to DB controller
 	fDelay	time.Duration				// flushing delay
 
 	// Runtime data
@@ -40,7 +40,7 @@ type Pool struct {
 	stop	doneChan			// close this channel to stop all started watchers
 }
 
-func NewPool(paths []string, dbChan chan<- []*dbi.DBOperation, flushDelay time.Duration) *Pool {
+func NewPool(paths []string, dbChan chan<- []*dbms.DBOperation, flushDelay time.Duration) *Pool {
 	return &Pool{
 		paths:	paths,
 		dbChan:	dbChan,
@@ -255,7 +255,7 @@ func (p *Pool) flushCached(watchPath string, events eventsMap) error {
 	sort.Strings(names)
 
 	// Prepare database operations list
-	dbOps := make([]*dbi.DBOperation, 0, len(events))
+	dbOps := make([]*dbms.DBOperation, 0, len(events))
 
 	// Keep current stopLongVal value to have ability to compare during long-term operations
 	initStopLong := p.stopLongVal
@@ -288,12 +288,12 @@ func (p *Pool) flushCached(watchPath string, events eventsMap) error {
 				}
 
 				// Append a database operation
-				dbOps = append(dbOps, &dbi.DBOperation{Op: dbi.Update, ObjectInfo: oInfo})
+				dbOps = append(dbOps, &dbms.DBOperation{Op: dbms.Update, ObjectInfo: oInfo})
 
 			// Object was removed from filesystem
 			case types.EvRemove:
 				// Append database removal operation
-				dbOps = append(dbOps, &dbi.DBOperation{Op: dbi.Delete, ObjectInfo: &types.FSObject{FPath: name}})
+				dbOps = append(dbOps, &dbms.DBOperation{Op: dbms.Delete, ObjectInfo: &types.FSObject{FPath: name}})
 			default:
 				panic(fmt.Sprintf("(watcher:%s) Unhandled FSEvent type %v (%d) occurred on path %q",
 					watchPath, event.Type, event.Type, name))
