@@ -300,6 +300,15 @@ func (rc *RedisClient) setDescr(descr string, ids idKeyMap) (int64, error) {
 		tu++
 	}
 
+	// Update index of objects that use description field
+	idxSet := RedisAIIDSetPrefix + dbms.AIIFieldDescr
+	if n, err := rc.c.SAdd(rc.ctx, idxSet, ids.KeysAny()...).Result(); err != nil {
+		log.E("(RedisCli:setTags) cannot add identifiers %s to set %q: %v - " +
+				"the search result may be incomplete", ids, idxSet, err)
+	} else {
+		log.D("(RedisCli:setTags) Added %d members to set %q", n, idxSet)
+	}
+
 	// OK
 	return tu, nil
 }
