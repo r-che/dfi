@@ -101,31 +101,25 @@ func printResSingle(qr dbms.QueryResults) {
 	c := cfg.Config()
 
 	// Make sorted list of query result keys
-	qrKeys := make([]types.ObjKey, 0, len(qr))
+	objKeys := make([]types.ObjKey, 0, len(qr))
 	for k := range qr {
-		qrKeys = append(qrKeys, k)
+		objKeys = append(objKeys, k)
 	}
-	sort.Slice(qrKeys, func(i, j int) bool {
-		if qrKeys[i].Host < qrKeys[j].Host {
-			return true
-		}
-		if qrKeys[i].Host == qrKeys[j].Host {
-			return qrKeys[i].Path < qrKeys[j].Path
-		}
-		return false
+	sort.Slice(objKeys, func(i, j int) bool {
+		return objKeys[i].Less(objKeys[j])
 	})
 
 	switch {
 	case c.ShowOnlyIds:
-		for _, k := range qrKeys {
+		for _, k := range objKeys {
 			fmt.Printf("%v\n", qr[k][dbms.FieldID])
 		}
 	case c.ShowID:
-		for _, k := range qrKeys {
+		for _, k := range objKeys {
 			fmt.Printf("%v %s:%s\n", qr[k][dbms.FieldID], k.Host, k.Path)
 		}
 	default:
-		for _, k := range qrKeys {
+		for _, k := range objKeys {
 			fmt.Printf("%s:%s\n", k.Host, k.Path)
 		}
 	}
