@@ -2,12 +2,12 @@ package cfg
 
 import (
 	stdLog "log"
-	//"os"
 	"strings"
 	"path/filepath"
 
 	"github.com/r-che/log"
 	"github.com/r-che/dfi/types"
+	"github.com/r-che/dfi/types/dbms"
 	"github.com/r-che/optsparser"
 )
 
@@ -17,6 +17,7 @@ var config *progConfig
 var knownTypes = []string{types.ObjRegular, types.ObjDirectory, types.ObjSymlink}
 var progConfigSuff = filepath.Join(".dfi", "cli.json")
 var progConfigDefault = filepath.Join("${HOME}", progConfigSuff)
+var aiiFields = []string{dbms.AIIFieldTags, dbms.AIIFieldDescr}
 
 func Init(name string) {
 	// Create new parser
@@ -43,6 +44,8 @@ func Init(name string) {
 	p.AddString(`type`, `set of object types, possible values: ` + strings.Join(knownTypes, ", "), &config.oTypes, anyVal)
 	p.AddString(`checksum`, `set of objects checksums`, &config.csums, anyVal)
 	p.AddString(`host`, `set of hosts when object may be located`, &config.hosts, anyVal)
+	p.AddString(`aii-filled|F`, `set of filled additional information item fields, ` +
+								`possible values: ` + strings.Join(aiiFields, ", "), &config.aiiFields, anyVal)
 	p.AddBool(`only-name|N`, `use only file name to match search phrases`, &config.QueryArgs.OnlyName, false)
 	p.AddBool(`only-tags|T`, `use only tags field to match search phrases, implicitly enables --tags`, &config.QueryArgs.OnlyTags, false)
 	p.AddBool(`only-descr`, `use only description field to match search phrases, implicitly enables --descr`, &config.QueryArgs.OnlyDescr, false)

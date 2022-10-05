@@ -27,6 +27,7 @@ type progConfig struct {
 	oTypes		string
 	csums		string
 	hosts		string
+	aiiFields	string
 	ShowOnlyIds	bool
 	ShowID		bool
 	HostGroups	bool
@@ -196,6 +197,12 @@ func (pc *progConfig) prepareSearch() error {
 
 	if pc.hosts != anyVal {
 		if err := pc.QueryArgs.ParseHosts(pc.hosts); err != nil {
+			return err
+		}
+	}
+
+	if pc.aiiFields != anyVal {
+		if err := pc.QueryArgs.ParseAIIFields(pc.aiiFields, aiiFields); err != nil {
 			return err
 		}
 	}

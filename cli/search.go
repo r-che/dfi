@@ -26,6 +26,17 @@ func doSearch(dbc dbms.Client) *types.CmdRV {
 
 	rv := types.NewCmdRV()
 
+	if c.QueryArgs.IsAIIFields() {
+		// Search for identifiers of objects that have filled requested AII fields
+		ids, err := searchAIIFilled(dbc)
+		if err != nil {
+			return rv.AddErr("cannot search for objects with filled fields %v: %v", c.QueryArgs.AIIFields, err)
+		}
+
+		fmt.Println("ids:", ids)
+		return rv	// TODO
+	}
+
 	qr, err := dbc.Query(c.QueryArgs, rqFields)
 	if err != nil {
 		rv.AddErr("cannot execute search query: %v", err)

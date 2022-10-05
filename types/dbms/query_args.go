@@ -30,6 +30,7 @@ type QueryArgs struct {
 	CSums		[]string
 	Ids			[]string
 	Hosts		[]string
+	AIIFields	[]string
 
 	types.SearchFlags
 	types.CommonFlags
@@ -99,6 +100,10 @@ func (qa *QueryArgs) IsChecksum() bool {
 	return len(qa.CSums) != 0
 }
 
+func (qa *QueryArgs) IsAIIFields() bool {
+	return len(qa.AIIFields) != 0
+}
+
 func (qa *QueryArgs) IsHost() bool {
 	return len(qa.Hosts) != 0
 }
@@ -120,7 +125,8 @@ func (qa *QueryArgs) CanSearch(searchPhrases []string) bool {
 		}
 	}
 
-	if qa.IsMtime() || qa.IsSize() || qa.IsType() || qa.IsChecksum() || qa.IsHost() {
+	if qa.IsMtime() || qa.IsSize() || qa.IsType() ||
+	   qa.IsChecksum() || qa.IsHost() || qa.IsAIIFields() {
 		// Sufficient conditions to search query
 		return true
 	}
@@ -403,7 +409,8 @@ func (qa *QueryArgs) ParseHosts(hostsLine string) error {
 		}
 	}
 
-	return nil
+func (qa *QueryArgs) ParseAIIFields(fieldsStr string, allowed []string) error {
+	return parseSetField(&qa.AIIFields, "field name", fieldsStr, allowed...)
 }
 
 func (qa *QueryArgs) AddIds(ids ...string) *QueryArgs {
