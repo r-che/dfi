@@ -18,8 +18,12 @@ import (
 
 const (
 	RedisMaxScanKeys	=	1024 * 10
+
+	// Redis namespace prefixes
 	RedisObjPrefix		=	"obj:"
 	RedisAIIPrefix		=	"aii:"
+	RedisAIIDMetaPefix	=	"aii-meta:"
+	RedisAIIDSetPrefix	=	RedisAIIDMetaPefix + "set-"
 
 	// Private configuration fields
 	userField	=	"user"
