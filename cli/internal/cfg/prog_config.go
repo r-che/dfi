@@ -145,8 +145,8 @@ func (pc *progConfig) prepare(CmdArgs []string) error {
 		}
 	}
 
-	// Check for --show-only-ids
-	if pc.ShowOnlyIds {
+	// Check for options that implicitly enable quiet mode
+	if pc.ShowOnlyIds || pc.OneLine {
 		// Enable quiet mode
 		pc.Quiet = true
 	}
