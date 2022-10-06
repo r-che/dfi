@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/r-che/dfi/common/parse"
 	"github.com/r-che/dfi/types"
 )
 
@@ -371,19 +372,19 @@ func parseSize(sizeStr string) (int64, error) {
 }
 
 func (qa *QueryArgs) ParseTypes(typesLine string, allowed []string) error {
-	return parseSetField(&qa.Types, "type", typesLine, allowed...)
+	return parse.SetString(&qa.Types, "type", typesLine, allowed...)
 }
 
 func (qa *QueryArgs) ParseSums(csums string) error {
-	return parseSetField(&qa.CSums, "checksum", csums)
+	return parse.SetString(&qa.CSums, "checksum", csums)
 }
 
 func (qa *QueryArgs) ParseHosts(hostsLine string) error {
-	return parseSetField(&qa.Hosts, "host", hostsLine)
+	return parse.SetString(&qa.Hosts, "host", hostsLine)
 }
 
 func (qa *QueryArgs) ParseAIIFields(fieldsStr string, allowed []string) error {
-	return parseSetField(&qa.AIIFields, "field name", fieldsStr, allowed...)
+	return parse.SetString(&qa.AIIFields, "field name", fieldsStr, allowed...)
 }
 
 func (qa *QueryArgs) AddIds(ids ...string) *QueryArgs {
@@ -394,34 +395,4 @@ func (qa *QueryArgs) AddIds(ids ...string) *QueryArgs {
 func (qa *QueryArgs) AddChecksums(csums ...string) *QueryArgs {
 	qa.CSums = append(qa.CSums, csums...)
 	return qa
-}
-
-func parseSetField(fp *[]string, fn, vals string, allowed ...string) error {
-	*fp = strings.Split(vals, ",")
-
-	// If no allowed values provided
-	if len(allowed) == 0 {
-		// Check only for empty values
-		for _, v := range *fp {
-			if v == "" {
-				return fmt.Errorf("empty %s value in argument %q", fn, vals)
-			}
-		}
-		// OK
-		return nil
-	}
-
-	parseItem:
-	for _, val := range *fp {
-		for _, av := range allowed {
-			if val == av {
-				continue parseItem
-			}
-		}
-
-		return fmt.Errorf("incorrect %s value %q in argument %q", fn, val, vals)
-	}
-
-	// OK
-	return nil
 }

@@ -202,7 +202,7 @@ func (pc *progConfig) prepareSearch() error {
 	}
 
 	if pc.aiiFields != anyVal {
-		if err := pc.QueryArgs.ParseAIIFields(pc.aiiFields, aiiFields); err != nil {
+		if err := pc.QueryArgs.ParseAIIFields(pc.aiiFields, dbms.UVAIIFields()); err != nil {
 			return err
 		}
 	}
