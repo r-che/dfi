@@ -82,6 +82,9 @@ func (qa *QueryArgs) Clone() *QueryArgs {
 	rv.Hosts = make([]string, len(qa.Hosts))
 	copy(rv.Hosts, qa.Hosts)
 
+	rv.AIIFields = make([]string, len(qa.AIIFields))
+	copy(rv.AIIFields, qa.AIIFields)
+
 	return &rv
 }
 

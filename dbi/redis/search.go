@@ -27,24 +27,8 @@ func (rc *RedisClient) Query(qa *dbms.QueryArgs, retFields []string) (dbms.Query
 		return nil, fmt.Errorf("(RedisCli) cannot initialize RediSearch client: %v", err)
 	}
 
-	// Check for search by AII enabled
-	if qa.UseAII() {
-		ids, err := rc.queryAII(qa)
-		if err != nil {
-			return nil, err
-		}
-
-		// Check for only AII should be used in search
-		if qa.OnlyAII() && len(ids) == 0 {
-			// No identifiers, the nothing was found in AII - return empty result
-			return nil, nil
-		}
-
-		qa.AddIds(ids...)
-	}
-
-	// Make initial query
-	q := rsh.NewQuery(rshQuerySP(qa))
+	// Create simple (non-deep) query
+	q := rsh.NewQuery(rshQuery(qa))
 
 	// Do search
 	qr, err := rshSearch(rsc, q, retFields)
@@ -66,7 +50,7 @@ func (rc *RedisClient) Query(qa *dbms.QueryArgs, retFields []string) (dbms.Query
 	return qr, nil
 }
 
-func (rc *RedisClient) queryAII(qa *dbms.QueryArgs) ([]string, error) {
+func (rc *RedisClient) QueryAIIIds(qa *dbms.QueryArgs) ([]string, error) {
 	// Get RediSearch client to search by additional information items
 	rsc, err := rc.rschInit(aiiRschIdx)
 	if err != nil {
@@ -165,7 +149,7 @@ func (rc *RedisClient) GetObjects(ids, retFields []string) (dbms.QueryResults, e
 	}
 
 	// Make initial query
-	q := rsh.NewQuery(rshQueryIDs(ids, &dbms.QueryArgs{}))
+	q := rsh.NewQuery(rshQueryByIds(ids, &dbms.QueryArgs{}))
 
 	// Do search and return
 	return rshSearch(rsc, q, retFields)
@@ -278,26 +262,23 @@ func rshSearch(cli *rsh.Client, q *rsh.Query, retFields []string) (dbms.QueryRes
 	return qr, nil
 }
 
-func rshQueryIDs(ids []string, qa *dbms.QueryArgs) string {
+func rshQueryByIds(ids []string, qa *dbms.QueryArgs) string {
 	// Make query to search by IDs
-	idsQuery := fmt.Sprintf(`(@%s:{%s})`,
-		dbms.FieldID,
-		strings.Join(ids, `|`),
-	)
+	idsQuery := fmt.Sprintf(`(@%s:{%s})`, dbms.FieldID, strings.Join(ids, `|`))
 
 	// Make a summary query with search phrases
-	return idsQuery + ` ` + rshArgsQuery(qa)
+	return idsQuery + ` ` + rshArgs(qa)
 }
 
-func rshQuerySP(qa *dbms.QueryArgs) string {
+func rshQuery(qa *dbms.QueryArgs) string {
 	if len(qa.SP) == 0 && !qa.IsIds() {
 		// Return only arguments part
-		return rshArgsQuery(qa)
+		return rshArgs(qa)
 	}
 
 	chunks := make([]string, 0, 2)
 
-	if len(qa.SP) != 0 && !qa.OnlyAII() {
+	if len(qa.SP) != 0 {
 		// XXX Convert of search phrase values to lowercase because RediSearch
 		// XXX does not fully support case insensitivity for non-English locales
 		spLower := make([]string, 0, len(qa.SP))
@@ -322,14 +303,14 @@ func rshQuerySP(qa *dbms.QueryArgs) string {
 
 	if len(chunks) == 0 {
 		// No search phrases/AII data was provided, use only query arguments
-		return rshArgsQuery(qa)
+		return rshArgs(qa)
 	}
 
 	// Make a summary query with search phrases/AII data + query arguments
-	return `(` + strings.Join(chunks, ` | `) + `)` + ` ` + rshArgsQuery(qa)
+	return `(` + strings.Join(chunks, ` | `) + `)` + ` ` + rshArgs(qa)
 }
 
-func rshArgsQuery(qa *dbms.QueryArgs) string {
+func rshArgs(qa *dbms.QueryArgs) string {
 	// Arguments query chunks
 	chunks := []string{}
 
@@ -491,7 +472,7 @@ func (rc *RedisClient) scanSearch(rsc *rsh.Client, qa *dbms.QueryArgs, retFields
 	// 4. Run RediSearch with extracted ID and provided query arguments
 
 	// Make redisearch initial query
-	q := rsh.NewQuery(rshQueryIDs(ids, qa))
+	q := rsh.NewQuery(rshQueryByIds(ids, qa))
 	// Run search to get results by IDs
 	qr, err := rshSearch(rsc, q, retFields)
 	// Merge selected results with the previous results

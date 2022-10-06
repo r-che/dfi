@@ -36,6 +36,28 @@ func doSearch(dbc dbms.Client) *types.CmdRV {
 		c.QA.AddIds(ids...)
 	}
 
+	if c.QA.UseAII() {
+		// Search by AII fields
+		ids, err := dbc.QueryAIIIds(c.QA)
+		if err != nil {
+			return rv.AddErr("cannot search by additional information objects fields: %v", err)
+		}
+
+		// Check for only AII should be used in search
+		if c.QA.OnlyAII() {
+			// If no identifiers by AII were found
+			if len(ids) == 0 {
+				// Than nothing to search, return empty result
+				return rv
+			}
+
+			// Clear search phrases to avoid using them in the next search
+			c.QA.SetSearchPhrases(nil)
+		}
+
+		c.QA.AddIds(ids...)
+	}
+
 	qr, err := dbc.Query(c.QA, rqFields)
 	if err != nil {
 		rv.AddErr("cannot execute search query: %v", err)

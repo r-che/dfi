@@ -17,6 +17,7 @@ type Client interface {
 	GetObjects([]string, []string) (QueryResults, error)
 	GetAIIIds(withFields []string) ([]string, error)
 	GetAIIs([]string, []string) (map[string]map[string]string, error)
+	QueryAIIIds(qa *QueryArgs) ([]string, error)
 
 	StopLong()
     Stop()

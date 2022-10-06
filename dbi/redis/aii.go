@@ -49,7 +49,7 @@ func (rc *RedisClient) ModifyAII(op dbms.DBOperator, args *dbms.AIIArgs, ids []s
 	// Empty query arguments - no special search parameters are required
 	qa := &dbms.QueryArgs{}
 	// Create RediSearch query to get identifiers
-	q := rsh.NewQuery(rshQueryIDs(ids, qa))
+	q := rsh.NewQuery(rshQueryByIds(ids, qa))
 	// Run search to get results by IDs
 	qr, err := rshSearch(rsc, q, []string{dbms.FieldID})
 	if err != nil {
