@@ -152,13 +152,6 @@ func (pc *progConfig) prepare(CmdArgs []string) error {
 		pc.Quiet = true
 	}
 
-	// Check for existing of required command line arguments
-	if (pc.QA.DeepSearch || pc.QA.UseTags || pc.QA.OnlyTags ||
-		pc.QA.UseDescr || pc.QA.OnlyDescr || pc.QA.OnlyName || pc.SearchDupes) &&
-		len(pc.CmdArgs) == 0 {
-		return fmt.Errorf("one of command line options requires at least one command line argument")
-	}
-
 	// Do DBMS specific preparations/checks
 	if err := pc.prepareDBMS(); err != nil {
 		return err
@@ -169,6 +162,13 @@ func (pc *progConfig) prepare(CmdArgs []string) error {
 }
 
 func (pc *progConfig) prepareSearch() error {
+	// Check for required command line arguments
+	if (pc.QA.DeepSearch || pc.QA.UseTags || pc.QA.OnlyTags ||
+		pc.QA.UseDescr || pc.QA.OnlyDescr || pc.QA.OnlyName || pc.SearchDupes) &&
+		len(pc.CmdArgs) == 0 {
+		return fmt.Errorf("one of command line options requires at least one command line argument")
+	}
+
 	pc.QA.SetSearchPhrases(pc.CmdArgs)
 
 	if pc.strMtime != anyVal {
