@@ -6,6 +6,7 @@ import (
 	"strings"
 	"sort"
 
+	"github.com/r-che/dfi/common/tools"
 	"github.com/r-che/log"
 	"github.com/r-che/dfi/types"
 	"github.com/r-che/dfi/types/dbms"
@@ -210,19 +211,15 @@ func (rc *RedisClient) addTags(tags []string, ids idKeyMap) (int64, error) {
 		// AII key
 		key := RedisAIIPrefix + id
 
-		// Make a map to make a set of new tags + existing tags
-		aiiTags := make(map[string]any, len(tags))
-		for _, tag := range tags {
-			aiiTags[tag] = nil
-		}
+		// Make a list to make a set of new tags + existing tags
+		allTags := make([]string, len(tags))
+		copy(allTags, tags)
 
 		// Load existing values of tags field
 		tagsStr, err := rc.c.HGet(rc.ctx, key, dbms.AIIFieldTags).Result()
 		if err == nil {
 			// Tags field extracted, make union between extracted existing tags and new tags
-			for _, tag := range strings.Split(tagsStr, ",") {
-				aiiTags[tag] = nil
-			}
+			allTags = append(allTags, strings.Split(tagsStr, ",")...)
 		} else if err == RedisNotFound {
 			// Ok, currently no tags for this object, nothing to do
 		} else {
@@ -230,22 +227,18 @@ func (rc *RedisClient) addTags(tags []string, ids idKeyMap) (int64, error) {
 			return tu, fmt.Errorf("cannot get tags field %q for key %q: %v", dbms.AIIFieldTags, key, err)
 		}
 
-		// Create sorted list of the full set of tags
-		fullTags := make([]string, 0, len(aiiTags))
-		for tag := range aiiTags {
-			fullTags = append(fullTags, tag)
-		}
-		sort.Strings(fullTags)
+		// Make unique sorted list of tags
+		allTags = tools.UniqStrings(allTags)
 
 		// Compare existing tags and new set
-		if tagsStr == strings.Join(fullTags, ",") {
+		if tagsStr == strings.Join(allTags, ",") {
 			// Skip update
 			log.D("(RedisCli:addTags) No tags update required for %s", id)
 			continue
 		}
 
 		// Set tags for the current identifier
-		if _, err := rc.setTags(fullTags, idKeyMap{id: objKey}); err != nil {
+		if _, err := rc.setTags(allTags, idKeyMap{id: objKey}); err != nil {
 			return tu, err
 		}
 

@@ -2,8 +2,8 @@ package main
 
 import (
 	"strings"
-	"sort"
 
+	"github.com/r-che/dfi/common/tools"
 	"github.com/r-che/dfi/types"
 	"github.com/r-che/dfi/types/dbms"
 	"github.com/r-che/dfi/cli/internal/cfg"
@@ -60,8 +60,8 @@ func setTags(dbc dbms.Client, tagsStr string, ids []string) *types.CmdRV {
 		return types.NewCmdRV().AddErr("invalid tags value from command line: %q", tagsStr)
 	}
 
-	// Sort list of tags
-	sort.Strings(tags)
+	// Sort and make tags unique
+	tags = tools.UniqStrings(tags)
 
 	updated, _, err := dbc.ModifyAII(dbms.Update, &dbms.AIIArgs{Tags: tags}, ids, c.SetAdd)
 	if err != nil {
