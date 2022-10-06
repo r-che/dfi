@@ -415,13 +415,13 @@ func parseSetField(fp *[]string, fn, vals string, allowed ...string) error {
 	for _, val := range *fp {
 		for _, av := range allowed {
 			if val == av {
-				*fp = append(*fp, val)
 				continue parseItem
 			}
 		}
 
 		return fmt.Errorf("incorrect %s value %q in argument %q", fn, val, vals)
 	}
+
 	// OK
 	return nil
 }

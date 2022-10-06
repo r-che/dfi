@@ -99,6 +99,43 @@ func (rc *RedisClient) ModifyAII(op dbms.DBOperator, args *dbms.AIIArgs, ids []s
 	return -1, -1, nil
 }
 
+func (rc *RedisClient) GetAIIIds(withFields []string) ([]string, error) {
+	// Map to make list of unique identifiers
+	uniqs := map[string]any{}
+
+	// If no particular fields were requested
+	if len(withFields) == 0 {
+		// Use all user valuable fields
+		withFields = dbms.UVAIIFields()
+	}
+
+	// Load AII identifiers that have fields from withFields set
+	for _, field := range withFields {
+		setKey := RedisAIIDSetPrefix + field
+
+		set, err := rc.c.SMembers(rc.ctx, setKey).Result()
+		if err != nil {
+			return nil, fmt.Errorf("(RedisCli:GetAIIIds) cannot load identifiers of objects with filled %q field: %v", field, err)
+		}
+
+		for _, id := range set {
+			uniqs[id] = nil
+		}
+	}
+
+	ids := make([]string, 0, len(uniqs))
+
+	// Push all unique identifiers to ids
+	for id := range uniqs {
+		ids = append(ids, id)
+	}
+
+	// Sort identifiers
+	sort.Strings(ids)
+
+	return ids, nil
+}
+
 func (rc *RedisClient) GetAIIs(ids, retFields []string) (map[string]map[string]string, error) {
 	result := make(map[string]map[string]string, len(ids))
 

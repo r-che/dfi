@@ -12,20 +12,6 @@ import (
 
 )
 
-var showObjFields = []string{
-	dbms.FieldID,
-	dbms.FieldRPath,
-	dbms.FieldType,
-	dbms.FieldSize,
-	dbms.FieldMTime,
-	dbms.FieldChecksum,
-}
-
-var showAIIFields = []string{
-	dbms.AIIFieldTags,
-	dbms.AIIFieldDescr,
-}
-
 func doShow(dbc dbms.Client) *types.CmdRV {
 	// Get configuration
 	c := cfg.Config()
@@ -37,7 +23,7 @@ func doShow(dbc dbms.Client) *types.CmdRV {
 	rv := types.NewCmdRV()
 
 	// Get objects list from DB
-	objs, err := dbc.GetObjects(ids, showObjFields)
+	objs, err := dbc.GetObjects(ids, dbms.UVObjFields())
 	if err != nil {
 		// Append the error
 		rv.AddErr("cannot get requested objects from DB: %v", err)
@@ -89,7 +75,7 @@ func doShow(dbc dbms.Client) *types.CmdRV {
 	}
 
 	// Get AII for objects
-	aiis, err := dbc.GetAIIs(ids, showAIIFields)
+	aiis, err := dbc.GetAIIs(ids, dbms.UVAIIFields())
 	if err != nil {
 		// Append error to return value
 		rv.AddErr("cannot get additional information about some objects: %v", err)
@@ -124,12 +110,12 @@ func showObjs(ids []string, objs dbms.QueryResults, aiis map[string]map[string]s
 }
 
 func showObjOL(objKey types.ObjKey, fields map[string]any, aii map[string]string) {
-	res := make([]string, 0, len(showObjFields) + len(showAIIFields) + 2 /* host + path */)
+	res := make([]string, 0, len(dbms.UVObjFields()) + len(dbms.UVAIIFields()) + 2 /* host + path */)
 	res = append(res,
 		fmt.Sprintf("host:%q", objKey.Host),
 		fmt.Sprintf("path:%q", objKey.Path),
 	)
-	for _, field := range showObjFields {
+	for _, field := range dbms.UVObjFields() {
 		val, ok := fields[field]
 		// If value empty/not set
 		if !ok {
@@ -144,7 +130,7 @@ func showObjOL(objKey types.ObjKey, fields map[string]any, aii map[string]string
 		}
 	}
 
-	for _, field := range showAIIFields {
+	for _, field := range dbms.UVAIIFields() {
 		val, ok := aii[field]
 		// If value empty/not set
 		if !ok {

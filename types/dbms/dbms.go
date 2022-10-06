@@ -15,6 +15,7 @@ type Client interface {
 	LoadHostPaths(FilterFunc) ([]string, error)
 	Query(*QueryArgs, []string) (QueryResults, error)
 	GetObjects([]string, []string) (QueryResults, error)
+	GetAIIIds(withFields []string) ([]string, error)
 	GetAIIs([]string, []string) (map[string]map[string]string, error)
 
 	StopLong()
@@ -79,6 +80,17 @@ const (
 	FieldMTime = "mtime"	// Object modifications time
 	FieldChecksum = "csum"	// Message digest, if enabled by indexer settings
 )
+// UVObjFields returns user valuable object fields
+func UVObjFields() []string {
+	return []string {
+		FieldID,
+		FieldRPath,
+		FieldType,
+		FieldSize,
+		FieldMTime,
+		FieldChecksum,
+	}
+}
 
 // Additional information item (AII) fields
 const (
@@ -89,3 +101,10 @@ const (
 	AIIAllTags		=	"ALL"
 	AIIDelDescr		=	"\u0000\u0000DELETE DESCRIPTION\u0000\u0000"
 )
+// UVAIIFields returns user valuable AII fields
+func UVAIIFields() []string {
+	return []string {
+		AIIFieldTags,
+		AIIFieldDescr,
+	}
+}

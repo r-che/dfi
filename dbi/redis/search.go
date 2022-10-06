@@ -519,7 +519,7 @@ func (rc *RedisClient) scanKeyMatch(match string, filter dbms.FilterFunc) ([]str
 			return nil, err
 		}
 
-		// Append scanned keys to the resulted list as a set of paths without prefix
+		// Append scanned keys to the resulted list as a set of paths
 		for _, k := range sKeys {
 			// Append only filtered values
 			if filter(k) {
