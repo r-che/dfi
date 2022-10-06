@@ -41,27 +41,42 @@ func Init(name string) {
 	p.AddSeparator(`>> Search mode options`)
 	p.AddString(`mtime`, `modification time`, &config.strMtime, anyVal)
 	p.AddString(`size`, `object size`, &config.strSize, anyVal)
-	p.AddString(`type`, `set of object types, possible values: ` + strings.Join(knownTypes, ", "), &config.oTypes, anyVal)
+	p.AddString(`type`,
+		`set of object types, possible values: ` +
+		strings.Join(knownTypes, ", "), &config.oTypes, anyVal)
 	p.AddString(`checksum`, `set of objects checksums`, &config.csums, anyVal)
 	p.AddString(`host`, `set of hosts when object may be located`, &config.hosts, anyVal)
-	p.AddString(`aii-filled|F`, `set of filled additional information item fields, ` +
-								`possible values: ` + strings.Join(aiiFields, ", "), &config.aiiFields, anyVal)
+	p.AddString(`aii-filled|F`,
+		`set of filled additional information item fields, possible values: ` +
+		strings.Join(aiiFields, ", "), &config.aiiFields, anyVal)
 	p.AddBool(`only-name|N`, `use only file name to match search phrases`, &config.QA.OnlyName, false)
-	p.AddBool(`only-tags|T`, `use only tags field to match search phrases, implicitly enables --tags`, &config.QA.OnlyTags, false)
-	p.AddBool(`only-descr`, `use only description field to match search phrases, implicitly enables --descr`, &config.QA.OnlyDescr, false)
-	p.AddBool(`deep|D`, `use additional DBMS dependent features (can slow down)`, &config.QA.DeepSearch, false)
-	p.AddBool(`dupes`, `search for duplicates, command line arguments will be treated as objects identifiers`, &config.SearchDupes, false)
+	p.AddBool(`only-tags|T`,
+		`use only tags field to match search phrases, ` +
+		`implicitly enables --tags`, &config.QA.OnlyTags, false)
+	p.AddBool(`only-descr`,
+		`use only description field to match search phrases, implicitly enables --descr`,
+		&config.QA.OnlyDescr, false)
+	p.AddBool(`deep|D`, `use additional DBMS dependent search features, ` +
+		`can slow down search`, &config.QA.DeepSearch, false)
+	p.AddBool(`dupes`,
+		`search for duplicates, command line arguments will be treated as objects identifiers`,
+		&config.SearchDupes, false)
 	p.AddBool(`or`, `use OR instead of AND between conditions`, &config.QA.OrExpr, false)
 	p.AddBool(`not`, `use negative expression`, &config.QA.NegExpr, false)
 	// Output related options
-	p.AddBool(`show-only-ids|I`, `print only identifiers of found objects, implicitly enables --quiet`, &config.ShowOnlyIds, false)
-	p.AddBool(`show-ids|i`, `print identifier of object at the beginning of the output lines`, &config.ShowID, false)
-	p.AddBool(`hosts-groups|H`, `group results by host instead of single line sorted output`, &config.HostGroups, false)
+	p.AddBool(`show-only-ids|I`, `print only identifiers of found objects, ` +
+		`implicitly enables --quiet`, &config.ShowOnlyIds, false)
+	p.AddBool(`show-ids|i`,
+		`print identifier of object at the beginning of the output lines`, &config.ShowID, false)
+	p.AddBool(`hosts-groups|H`,
+		`group results by host instead of single line sorted output`, &config.HostGroups, false)
 
 	p.AddSeparator(``)
 	p.AddSeparator(`>> Set mode options`)
-	p.AddBool(`append|A`, `append specified data (tags or description) to the object(s)`, &config.SetAdd, false)
-	p.AddBool(`no-newline|n`, `use "; " instead of new line to join existing description with new (affects --add)`, &config.NoNL, false)
+	p.AddBool(`append|A`,
+		`append specified data (tags or description) to the object(s)`, &config.SetAdd, false)
+	p.AddBool(`no-newline|n`, `use "; " instead of new line to join new value ` +
+		`to description (affects --add)`, &config.NoNL, false)
 
 	p.AddSeparator(``)
 	p.AddSeparator(`>> Show mode options`)
@@ -70,12 +85,12 @@ func Init(name string) {
 	// Other modes common options
 	p.AddSeparator(``)
 	p.AddSeparator(`>> Options common to several modes`)
-	p.AddBool(`one-line|o`, `print information about each object in one line, implicitly enables --quiet`, &config.OneLine, false)
-	p.AddBool(`tags|t`, `enable tags-related operations, requires at least one command line argument`, &config.UseTags, false)
-	p.AddBool(`descr`, `enable description-related operations, requires at least one command line argument`, &config.UseDescr, false)
-
-	// Other options
-	//p.AddString(`hostname`, `override real client hostname by provided value`, &config.DBCfg.CliHost, hostname)
+	p.AddBool(`one-line|o`, `print information about each object in one line, ` +
+		`implicitly enables --quiet`, &config.OneLine, false)
+	p.AddBool(`tags|t`, `enable tags-related operations, ` +
+		`requires at least one command line argument`, &config.UseTags, false)
+	p.AddBool(`descr`, `enable description-related operations, ` +
+		`requires at least one command line argument`, &config.UseDescr, false)
 
 	// Auxiliary options
 	p.AddSeparator("")
