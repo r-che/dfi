@@ -10,11 +10,11 @@ func (pc *progConfig) prepareDBMS() error {
 	// Check for incompatible options
 	io := make([]string, 0, 3)	// Incompatible options
 	for k, v := range map[string]bool{
-		"deep": pc.QueryArgs.DeepSearch,
+		"deep": pc.QA.DeepSearch,
 		"dupes": pc.SearchDupes,
-		"only-name": pc.QueryArgs.OnlyName,
-		"only-tags": pc.QueryArgs.OnlyTags,
-		"only-descr": pc.QueryArgs.OnlyDescr,
+		"only-name": pc.QA.OnlyName,
+		"only-tags": pc.QA.OnlyTags,
+		"only-descr": pc.QA.OnlyDescr,
 	} {
 		if v {
 			io = append(io, `--` + k)

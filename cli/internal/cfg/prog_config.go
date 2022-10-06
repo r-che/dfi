@@ -63,14 +63,14 @@ type progConfig struct {
 	//
 
 	// Query arguments
-	QueryArgs		*dbms.QueryArgs
+	QA			*dbms.QueryArgs
 	// Program configuration loaded from file
 	fConf		fileCfg
 }
 
 func NewConfig() *progConfig {
 	return &progConfig{
-		QueryArgs: &dbms.QueryArgs{},
+		QA: &dbms.QueryArgs{},
 	}
 }
 
@@ -89,8 +89,8 @@ func (pc *progConfig) clone() *progConfig {
 	rv.CmdArgs = make([]string, len(pc.CmdArgs))
 	copy(rv.CmdArgs, pc.CmdArgs)
 
-	if pc.QueryArgs != nil {
-		rv.QueryArgs = pc.QueryArgs.Clone()
+	if pc.QA != nil {
+		rv.QA = pc.QA.Clone()
 	}
 
 	return &rv
@@ -153,8 +153,8 @@ func (pc *progConfig) prepare(CmdArgs []string) error {
 	}
 
 	// Check for existing of required command line arguments
-	if (pc.QueryArgs.DeepSearch || pc.QueryArgs.UseTags || pc.QueryArgs.OnlyTags ||
-		pc.QueryArgs.UseDescr || pc.QueryArgs.OnlyDescr || pc.QueryArgs.OnlyName || pc.SearchDupes) &&
+	if (pc.QA.DeepSearch || pc.QA.UseTags || pc.QA.OnlyTags ||
+		pc.QA.UseDescr || pc.QA.OnlyDescr || pc.QA.OnlyName || pc.SearchDupes) &&
 		len(pc.CmdArgs) == 0 {
 		return fmt.Errorf("one of command line options requires at least one command line argument")
 	}
@@ -169,57 +169,57 @@ func (pc *progConfig) prepare(CmdArgs []string) error {
 }
 
 func (pc *progConfig) prepareSearch() error {
-	pc.QueryArgs.SetSearchPhrases(pc.CmdArgs)
+	pc.QA.SetSearchPhrases(pc.CmdArgs)
 
 	if pc.strMtime != anyVal {
-		if err := pc.QueryArgs.ParseMtimes(pc.strMtime); err != nil {
+		if err := pc.QA.ParseMtimes(pc.strMtime); err != nil {
 			return err
 		}
 	}
 
 	if pc.strSize != anyVal {
-		if err := pc.QueryArgs.ParseSizes(pc.strSize); err != nil {
+		if err := pc.QA.ParseSizes(pc.strSize); err != nil {
 			return err
 		}
 	}
 
 	if pc.oTypes != anyVal {
-		if err := pc.QueryArgs.ParseTypes(pc.oTypes, knownTypes); err != nil {
+		if err := pc.QA.ParseTypes(pc.oTypes, knownTypes); err != nil {
 			return err
 		}
 	}
 
 	if pc.csums != anyVal {
-		if err := pc.QueryArgs.ParseSums(pc.csums); err != nil {
+		if err := pc.QA.ParseSums(pc.csums); err != nil {
 			return err
 		}
 	}
 
 	if pc.hosts != anyVal {
-		if err := pc.QueryArgs.ParseHosts(pc.hosts); err != nil {
+		if err := pc.QA.ParseHosts(pc.hosts); err != nil {
 			return err
 		}
 	}
 
 	if pc.aiiFields != anyVal {
-		if err := pc.QueryArgs.ParseAIIFields(pc.aiiFields, dbms.UVAIIFields()); err != nil {
+		if err := pc.QA.ParseAIIFields(pc.aiiFields, dbms.UVAIIFields()); err != nil {
 			return err
 		}
 	}
 
 	// Update values of flags that depend on other flags
-	if pc.QueryArgs.OnlyDescr {
+	if pc.QA.OnlyDescr {
 		pc.CommonFlags.UseDescr = true
 	}
-	if pc.QueryArgs.OnlyTags {
+	if pc.QA.OnlyTags {
 		pc.CommonFlags.UseTags = true
 	}
 
 	// Pass common flags from command line to query arguments
-	pc.QueryArgs.CommonFlags = pc.CommonFlags
+	pc.QA.CommonFlags = pc.CommonFlags
 
 	// Check for sufficient conditions for search
-	if !pc.QueryArgs.CanSearch(pc.CmdArgs) {
+	if !pc.QA.CanSearch(pc.CmdArgs) {
 		return fmt.Errorf("insufficient arguments to make search")
 	}
 

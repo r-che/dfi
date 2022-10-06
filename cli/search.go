@@ -14,7 +14,7 @@ func doSearch(dbc dbms.Client) *types.CmdRV {
 	c := cfg.Config()
 
 	if c.SearchDupes {
-		return searchDupes(dbc, c.QueryArgs)
+		return searchDupes(dbc, c.QA)
 	}
 
 	// Set of requested fields
@@ -26,17 +26,17 @@ func doSearch(dbc dbms.Client) *types.CmdRV {
 
 	rv := types.NewCmdRV()
 
-	if c.QueryArgs.IsAIIFields() {
+	if c.QA.IsAIIFields() {
 		// Search for identifiers of objects that have filled requested AII fields
-		ids, err := dbc.GetAIIIds(c.QueryArgs.AIIFields)
+		ids, err := dbc.GetAIIIds(c.QA.AIIFields)
 		if err != nil {
-			return rv.AddErr("cannot search for objects with filled fields %v: %v", c.QueryArgs.AIIFields, err)
+			return rv.AddErr("cannot search for objects with filled fields %v: %v", c.QA.AIIFields, err)
 		}
 
-		c.QueryArgs.AddIds(ids...)
+		c.QA.AddIds(ids...)
 	}
 
-	qr, err := dbc.Query(c.QueryArgs, rqFields)
+	qr, err := dbc.Query(c.QA, rqFields)
 	if err != nil {
 		rv.AddErr("cannot execute search query: %v", err)
 	}
