@@ -371,43 +371,16 @@ func parseSize(sizeStr string) (int64, error) {
 }
 
 func (qa *QueryArgs) ParseTypes(typesLine string, allowed []string) error {
-	qa.Types = []string{}
-
-	argTypes:
-	for _, argType := range strings.Split(typesLine, ",") {
-		for _, kt := range allowed {
-			if argType == kt {
-				qa.Types = append(qa.Types, argType)
-				continue argTypes
-			}
-		}
-
-		return fmt.Errorf("uknown type %q", argType)
-	}
-
-	return nil
+	return parseSetField(&qa.Types, "type", typesLine, allowed...)
 }
 
-func (qa *QueryArgs) ParseSums(CSumsLine string) error {
-	qa.CSums = strings.Split(CSumsLine, ",")
-
-	for _, csum := range qa.CSums {
-		if csum == "" {
-			return fmt.Errorf("empty checksum value in checksums line %q", CSumsLine)
-		}
-	}
-
-	return nil
+func (qa *QueryArgs) ParseSums(csums string) error {
+	return parseSetField(&qa.CSums, "checksum", csums)
 }
 
 func (qa *QueryArgs) ParseHosts(hostsLine string) error {
-	qa.Hosts = strings.Split(hostsLine, ",")
-
-	for _, host := range qa.Hosts {
-		if host == "" {
-			return fmt.Errorf("empty host value in hosts line %q", hostsLine)
-		}
-	}
+	return parseSetField(&qa.Hosts, "host", hostsLine)
+}
 
 func (qa *QueryArgs) ParseAIIFields(fieldsStr string, allowed []string) error {
 	return parseSetField(&qa.AIIFields, "field name", fieldsStr, allowed...)
@@ -421,4 +394,34 @@ func (qa *QueryArgs) AddIds(ids ...string) *QueryArgs {
 func (qa *QueryArgs) AddChecksums(csums ...string) *QueryArgs {
 	qa.CSums = append(qa.CSums, csums...)
 	return qa
+}
+
+func parseSetField(fp *[]string, fn, vals string, allowed ...string) error {
+	*fp = strings.Split(vals, ",")
+
+	// If no allowed values provided
+	if len(allowed) == 0 {
+		// Check only for empty values
+		for _, v := range *fp {
+			if v == "" {
+				return fmt.Errorf("empty %s value in argument %q", fn, vals)
+			}
+		}
+		// OK
+		return nil
+	}
+
+	parseItem:
+	for _, val := range *fp {
+		for _, av := range allowed {
+			if val == av {
+				*fp = append(*fp, val)
+				continue parseItem
+			}
+		}
+
+		return fmt.Errorf("incorrect %s value %q in argument %q", fn, val, vals)
+	}
+	// OK
+	return nil
 }

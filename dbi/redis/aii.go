@@ -23,6 +23,16 @@ func (ikm idKeyMap) String() string {
 
 	return "[" + strings.Join(ids, " ") + "]"
 }
+func (ikm idKeyMap) KeysAny() []any {
+	ids := make([]any, 0, len(ikm))
+	for id := range ikm {
+		ids = append(ids, id)
+	}
+	sort.Slice(ids, func(i, j int) bool {
+		return ids[i].(string) < ids[j].(string)
+	})
+	return ids
+}
 
 func (rc *RedisClient) ModifyAII(op dbms.DBOperator, args *dbms.AIIArgs, ids []string, add bool) (int64, int64, error) {
 	// 0. Get RediSearch client
@@ -225,6 +235,15 @@ func (rc *RedisClient) setTags(tags []string, ids idKeyMap) (int64, error) {
 		ts++
 	}
 
+	// Update index of objects that use tags field
+	idxSet := RedisAIIDSetPrefix + dbms.AIIFieldTags
+	if n, err := rc.c.SAdd(rc.ctx, idxSet, ids.KeysAny()...).Result(); err != nil {
+		log.E("(RedisCli:setTags) cannot add identifiers %s to set %q: %v - " +
+				"the search result may be incomplete", ids, idxSet, err)
+	} else {
+		log.D("(RedisCli:setTags) Added %d members to set %q", n, idxSet)
+	}
+
 	// OK
 	return ts, nil
 }
@@ -279,6 +298,15 @@ func (rc *RedisClient) setDescr(descr string, ids idKeyMap) (int64, error) {
 		}
 
 		tu++
+	}
+
+	// Update index of objects that use description field
+	idxSet := RedisAIIDSetPrefix + dbms.AIIFieldDescr
+	if n, err := rc.c.SAdd(rc.ctx, idxSet, ids.KeysAny()...).Result(); err != nil {
+		log.E("(RedisCli:setTags) cannot add identifiers %s to set %q: %v - " +
+				"the search result may be incomplete", ids, idxSet, err)
+	} else {
+		log.D("(RedisCli:setTags) Added %d members to set %q", n, idxSet)
 	}
 
 	// OK
@@ -428,6 +456,9 @@ func (rc *RedisClient) clearAIIField(field string, ids idKeyMap) (int64, error) 
 	// Total cleared
 	tc := int64(0)
 
+	// List of identifiers to remove from index
+	idxRm := make([]any, 0, len(ids))
+
 	log.D("(RedisCli) Collecting AII info to clearing field %q...", field)
 	// Do for each identifier
 	for id := range ids {
@@ -469,6 +500,9 @@ func (rc *RedisClient) clearAIIField(field string, ids idKeyMap) (int64, error) 
 			// Need to delete only the cleared field
 			toDelField = append(toDelField, key)
 		}
+
+		// Add id to list of identifiers to remove from index
+		idxRm = append(idxRm, id)
 	}
 
 	// Check for nothing to delete
@@ -488,6 +522,7 @@ func (rc *RedisClient) clearAIIField(field string, ids idKeyMap) (int64, error) 
 		}
 
 		tc += res.Val()
+
 	}
 
 	if len(toDelField) != 0 {
@@ -500,6 +535,15 @@ func (rc *RedisClient) clearAIIField(field string, ids idKeyMap) (int64, error) 
 			}
 			tc += n
 		}
+	}
+
+	// Remove objects from index with objects that use field
+	idxSet := RedisAIIDSetPrefix + field
+	if n, err := rc.c.SRem(rc.ctx, idxSet, idxRm...).Result(); err != nil {
+		log.E("(RedisCli:clearAIIField) cannot remove identifiers %v from set %q: %v - " +
+				"search results may be incorrect", idxRm, idxSet, err)
+	} else {
+		log.D("(RedisCli:clearAIIField) Removed %d members from set %q", n, idxSet)
 	}
 
 	// OK
