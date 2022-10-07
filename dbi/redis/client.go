@@ -50,7 +50,7 @@ type RedisClient struct {
 	stopLongVal int		// should be incremented when need to terminate long-term operation
 }
 
-func NewClient(dbCfg *dbms.DBConfig) (dbms.Client, error) {
+func NewClient(dbCfg *dbms.DBConfig) (*RedisClient, error) {
 	// Convert string representation of database identifier to numeric database index
 	dbid, err := strconv.ParseUint(dbCfg.ID, 10, 64)
 	if err != nil {

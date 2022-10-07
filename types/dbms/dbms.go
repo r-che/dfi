@@ -5,6 +5,7 @@ import (
 	"github.com/r-che/dfi/types"
 )
 
+// Agent client interface
 type ClientController interface {
 	// Agent related methods
 	LoadHostPaths(filter FilterFunc) (paths []string, err error)
@@ -12,26 +13,23 @@ type ClientController interface {
 	DeleteObj(fso *types.FSObject) error
 	Commit() (updated, deleted int64, err error)
 
+	// Management methods
 	StopLong()
 	Stop()
 }
 
+// CLI/Web/REST clients interface
 type Client interface {
-	// Agent related methods
-	LoadHostPaths(filter FilterFunc) (paths []string, err error)
-	UpdateObj(fso *types.FSObject) error
-	DeleteObj(fso *types.FSObject) error
-	Commit() (updated, deleted int64, err error)
-
-	StopLong()
-	Stop()
-
-	// CLI/Web related methods
+	// Search methods
 	Query(qa *QueryArgs, retFields []string) (qr QueryResults, err error)
 	QueryAIIIds(qa *QueryArgs) (ids []string, err error)
+
+	// Get objects/identifiers without search
 	GetObjects(ids, retFields []string) (qr QueryResults, err error)
 	GetAIIs(ids, retFields  []string) (qr QueryResultsAII, err error)
 	GetAIIIds(withFields []string) (ids []string, err error)
+
+	// Modification of AII
 	ModifyAII(DBOperator, *AIIArgs, []string, bool) (tagsUpdated, descrsUpdated int64, err error)
 }
 

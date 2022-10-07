@@ -13,7 +13,7 @@ import (
 
 func Run() error {
 	// Create new database client
-	dbc, err := dbi.NewClient(&cfg.Config().DBCfg)
+	dbc, err := dbi.NewClientController(&cfg.Config().DBCfg)
 	if err != nil {
 		return err
 	}
