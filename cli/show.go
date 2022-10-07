@@ -98,15 +98,98 @@ func showObjs(ids []string, objs dbms.QueryResults, aiis dbms.QueryResultsAII) {
 		ikm[fields[dbms.FieldID].(string)] = objKey
 	}
 
-	if c.OneLine {
+	switch {
+	// JSON output
+	case c.JSONOut:
+		showJSONOutput(ids, ikm, objs, aiis)
+	// One-line output
+	case c.OneLine:
 		for _, id := range ids {
 			showObjOL(ikm[id], objs[ikm[id]], aiis[id])
 		}
-	} else {
+	// Default output
+	default:
 		for _, id := range ids {
 			showObj(ikm[id], objs[ikm[id]], aiis[id])
 		}
 	}
+}
+
+func showJSONOutput(ids []string, ikm map[string]types.ObjKey, objs dbms.QueryResults, aiis dbms.QueryResultsAII) {
+	// Get configuration
+	c := cfg.Config()
+
+	// Check for empty result
+	if len(objs) == 0 {
+		fmt.Println(`[]`)
+		return
+	}
+
+	// New line if required
+	nl := "\n"
+	// Indent if required
+	ind := "    "
+	if c.OneLine {
+		// Clear new line character and indentation
+		nl = ""
+		ind = ""
+	}
+
+	// Start of JSON container
+	fmt.Print(`[` + nl)
+
+	// Print items
+	for i, id := range ids {
+		objKey := ikm[id]
+
+		// Buffer to collect values before output
+		res := make([]string, 0, len(dbms.UVObjFields()) + len(dbms.UVAIIFields()) + 2 /* host + path */)
+
+		res = append(res,
+			fmt.Sprintf(`"host":%q`, objKey.Host),
+			fmt.Sprintf(`"path":%q`, objKey.Path),
+		)
+
+		for _, field := range dbms.UVObjFields() {
+			val, ok := objs[objKey][field]
+			// If value empty/not set
+			if !ok {
+				res = append(res, `""`)
+				continue
+			}
+
+			if s, ok := val.(string); ok {
+				res = append(res, fmt.Sprintf(`%q:%q`, field, s))
+			} else {
+				res = append(res, fmt.Sprintf(`%q:%q`, field, fmt.Sprintf("%#v", val)))
+			}
+		}
+
+		for _, field := range dbms.UVAIIFields() {
+			val, ok := aiis[id][field]
+			// If value empty/not set
+			if !ok {
+				res = append(res, fmt.Sprintf(`%q: ""`, field))
+				continue
+			}
+
+			res = append(res, fmt.Sprintf("%q:%q", field, val))
+		}
+
+		fmt.Print(ind + `{` + nl +							// opening brace
+			ind + ind +										// indentation before first key
+			strings.Join(res, `,` + nl + ind + ind) + nl +	// join with comma, new line and indentation all key-value pairs
+			ind + `}`,										// closing brace
+		)
+
+		if i != len(ids) - 1 {
+			fmt.Print(`,`)
+		}
+		fmt.Print(nl)
+	}
+
+	// End of JSON container
+	fmt.Print(`]` + "\n")
 }
 
 func showObjOL(objKey types.ObjKey, fields map[string]any, aii map[string]string) {
@@ -126,7 +209,7 @@ func showObjOL(objKey types.ObjKey, fields map[string]any, aii map[string]string
 		if s, ok := val.(string); ok {
 			res = append(res, fmt.Sprintf("%s:%q", field, s))
 		} else {
-			res = append(res, fmt.Sprintf("%q\n", fmt.Sprintf("%#v", val)))
+			res = append(res, fmt.Sprintf("%s:%q", field, fmt.Sprintf("%#v", val)))
 		}
 	}
 

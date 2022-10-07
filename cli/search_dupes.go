@@ -257,7 +257,12 @@ func printDupes(refObjs map[string]*types.FSObject, dm map[string][]dupeInfo) {
 		i++
 	}
 
-	if c.OneLine {
+	switch {
+	// JSON output
+	case c.JSONOut:
+		printJSONDupes(ids, refObjs, dm)
+	// Single-lined output
+	case c.OneLine:
 		// Produce oneline output
 		for _, id := range ids {
 			// Get duplicates for id
@@ -276,8 +281,8 @@ func printDupes(refObjs map[string]*types.FSObject, dm map[string][]dupeInfo) {
 			// Print new line
 			fmt.Println()
 		}
-	} else {
-		// Produce normal output
+	// Normal verbose multiline output
+	default:
 		for i, id := range ids {
 			// Get reference object
 			ro := refObjs[id]
@@ -294,17 +299,79 @@ func printDupes(refObjs map[string]*types.FSObject, dm map[string][]dupeInfo) {
 			if len(dupes) == 0 {
 				fmt.Printf("%s %s: No duplicates were found\n", id, objKey)
 			} else {
+				// Print all dupes of reference object
 				fmt.Printf("%s %s (%d):\n", id, objKey, len(dupes))
-			}
-			// Print all dupes of reference object
-			for _, did := range dupes {
-				fmt.Printf("  %s\n", did)
+				for _, did := range dupes {
+					fmt.Printf("  %s\n", did)
+				}
 			}
 
-			if i < len(ids) - 1 {
+			if i != len(ids) - 1 {
 				fmt.Print("---")
 			}
 			fmt.Println()
 		}
 	}
+}
+
+func printJSONDupes(ids []string, refObjs map[string]*types.FSObject, dm map[string][]dupeInfo) {
+	// Get configuration
+	c := cfg.Config()
+
+	if len(ids) == 0 {
+		fmt.Println(`{}`)
+		return
+	}
+
+	// New line if required
+	nl := "\n"
+	// Indent if required
+	ind := "    "
+	if c.OneLine {
+		// Clear new line character and indentation
+		nl = ""
+		ind = ""
+	}
+
+	// Start of JSON container
+	fmt.Print(`{` + nl)
+
+	// Print items
+	for i, id := range ids {
+		// Get reference object
+		ro := refObjs[id]
+		// Get duplicates for this object
+		dupes := dm[ro.Checksum]
+		// Sort duplicates by object keys
+		sort.Slice(dupes, func(i, j int) bool {
+			return dupes[i].objKey.Less(dupes[j].objKey)
+		})
+
+		//objKey := ro.FPath	// XXX loadDupesRefs() kept object key in this field
+
+		// Is no duplicates were found
+		if len(dupes) == 0 {
+			// No duplicates found
+			fmt.Printf(ind + `%q: {}`, id)
+		} else {
+			fmt.Printf(ind + `%q: {` + nl, id)
+			// Print all dupes of reference object
+			for j, dinf := range dupes {
+				fmt.Printf(ind + ind + `%q: %q`, dinf.id, dinf.objKey)
+				if j != len(dupes) - 1 {
+					fmt.Print(`,`)
+				}
+				fmt.Print(nl)
+			}
+			fmt.Print(ind + `}`)
+		}
+
+		if i != len(ids) - 1 {
+			fmt.Print(`,`)
+		}
+		fmt.Print(nl)
+	}
+
+	// End of JSON container
+	fmt.Print(`}` + "\n")
 }

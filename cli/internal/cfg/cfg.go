@@ -87,6 +87,7 @@ func Init(name string) {
 	p.AddSeparator(`>> Options common to several modes`)
 	p.AddBool(`one-line|o`, `print information about each object in one line, ` +
 		`implicitly enables --quiet`, &config.OneLine, false)
+	p.AddBool(`json|j`, `make JSON output, implicitly enables --quiet`, &config.JSONOut, false)
 	p.AddBool(`tags|t`, `enable tags-related operations, ` +
 		`requires at least one command line argument`, &config.UseTags, false)
 	p.AddBool(`descr`, `enable description-related operations, ` +

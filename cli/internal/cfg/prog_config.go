@@ -37,13 +37,14 @@ type progConfig struct {
 	NoNL		bool
 
 	// Show mdoe options
-	OneLine		bool
 
 	//
 	// Common options
 	//
 	types.CommonFlags
 	SetAdd		bool
+	OneLine		bool
+	JSONOut		bool
 
 	//
 	// Other options
@@ -147,7 +148,7 @@ func (pc *progConfig) prepare(CmdArgs []string) error {
 	}
 
 	// Check for options that implicitly enable quiet mode
-	if pc.ShowOnlyIds || pc.OneLine {
+	if pc.ShowOnlyIds || pc.OneLine || pc.JSONOut {
 		// Enable quiet mode
 		pc.Quiet = true
 	}

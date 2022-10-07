@@ -64,16 +64,85 @@ func doSearch(dbc dbms.Client) *types.CmdRV {
 	}
 
 	// Print results
-	if c.HostGroups {
-		// Print results grouped by hosts
+	switch {
+	// JSON results
+	case c.JSONOut:
+		printJSON(qr)
+	// Results grouped by hosts
+	case c.HostGroups:
 		printResHG(qr)
-	} else {
-		// Print single-line sorted output
+	// Print single-line sorted output
+	default:
 		printResSingle(qr)
 	}
 
 	// OK
 	return rv.AddFound(int64(len(qr)))
+}
+
+func printJSON(qr dbms.QueryResults) {
+	// Get configuration
+	c := cfg.Config()
+
+	if len(qr) == 0 {
+		fmt.Println(`[]`)
+		return
+	}
+
+	// Make sorted list of query result keys
+	objKeys := make([]types.ObjKey, 0, len(qr))
+	for k := range qr {
+		objKeys = append(objKeys, k)
+	}
+	sort.Slice(objKeys, func(i, j int) bool {
+		return objKeys[i].Less(objKeys[j])
+	})
+
+	// New line if required
+	nl := "\n"
+	// Indent if required
+	ind := "    "
+	if c.OneLine {
+		// Clear new line character and indentation
+		nl = ""
+		ind = ""
+	}
+
+	var printer func(types.ObjKey, map[string]any)
+
+	switch {
+	case c.ShowOnlyIds:
+		printer = func(k types.ObjKey, r map[string]any) {
+			fmt.Printf(ind + `%q`, r[dbms.FieldID])
+		}
+	case c.ShowID:
+		printer = func(k types.ObjKey, r map[string]any) {
+			fmt.Printf(
+				ind + `{` + nl +
+				ind + ind + `"%s": %q,` + nl +
+				ind + ind + `"objKey": %q` + nl +
+				ind + `}`, dbms.FieldID, r[dbms.FieldID], k)
+		}
+	default:
+		printer = func(k types.ObjKey, r map[string]any) {
+			fmt.Printf(ind + `%q`, k)
+		}
+	}
+
+	// Start of JSON container
+	fmt.Print(`[` + nl)
+
+	// Print items
+	for i, key := range objKeys {
+		printer(key, qr[key])
+		if i != len(objKeys) - 1 {
+			fmt.Print(`,`)
+		}
+		fmt.Print(nl)
+	}
+
+	// End of JSON container
+	fmt.Print(`]` + "\n")
 }
 
 func printResHG(qr dbms.QueryResults) {
