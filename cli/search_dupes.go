@@ -56,17 +56,10 @@ func searchDupes(dbc dbms.Client, qa *dbms.QueryArgs) *types.CmdRV {
 	// Create a map of duplicates
 	dm := map[string][]dupeInfo{}
 
-	// Dupes counter
-	var nd int64
 	for objKey, fields := range qr {
 		// Extract identifier
 		id, ok := extrField(objKey, fields, dbms.FieldID, rv)
 		if !ok {
-			continue
-		}
-		// Lookup identifier in refObjs
-		if _, ok := refObjs[id]; ok {
-			// This is one of the reference objects, skip
 			continue
 		}
 
@@ -96,12 +89,32 @@ func searchDupes(dbc dbms.Client, qa *dbms.QueryArgs) *types.CmdRV {
 
 		// Push identifier to duplicates map
 		dm[csum] = append(dm[csum], dupeInfo{id: id, objKey: objKey})
-		// Increment dupes counter
-		nd++
+	}
+
+	//
+	// Create resulted map with refered object<=>duplicates list pairs
+	//
+	objDupes := make(map[string][]dupeInfo)
+	// Dupes counter
+	var nd int64
+
+	for id, fso := range refObjs {
+		// Go over all duplicates with checksum of the fso
+		for _, di := range dm[fso.Checksum] {
+			// Skip self
+			if id == di.id {
+				continue
+			}
+
+			// Append this object to list of dupes of object with id
+			objDupes[id] = append(objDupes[id], di)
+			// Increment dupes counter
+			nd++
+		}
 	}
 
 	// Make an output
-	printDupes(refObjs, dm)
+	printDupes(refObjs, objDupes)
 
 	return rv.AddFound(nd)
 }
@@ -266,7 +279,7 @@ func printDupes(refObjs map[string]*types.FSObject, dm map[string][]dupeInfo) {
 		// Produce oneline output
 		for _, id := range ids {
 			// Get duplicates for id
-			dupes := dm[refObjs[id].Checksum]
+			dupes := dm[id]
 			// Sort by object keys
 			sort.Slice(dupes, func(i, j int) bool {
 				return dupes[i].objKey.Less(dupes[j].objKey)
@@ -284,16 +297,15 @@ func printDupes(refObjs map[string]*types.FSObject, dm map[string][]dupeInfo) {
 	// Normal verbose multiline output
 	default:
 		for i, id := range ids {
-			// Get reference object
-			ro := refObjs[id]
 			// Get duplicates for this object
-			dupes := dm[ro.Checksum]
+			dupes := dm[id]
 			// Sort duplicates by object keys
 			sort.Slice(dupes, func(i, j int) bool {
 				return dupes[i].objKey.Less(dupes[j].objKey)
 			})
 
-			objKey := ro.FPath	// XXX loadDupesRefs() kept object key in this field
+			// Get key of reference object
+			objKey := refObjs[id].FPath	// XXX loadDupesRefs() kept object key in this field
 
 			// Is no duplicates were found
 			if len(dupes) == 0 {
@@ -338,16 +350,12 @@ func printJSONDupes(ids []string, refObjs map[string]*types.FSObject, dm map[str
 
 	// Print items
 	for i, id := range ids {
-		// Get reference object
-		ro := refObjs[id]
 		// Get duplicates for this object
-		dupes := dm[ro.Checksum]
+		dupes := dm[id]
 		// Sort duplicates by object keys
 		sort.Slice(dupes, func(i, j int) bool {
 			return dupes[i].objKey.Less(dupes[j].objKey)
 		})
-
-		//objKey := ro.FPath	// XXX loadDupesRefs() kept object key in this field
 
 		// Is no duplicates were found
 		if len(dupes) == 0 {
