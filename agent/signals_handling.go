@@ -121,8 +121,8 @@ func waitSignals(dbc *dbi.DBController, wp *fswatcher.Pool) {
 				log.W("STUB: dump stat")
 
 			case <-chStopOps:
-				wp.StopLong()
-				dbc.StopLong()
+				wp.TermLong()
+				dbc.TermLong()
 		}
 	}
 }

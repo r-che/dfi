@@ -36,7 +36,7 @@ type Pool struct {
 	// Runtime data
 	watchers map[string]doneChan
 	wg sync.WaitGroup			// to wait until all watchers will be stopped
-	stopLongVal int				// should be incremented when need to terminate long-term operation
+	termLongVal int				// should be incremented when need to terminate long-term operation
 	stop	doneChan			// close this channel to stop all started watchers
 }
 
@@ -117,10 +117,10 @@ func (p *Pool) StopWatchers() {
 	p.watchers = nil
 }
 
-// StopLong stops long-term operations on filesystem
-func (p *Pool) StopLong() {
+// TermLong terminates long-term operations on filesystem
+func (p *Pool) TermLong() {
 	p.m.Lock()
-	p.stopLongVal++
+	p.termLongVal++
 	p.m.Unlock()
 }
 
@@ -257,13 +257,13 @@ func (p *Pool) flushCached(watchPath string, events eventsMap) error {
 	// Prepare database operations list
 	dbOps := make([]*dbms.DBOperation, 0, len(events))
 
-	// Keep current stopLongVal value to have ability to compare during long-term operations
-	initStopLong := p.stopLongVal
+	// Keep current termLongVal value to have ability to compare during long-term operations
+	initTermLong := p.termLongVal
 
 	// Handle events one by one
 	for _, name := range names {
-		// If value of the stopLongVal was updated - need to stop long-term operation
-		if p.stopLongVal != initStopLong {
+		// If value of the termLongVal was updated - need to stop long-term operation
+		if p.termLongVal != initTermLong {
 			return fmt.Errorf("terminated")
 		}
 
@@ -325,12 +325,12 @@ func (p *Pool) scanDir(watcher *fsn.Watcher, dir string, events eventsMap, doInd
 		return nWatchers, fmt.Errorf("cannot read entries of directory %q: %v", dir, err)
 	}
 
-	// Keep current stopLongVal value to have ability to compare during long-term operations
-	initStopLong := p.stopLongVal
+	// Keep current termLongVal value to have ability to compare during long-term operations
+	initTermLong := p.termLongVal
 
 	for _, entry := range entries {
-		// If value of the stopLongVal was updated - need to stop long-term operation
-		if p.stopLongVal != initStopLong {
+		// If value of the termLongVal was updated - need to stop long-term operation
+		if p.termLongVal != initTermLong {
 			return nWatchers, fmt.Errorf("terminated")
 		}
 
