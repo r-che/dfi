@@ -137,8 +137,8 @@ func (rc *RedisClient) GetAIIIds(withFields []string) ([]string, error) {
 	return ids, nil
 }
 
-func (rc *RedisClient) GetAIIs(ids, retFields []string) (map[string]map[string]string, error) {
-	result := make(map[string]map[string]string, len(ids))
+func (rc *RedisClient) GetAIIs(ids, retFields []string) (dbms.QueryResultsAII, error) {
+	result := make(dbms.QueryResultsAII, len(ids))
 
 	// Get requested fields for each ID
 	for _, id := range ids {

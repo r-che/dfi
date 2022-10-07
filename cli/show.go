@@ -88,7 +88,7 @@ func doShow(dbc dbms.Client) *types.CmdRV {
 	return rv
 }
 
-func showObjs(ids []string, objs dbms.QueryResults, aiis map[string]map[string]string) {
+func showObjs(ids []string, objs dbms.QueryResults, aiis dbms.QueryResultsAII) {
 	// Get configuration
 	c := cfg.Config()
 

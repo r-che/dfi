@@ -6,21 +6,22 @@ import (
 )
 
 type Client interface {
-    UpdateObj(*types.FSObject) error
-    DeleteObj(*types.FSObject) error
-    Commit() (int64, int64, error)
-
-	ModifyAII(DBOperator, *AIIArgs, []string, bool) (int64, int64, error)
-
-	LoadHostPaths(FilterFunc) ([]string, error)
-	Query(*QueryArgs, []string) (QueryResults, error)
-	GetObjects([]string, []string) (QueryResults, error)
-	GetAIIIds(withFields []string) ([]string, error)
-	GetAIIs([]string, []string) (map[string]map[string]string, error)
-	QueryAIIIds(qa *QueryArgs) ([]string, error)
+	// Agent related methods
+	LoadHostPaths(filter FilterFunc) (paths []string, err error)
+	UpdateObj(fso *types.FSObject) error
+	DeleteObj(fso *types.FSObject) error
+	Commit() (updated, deleted int64, err error)
 
 	StopLong()
-    Stop()
+	Stop()
+
+	// CLI/Web related methods
+	Query(qa *QueryArgs, retFields []string) (qr QueryResults, err error)
+	QueryAIIIds(qa *QueryArgs) (ids []string, err error)
+	GetObjects(ids, retFields []string) (qr QueryResults, err error)
+	GetAIIs(ids, retFields  []string) (qr QueryResultsAII, err error)
+	GetAIIIds(withFields []string) (ids []string, err error)
+	ModifyAII(DBOperator, *AIIArgs, []string, bool) (tagsUpdated, descrsUpdated int64, err error)
 }
 
 // Standard database connection configuration
@@ -68,11 +69,13 @@ type FilterFunc func(string) bool
 
 // Map to return query results indexed host + found path
 type QueryResults map[types.ObjKey] map[string]any
+// Map to return AII query results
+type QueryResultsAII map[string]map[string]string
 
 // Database object fields
 const (
 	FieldID = "id"			// Unique object identifier (sha1 of found path)
-	FieldHost = "host"		// Hosw where the object was found
+	FieldHost = "host"		// Host where the object was found
 	FieldName = "name"		// File name (w/o full path)
 	FieldFPath = "fpath"	// Where object was found, may include symbolic links
 	FieldRPath = "rpath"	// Where object really placed
