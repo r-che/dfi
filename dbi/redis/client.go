@@ -54,13 +54,13 @@ func NewClient(dbCfg *dbms.DBConfig) (*RedisClient, error) {
 	// Convert string representation of database identifier to numeric database index
 	dbid, err := strconv.ParseUint(dbCfg.ID, 10, 64)
 	if err != nil {
-		return nil, fmt.Errorf("(RedisCli) cannot convert database identifier value to unsigned integer: %v", err)
+		return nil, fmt.Errorf("(RedisCli:NewClient) cannot convert database identifier value to unsigned integer: %v", err)
 	}
 
 	// Read username/password from private data if set
 	user, passw, err := userPasswd(dbCfg.PrivCfg)
 	if err != nil {
-		return nil, fmt.Errorf("(RedisCli) failed to load username/password from private configuration: %v", err)
+		return nil, fmt.Errorf("(RedisCli:NewClient) failed to load username/password from private configuration: %v", err)
 	}
 
 	// Initialize Redis client
@@ -92,12 +92,12 @@ func userPasswd(pcf map[string]any) (string, string, error) {
 	loadField := func(field string) (string, error) {
 		v, ok := pcf[field]
 		if !ok {
-			return "", fmt.Errorf("(RedisCli) private configuration does not contain %q field", field)
+			return "", fmt.Errorf("(RedisCli:userPasswd) private configuration does not contain %q field", field)
 		}
 		if user, ok := v.(string); ok {
 			return user, nil
 		}
-		return "", fmt.Errorf(`(RedisCli) invalid type of %q field in private configuration, got %T, wanted string`,
+		return "", fmt.Errorf(`(RedisCli:userPasswd) invalid type of %q field in private configuration, got %T, wanted string`,
 			field, v)
 	}
 
@@ -119,11 +119,11 @@ func (rc *RedisClient) UpdateObj(fso *types.FSObject) error {
 	// Make a key
 	key := RedisObjPrefix + rc.cliHost + ":" + fso.FPath
 
-	log.D("(RedisCli) HSET => %s\n", key)
+	log.D("(RedisCli:UpdateObj) HSET => %s\n", key)
 
 	res := rc.c.HSet(rc.ctx, key, prepareHSetValues(rc.cliHost, fso))
 	if err := res.Err(); err != nil {
-		return fmt.Errorf("HSET of key %q returned error: %v", key, err)
+		return fmt.Errorf("(RedisCli:UpdateObj) HSET of key %q returned error: %v", key, err)
 	}
 
 	rc.updated++
@@ -136,7 +136,7 @@ func (rc *RedisClient) DeleteObj(fso *types.FSObject) error {
 	// Make a key
 	key := RedisObjPrefix + rc.cliHost + ":" + fso.FPath
 
-	log.D("(RedisCli) DEL (pending) => %s\n", key)
+	log.D("(RedisCli:DeleteObj) DEL (pending) => %s\n", key)
 
 	// Append key to delete
 	rc.toDelete = append(rc.toDelete, key)
@@ -157,16 +157,16 @@ func (rc *RedisClient) Commit() (int64, int64, error) {
 
 	// Check for keys to delete
 	if nDel := len(rc.toDelete); nDel != 0 {
-		log.D("(RedisCli) Need to delete %d keys", nDel)
+		log.D("(RedisCli:Commit) Need to delete %d keys", nDel)
 
 		res := rc.c.Del(rc.ctx, rc.toDelete...)
 		if err := res.Err(); err != nil {
-			return rc.updated, res.Val(), fmt.Errorf("DEL operation failed: %v", err)
+			return rc.updated, res.Val(), fmt.Errorf("(RedisCli:Commit) DEL operation failed: %v", err)
 		}
 
 		rc.deleted = res.Val()
 
-		log.D("(RedisCli) Done deletion operation")
+		log.D("(RedisCli:Commit) Done deletion operation")
 	}
 
 	// XXX Use intermediate variables to avoid resetting return values by deferred function
@@ -200,12 +200,12 @@ func (rc *RedisClient) LoadHostPaths(match dbms.MatchStrFunc) ([]string, error) 
 	var sKeys []string
 	var err error
 
-	log.D("(RedisCli) Scanning DB for keys with prefix %q, using %d as COUNT value for SCAN operation", pref, RedisMaxScanKeys)
+	log.D("(RedisCli:LoadHostPaths) Scanning DB for keys with prefix %q, using %d as COUNT value for SCAN operation", pref, RedisMaxScanKeys)
 	// Scan keys space prefixed by pref
 	for i := 0; ; i++ {
 		// If value of the termLong was updated - need to terminate long-term operation
 		if rc.termLongVal != initTermLong {
-			return nil, fmt.Errorf("terminated")
+			return nil, fmt.Errorf("(RedisCli:LoadHostPaths) terminated")
 		}
 
 		// Scan for RedisMaxScanKeys items (max)
@@ -225,7 +225,7 @@ func (rc *RedisClient) LoadHostPaths(match dbms.MatchStrFunc) ([]string, error) 
 		// Is the end of keys space reached
 		if cursor == 0 {
 			// Return resulted data
-			log.D("(RedisCli) Scan for keys prefixed by %q finished, scans number %d, %d keys matched", pref, i, len(hostPaths))
+			log.D("(RedisCli:LoadHostPaths) Scan for keys prefixed by %q finished, scans number %d, %d keys matched", pref, i, len(hostPaths))
 			return hostPaths, nil
 		}
 	}

@@ -24,7 +24,7 @@ func (rc *RedisClient) Query(qa *dbms.QueryArgs, retFields []string) (dbms.Query
 	// Get RediSearch client
 	rsc, err := rc.rschInit(metaRschIdx)
 	if err != nil {
-		return nil, fmt.Errorf("(RedisCli) cannot initialize RediSearch client: %v", err)
+		return nil, fmt.Errorf("(RedisCli:Query) cannot initialize RediSearch client: %v", err)
 	}
 
 	// Create simple (non-deep) query
@@ -39,12 +39,12 @@ func (rc *RedisClient) Query(qa *dbms.QueryArgs, retFields []string) (dbms.Query
 	// Check for deep search required
 	if qa.DeepSearch {
 		// Do additional standard SCAN search
-		log.D("(RedisCli) Running deep search using SCAN operation...")
+		log.D("(RedisCli:Query) Running deep search using SCAN operation...")
 		n, err := rc.scanSearch(rsc, qa, retFields, &qr)
 		if err != nil {
-			return qr, fmt.Errorf("(RedisCli) SCAN search failed: %v", err)
+			return qr, fmt.Errorf("(RedisCli:Query) SCAN search failed: %v", err)
 		}
-		log.D("(RedisCli) Total of %d records were found with a deep (SCAN) search", n)
+		log.D("(RedisCli:Query) Total of %d records were found with a deep (SCAN) search", n)
 	}
 
 	return qr, nil
@@ -54,7 +54,7 @@ func (rc *RedisClient) QueryAIIIds(qa *dbms.QueryArgs) ([]string, error) {
 	// Get RediSearch client to search by additional information items
 	rsc, err := rc.rschInit(aiiRschIdx)
 	if err != nil {
-		return nil, fmt.Errorf("(RedisCli:queryAII) cannot initialize RediSearch client: %v", err)
+		return nil, fmt.Errorf("(RedisCli:QueryAIIIds) cannot initialize RediSearch client: %v", err)
 	}
 
 	var chunks []string
@@ -78,10 +78,10 @@ func (rc *RedisClient) QueryAIIIds(qa *dbms.QueryArgs) ([]string, error) {
 
 	ids, err := rshSearchAII(rsc, q)
 	if err != nil {
-		return nil, fmt.Errorf("(RedisCli:queryAII) cannot execute query %q: %v", q.Raw, err)
+		return nil, fmt.Errorf("(RedisCli:QueryAIIIds) cannot execute query %q: %v", q.Raw, err)
 	}
 
-	log.D("(RedisCli:queryAII) AII search (tags: %t descr: %t) found identifiers: %v", qa.UseTags, qa.UseDescr, ids)
+	log.D("(RedisCli:QueryAIIIds) AII search (tags: %t descr: %t) found identifiers: %v", qa.UseTags, qa.UseDescr, ids)
 
 	return ids, nil
 }
@@ -159,7 +159,7 @@ func (rc *RedisClient) rschInit(rschIdx string) (*rsh.Client, error) {
 	// Read username/password from private data if set
 	user, passw, err := userPasswd(rc.cfg.PrivCfg)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load username/password from private configuration: %v", err)
+		return nil, fmt.Errorf("(RedisCli:rschInit) failed to load username/password from private configuration: %v", err)
 	}
 
 	// Convert string representation of database identifier to numeric database index
@@ -225,7 +225,7 @@ func rshSearch(cli *rsh.Client, q *rsh.Query, retFields []string) (dbms.QueryRes
 		// Do search
 		docs, total, err := cli.Search(q)
 		if err != nil {
-			return qr, fmt.Errorf("(RedisCli) RediSearch returned %d records and failed: %v", len(qr), err)
+			return qr, fmt.Errorf("(RedisCli:rshSearch) RediSearch returned %d records and failed: %v", len(qr), err)
 		}
 
 		log.D("(RedisCli) Scanned offset: %d .. %d, selected %d (total matched %d)", offset, offset + objsPerQuery, len(docs), total)
@@ -239,7 +239,7 @@ func rshSearch(cli *rsh.Client, q *rsh.Query, retFields []string) (dbms.QueryRes
 			// Split identifier without object prefix from host:path format to separate values
 			host, path, ok := strings.Cut(doc.Id[kpl:], ":")
 			if !ok {
-				log.E("(RedisCli) Skip document with invalid key format: %q", doc.Id)
+				log.E("(RedisCli:rshSearch) Skip document with invalid key format: %q", doc.Id)
 				continue
 			}
 			// Append key without object prefix
@@ -256,7 +256,7 @@ func rshSearch(cli *rsh.Client, q *rsh.Query, retFields []string) (dbms.QueryRes
 	}
 
 	// Return results
-	log.D("(RedisCli) RediSearch returned %d records", len(qr))
+	log.D("(RedisCli:rshSearch) RediSearch returned %d records", len(qr))
 
 	// OK
 	return qr, nil
@@ -421,7 +421,7 @@ func (rc *RedisClient) scanSearch(rsc *rsh.Client, qa *dbms.QueryArgs, retFields
 	// 2. Search for all matching keys
 	var matched []string
 	for _, match := range matches {
-		log.D("(RedisCli) Do SCAN search for: %s", match)
+		log.D("(RedisCli:scanSearch) Do SCAN search for: %s", match)
 		m, err := rc.scanKeyMatch(match, func(val string) bool {
 			// Split identifier without object prefix from host:path format to separate values
 			host, path, ok := strings.Cut(val[len(RedisObjPrefix):], ":")
@@ -446,7 +446,7 @@ func (rc *RedisClient) scanSearch(rsc *rsh.Client, qa *dbms.QueryArgs, retFields
 		matched = append(matched, m...)
 	}
 
-	log.D("(RedisCli) %d keys matched by SCAN operation", len(matched))
+	log.D("(RedisCli:scanSearch) %d keys matched by SCAN operation", len(matched))
 
 	// Check for nothing to do
 	if len(matched) == 0 {
@@ -454,7 +454,7 @@ func (rc *RedisClient) scanSearch(rsc *rsh.Client, qa *dbms.QueryArgs, retFields
 	}
 
 	// 3. Get ID for each matched key
-	log.D("(RedisCli) Loading identifiers for all matched keys...")
+	log.D("(RedisCli:scanSearch) Loading identifiers for all matched keys...")
 	ids := make([]string, 0, len(matched))
 	for _, k := range matched {
 		id, err := rc.c.HGet(rc.ctx, k, dbms.FieldID).Result()
@@ -467,7 +467,7 @@ func (rc *RedisClient) scanSearch(rsc *rsh.Client, qa *dbms.QueryArgs, retFields
 		// Append extracted ID
 		ids = append(ids, id)
 	}
-	log.D("(RedisCli) Identifiers of found objects extracted")
+	log.D("(RedisCli:scanSearch) Identifiers of found objects extracted")
 
 	// 4. Run RediSearch with extracted ID and provided query arguments
 
@@ -506,7 +506,7 @@ func (rc *RedisClient) scanKeyMatch(match string, filter dbms.MatchStrFunc) ([]s
 			if filter(k) {
 				out = append(out, k)
 			} else {
-				log.D("(RedisCli) SCAN search skips already found key %q", k)
+				log.D("(RedisCli:scanKeyMatch) SCAN search skips already found key %q", k)
 			}
 		}
 

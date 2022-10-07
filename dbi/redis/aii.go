@@ -146,7 +146,7 @@ func (rc *RedisClient) GetAIIs(ids, retFields []string) (dbms.QueryResultsAII, e
 
 		res, err := rc.c.HGetAll(rc.ctx, key).Result()
 		if err != nil {
-			return result, fmt.Errorf("cannot get AII for %q: %v", key, err)
+			return result, fmt.Errorf("(RedisCli:GetAIIs) cannot get AII for %q: %v", key, err)
 		}
 
 		// Check for nothing was found
@@ -182,7 +182,7 @@ func (rc *RedisClient) updateAII(args *dbms.AIIArgs, ids idKeyMap, add bool) (in
 		}
 
 		if err != nil {
-			return ttu, tdu, fmt.Errorf("(RedisCli) %v", err)
+			return ttu, tdu, fmt.Errorf("(RedisCli:updateAII) %v", err)
 		}
 	}
 
@@ -195,7 +195,7 @@ func (rc *RedisClient) updateAII(args *dbms.AIIArgs, ids idKeyMap, add bool) (in
 		}
 
 		if err != nil {
-			return ttu, tdu, fmt.Errorf("(RedisCli) %v", err)
+			return ttu, tdu, fmt.Errorf("(RedisCli:updateAII) %v", err)
 		}
 	}
 
@@ -224,7 +224,7 @@ func (rc *RedisClient) addTags(tags []string, ids idKeyMap) (int64, error) {
 			// Ok, currently no tags for this object, nothing to do
 		} else {
 			// Something went wrong
-			return tu, fmt.Errorf("cannot get tags field %q for key %q: %v", dbms.AIIFieldTags, key, err)
+			return tu, fmt.Errorf("(RedisCli:addTags) cannot get tags field %q for key %q: %v", dbms.AIIFieldTags, key, err)
 		}
 
 		// Make unique sorted list of tags
@@ -302,7 +302,7 @@ func (rc *RedisClient) addDescr(descr string, ids idKeyMap, noNL bool) (int64, e
 			fullDescr = descr
 		} else {
 			// Something went wrong
-			return tu, fmt.Errorf("cannot get description field %q for key %q: %v", dbms.AIIFieldDescr, key, err)
+			return tu, fmt.Errorf("(RedisCli:addDescr) cannot get description field %q for key %q: %v", dbms.AIIFieldDescr, key, err)
 		}
 
 		// Set description for the current identifier
@@ -333,10 +333,10 @@ func (rc *RedisClient) setDescr(descr string, ids idKeyMap) (int64, error) {
 	// Update index of objects that use description field
 	idxSet := RedisAIIDSetPrefix + dbms.AIIFieldDescr
 	if n, err := rc.c.SAdd(rc.ctx, idxSet, ids.KeysAny()...).Result(); err != nil {
-		log.E("(RedisCli:setTags) cannot add identifiers %s to set %q: %v - " +
+		log.E("(RedisCli:setDescr) cannot add identifiers %s to set %q: %v - " +
 				"the search result may be incomplete", ids, idxSet, err)
 	} else {
-		log.D("(RedisCli:setTags) Added %d members to set %q", n, idxSet)
+		log.D("(RedisCli:setDescr) Added %d members to set %q", n, idxSet)
 	}
 
 	// OK
@@ -356,7 +356,7 @@ func (rc *RedisClient) setAIIField(id, field, value string, objKey types.ObjKey)
 
 	// Handle error
 	if err := res.Err(); err != nil {
-		return fmt.Errorf("HSET for key %s (%s = %s) returned error: %v",
+		return fmt.Errorf("(RedisCli:setAIIField) HSET for key %s (%s = %s) returned error: %v",
 			RedisAIIPrefix + id, field, value, err)
 	}
 
@@ -382,7 +382,7 @@ func (rc *RedisClient) deleteAII(args *dbms.AIIArgs, ids idKeyMap) (int64, int64
 		}
 
 		if err != nil {
-			return td, dd, fmt.Errorf("(RedisCli) %v", err)
+			return td, dd, fmt.Errorf("(RedisCli:deleteAII) %v", err)
 		}
 	}
 
@@ -391,7 +391,7 @@ func (rc *RedisClient) deleteAII(args *dbms.AIIArgs, ids idKeyMap) (int64, int64
 		// Clear description for selected identifiers
 		dd, err = rc.clearAIIField(dbms.AIIFieldDescr, ids)
 		if err != nil {
-			return td, dd, fmt.Errorf("(RedisCli) %v", err)
+			return td, dd, fmt.Errorf("(RedisCli:deleteAII) %v", err)
 		}
 	}
 
@@ -411,7 +411,7 @@ func (rc *RedisClient) delTags(tags []string, ids idKeyMap) (int64, error) {
 	// List of AII when tags field should be cleared
 	clearTags := make(idKeyMap, len(ids))
 
-	log.D("(RedisCli) Collecting AII existing tags")
+	log.D("(RedisCli:delTags) Collecting AII existing tags")
 	// Do for each identifier
 	for id, objKey := range ids {
 		// Make a key
@@ -424,7 +424,7 @@ func (rc *RedisClient) delTags(tags []string, ids idKeyMap) (int64, error) {
 				// No tags field there, skip
 				continue
 			}
-			return tu, fmt.Errorf("cannot get value %q field of %q: %v", dbms.AIIFieldTags, key, err)
+			return tu, fmt.Errorf("(RedisCli:delTags) cannot get value %q field of %q: %v", dbms.AIIFieldTags, key, err)
 		}
 
 		// Split string by set of tags
@@ -456,7 +456,7 @@ func (rc *RedisClient) delTags(tags []string, ids idKeyMap) (int64, error) {
 		// Need to set new value of tags field value without removed tags
 		n, err := rc.setTags(keepTags, idKeyMap{id: objKey})
 		if err != nil {
-			return tu, fmt.Errorf("cannot remove tags %v from %q: %v", tags, id, err)
+			return tu, fmt.Errorf("(RedisCli:delTags) cannot remove tags %v from %q: %v", tags, id, err)
 		}
 
 		tu += n
@@ -467,7 +467,7 @@ func (rc *RedisClient) delTags(tags []string, ids idKeyMap) (int64, error) {
 		// Call clear tags for this AII
 		n, err := rc.clearAIIField(dbms.AIIFieldTags, ids)
 		if err != nil {
-			return tu, fmt.Errorf("cannot clear tags: %v", err)
+			return tu, fmt.Errorf("(RedisCli:delTags) cannot clear tags: %v", err)
 		}
 
 		tu += n
@@ -489,7 +489,7 @@ func (rc *RedisClient) clearAIIField(field string, ids idKeyMap) (int64, error) 
 	// List of identifiers to remove from index
 	idxRm := make([]any, 0, len(ids))
 
-	log.D("(RedisCli) Collecting AII info to clearing field %q...", field)
+	log.D("(RedisCli:clearAIIField) Collecting AII info to clearing field %q...", field)
 	// Do for each identifier
 	for id := range ids {
 		// Make a key
@@ -498,7 +498,7 @@ func (rc *RedisClient) clearAIIField(field string, ids idKeyMap) (int64, error) 
 		// Get list of keys of this hash
 		keys, err := rc.c.HKeys(rc.ctx, key).Result()
 		if err != nil {
-			return tc, fmt.Errorf("cannot get number of keys for %q: %v", key, err)
+			return tc, fmt.Errorf("RedisCli:clearAIIField) cannot get number of keys for %q: %v", key, err)
 		}
 
 		// Count number of fields that are not OID or cleared field
@@ -537,18 +537,18 @@ func (rc *RedisClient) clearAIIField(field string, ids idKeyMap) (int64, error) 
 
 	// Check for nothing to delete
 	if len(toDelKey) == 0 && len(toDelField) == 0 {
-		log.D("(RedisCli) Field %q are not set for these objects", field)
+		log.D("(RedisCli:clearAIIField) Field %q are not set for these objects", field)
 		// OK
 		return tc, nil
 	}
 
 	// Check for keys to delete
 	if len(toDelKey) != 0 {
-		log.D("(RedisCli) AII will be deleted because there are no valuable fields than %q: %v", field, toDelKey)
+		log.D("(RedisCli:clearAIIField) AII will be deleted because there are no valuable fields than %q: %v", field, toDelKey)
 
 		res := rc.c.Del(rc.ctx, toDelKey...)
 		if res.Err() != nil {
-			return tc, fmt.Errorf("cannot delete AII keys %v: %v", toDelKey, res.Err())
+			return tc, fmt.Errorf("(RedisCli:clearAIIField) cannot delete AII keys %v: %v", toDelKey, res.Err())
 		}
 
 		tc += res.Val()
@@ -556,7 +556,7 @@ func (rc *RedisClient) clearAIIField(field string, ids idKeyMap) (int64, error) 
 	}
 
 	if len(toDelField) != 0 {
-		log.D("(RedisCli) The field %q will be removed from AII: %v", field, toDelField)
+		log.D("(RedisCli:clearAIIField) The field %q will be removed from AII: %v", field, toDelField)
 		// Delete the cleared field from each entry
 		for _, key := range toDelField {
 			n, err := rc.c.HDel(rc.ctx, key, field).Result()
