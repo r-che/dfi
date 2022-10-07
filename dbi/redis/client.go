@@ -183,12 +183,12 @@ func (rc *RedisClient) Stop() {
 	rc.stop()
 }
 
-func (rc *RedisClient) LoadHostPaths(filter dbms.FilterFunc) ([]string, error) {
+func (rc *RedisClient) LoadHostPaths(match dbms.MatchStrFunc) ([]string, error) {
 	// Make prefix of objects keys
 	pref := RedisObjPrefix + rc.cliHost + ":*"
 
-	// Output list of keys of objects belong to the host
-	hostKeys := []string{}
+	// Output list of keys of paths belong to the host
+	hostPaths := []string{}
 	// Calculate path offset to append paths to the output list
 	pathOffset:= len(pref) - 1
 
@@ -216,17 +216,17 @@ func (rc *RedisClient) LoadHostPaths(filter dbms.FilterFunc) ([]string, error) {
 
 		// Append scanned keys to the resulted list as set of paths without prefix
 		for _, k := range sKeys {
-			// Append only filtered values
-			if path := k[pathOffset:]; filter(path) {
-				hostKeys = append(hostKeys, path)
+			// Append only matched values
+			if path := k[pathOffset:]; match(path) {
+				hostPaths = append(hostPaths, path)
 			}
 		}
 
 		// Is the end of keys space reached
 		if cursor == 0 {
 			// Return resulted data
-			log.D("(RedisCli) Scan for keys prefixed by %q finished, scans number %d, %d keys filtered", pref, i, len(hostKeys))
-			return hostKeys, nil
+			log.D("(RedisCli) Scan for keys prefixed by %q finished, scans number %d, %d keys matched", pref, i, len(hostPaths))
+			return hostPaths, nil
 		}
 	}
 }

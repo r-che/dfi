@@ -26,8 +26,8 @@ func Run() error {
 	// Counters of not configured record and stale (not existing on FS) records
 	nc, nx := 0, 0
 
-	// Make a function to filter records that should be deleted from DB
-	filter := func(path string) bool {
+	// Make a function to match records that should be deleted from DB
+	match := func(path string) bool {
 		// Iterate through list of paths configured for indexing
 		for _, confPath := range c.IdxPaths {
 			if strings.HasPrefix(path, confPath) {
@@ -67,7 +67,7 @@ func Run() error {
 	}
 
     // Load from database all objects that belong to the current host
-	toDel, err := dbc.LoadHostPaths(filter)
+	toDel, err := dbc.LoadHostPaths(match)
 	if err != nil {
 		return fmt.Errorf("(Cleanup) cannot load list of objects paths belong to this host: %v", err)
 	}

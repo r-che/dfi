@@ -483,7 +483,7 @@ func (rc *RedisClient) scanSearch(rsc *rsh.Client, qa *dbms.QueryArgs, retFields
 	return len(qr), err
 }
 
-func (rc *RedisClient) scanKeyMatch(match string, filter dbms.FilterFunc) ([]string, error) {
+func (rc *RedisClient) scanKeyMatch(match string, filter dbms.MatchStrFunc) ([]string, error) {
 	// Output slice
 	out := []string{}
 

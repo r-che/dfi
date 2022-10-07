@@ -8,7 +8,7 @@ import (
 // Agent client interface
 type ClientController interface {
 	// Agent related methods
-	LoadHostPaths(filter FilterFunc) (paths []string, err error)
+	LoadHostPaths(filter MatchStrFunc) (paths []string, err error)
 	UpdateObj(fso *types.FSObject) error
 	DeleteObj(fso *types.FSObject) error
 	Commit() (updated, deleted int64, err error)
@@ -74,7 +74,7 @@ type AIIArgs struct {
 	NoNL	bool
 }
 
-type FilterFunc func(string) bool
+type MatchStrFunc func(string) bool
 
 // Map to return query results indexed host + found path
 type QueryResults map[types.ObjKey] map[string]any
