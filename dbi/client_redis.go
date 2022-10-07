@@ -6,6 +6,11 @@ import (
 	"github.com/r-che/dfi/dbi/redis"
 )
 
+func NewClientController(dbCfg *dbms.DBConfig) (dbms.ClientController, error) {
+	// Initiate controller client
+	return redis.NewClient(dbCfg)
+}
+
 func NewClient(dbCfg *dbms.DBConfig) (dbms.Client, error) {
 	// Initiate database client
 	return redis.NewClient(dbCfg)

@@ -15,7 +15,7 @@ type DBController struct {
 
 	dbChan		dbms.DBChan
 
-	dbCli		dbms.Client
+	dbCli		dbms.ClientController
 
 	wg			*sync.WaitGroup
 	cancel		context.CancelFunc
@@ -24,7 +24,7 @@ type DBController struct {
 
 func NewController(dbCfg *dbms.DBConfig) (*DBController, error) {
 	// Initiate database client
-	dbCli, err := NewClient(dbCfg)
+	dbCli, err := NewClientController(dbCfg)
 	if err != nil {
 		return nil, err
 	}

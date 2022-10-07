@@ -5,6 +5,17 @@ import (
 	"github.com/r-che/dfi/types"
 )
 
+type ClientController interface {
+	// Agent related methods
+	LoadHostPaths(filter FilterFunc) (paths []string, err error)
+	UpdateObj(fso *types.FSObject) error
+	DeleteObj(fso *types.FSObject) error
+	Commit() (updated, deleted int64, err error)
+
+	StopLong()
+	Stop()
+}
+
 type Client interface {
 	// Agent related methods
 	LoadHostPaths(filter FilterFunc) (paths []string, err error)
