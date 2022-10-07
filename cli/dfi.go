@@ -8,6 +8,12 @@ import (
 	"github.com/r-che/dfi/cli/internal/cfg"
 	"github.com/r-che/dfi/dbi"
 
+	// Command Line Interace packages
+	"github.com/r-che/dfi/cli/del"
+	"github.com/r-che/dfi/cli/search"
+	"github.com/r-che/dfi/cli/set"
+	"github.com/r-che/dfi/cli/show"
+
 	"github.com/r-che/log"
 )
 
@@ -39,13 +45,13 @@ func main() {
 
 	switch {
 	case c.Search:
-		rv = doSearch(dbc)
+		rv = search.Do(dbc)
 	case c.Show:
-		rv = doShow(dbc)
+		rv = show.Do(dbc)
 	case c.Set:
-		rv = doSet(dbc)
+		rv = set.Do(dbc)
 	case c.Del:
-		rv = doDel(dbc)
+		rv = del.Do(dbc)
 	case c.Admin:
 		err = fmt.Errorf("not implemented") // TODO
 	default:

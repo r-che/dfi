@@ -1,4 +1,4 @@
-package main
+package search
 
 import (
 	"fmt"
@@ -9,7 +9,7 @@ import (
 	"github.com/r-che/dfi/cli/internal/cfg"
 )
 
-func doSearch(dbc dbms.Client) *types.CmdRV {
+func Do(dbc dbms.Client) *types.CmdRV {
 	// Get configuration
 	c := cfg.Config()
 

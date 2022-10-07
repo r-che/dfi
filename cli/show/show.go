@@ -1,4 +1,4 @@
-package main
+package show
 
 import (
 	"fmt"
@@ -12,7 +12,7 @@ import (
 
 )
 
-func doShow(dbc dbms.Client) *types.CmdRV {
+func Do(dbc dbms.Client) *types.CmdRV {
 	// Get configuration
 	c := cfg.Config()
 

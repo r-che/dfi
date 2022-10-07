@@ -1,4 +1,4 @@
-package main
+package set
 
 import (
 	"strings"
@@ -11,7 +11,7 @@ import (
 	"github.com/r-che/log"
 )
 
-func doSet(dbc dbms.Client) *types.CmdRV {
+func Do(dbc dbms.Client) *types.CmdRV {
 	// Get configuration
 	c := cfg.Config()
 
