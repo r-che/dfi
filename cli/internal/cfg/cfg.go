@@ -1,8 +1,10 @@
 package cfg
 
 import (
+	"fmt"
 	stdLog "log"
 	"strings"
+	"os"
 	"path/filepath"
 
 	"github.com/r-che/log"
@@ -28,7 +30,8 @@ func Init(name string) {
 	config = NewConfig()
 
 	// Get real hostname
-	p.AddSeparator(`>> Opearting mode (only one can be set)`)
+	p.AddSeparator(`>> Operating mode (only one can be set)`)
+	p.AddSeparator(`# NOTE: Use --help to get detailed help about operating modes`)
 	p.AddBool(`search`, `enable search mode, used by default if no other modes are set`, &config.Search, false)
 	p.AddBool(`show`, `enable show mode`, &config.Show, false)
 	p.AddBool(`set`, `enable set mode`, &config.Set, false)
@@ -39,8 +42,13 @@ func Init(name string) {
 
 	p.AddSeparator(``)
 	p.AddSeparator(`>> Search mode options`)
-	p.AddString(`mtime`, `modification time`, &config.strMtime, anyVal)
-	p.AddString(`size`, `object size`, &config.strSize, anyVal)
+	p.AddSeparator(`# In the options below:`)
+	p.AddSeparator(`# - "set of" - means a set of strings separated by a comma (",")`)
+	p.AddSeparator(`# - "range of" - use --help to get help about ranges usage`)
+	p.AddString(`mtime`, `range of object modification time`, &config.strMtime, anyVal)
+	p.AddString(`size`,
+		`range of object size, allowed measure units (case does not matter): K,M,G,T,P,E`,
+		&config.strSize, anyVal)
 	p.AddString(`type`,
 		`set of object types, possible values: ` +
 		strings.Join(knownTypes, ", "), &config.oTypes, anyVal)
@@ -62,13 +70,13 @@ func Init(name string) {
 		`search for duplicates, command line arguments will be treated as objects identifiers`,
 		&config.SearchDupes, false)
 	p.AddBool(`or`, `use OR instead of AND between conditions`, &config.QA.OrExpr, false)
-	p.AddBool(`not`, `use negative expression`, &config.QA.NegExpr, false)
+	p.AddBool(`not`, `use negative value of search conditions`, &config.QA.NegExpr, false)
 	// Output related options
 	p.AddBool(`show-only-ids|I`, `print only identifiers of found objects, ` +
 		`implicitly enables --quiet`, &config.ShowOnlyIds, false)
 	p.AddBool(`show-ids|i`,
 		`print identifier of object at the beginning of the output lines`, &config.ShowID, false)
-	p.AddBool(`hosts-groups|H`,
+	p.AddBool(`hosts-groups|G`,
 		`group results by host instead of single line sorted output`, &config.HostGroups, false)
 
 	p.AddSeparator(``)
@@ -100,9 +108,14 @@ func Init(name string) {
 	p.AddBool(`debug|d`, `enable debug logging`, &config.Debug, false)
 	p.AddBool(`nologts`, `disable log timestamps`, &config.NoLogTS, false)
 	p.AddBool(`quiet|q`, `be quiet, do not print additional information`, &config.Quiet, false)
+	p.AddBool(`help|H`, `show detailed help`, &config.Help, false)
 
 	// Parse options
 	p.Parse()
+
+	if config.Help {
+		help(name)
+	}
 
 	// Configure logger
 	if !config.NoLogTS {
@@ -120,4 +133,30 @@ func Init(name string) {
 // of existing to avoid accidentally modifications
 func Config() *progConfig {
 	return config.clone()
+}
+
+func help(name string) {
+	fmt.Println(`
+>> Search mode usage
+
+ $ ` + name + ` [search condition options...] [search phrases...]
+
+By default search phrases (SP) used to match full path of objects. This means that
+will be found objects that contain SP not only in the file name but also in the path.
+E.g. we have files "/data/snow/ball.png" and "/data/snowball.png", SP contain
+word "snow" - both files will be found. To use only name of files for search 
+use option --only-name, in this case only "/data/snow" will be found.
+
+Special cases of using search phrases:
+  * --descr - search phrases also matched to all existing descriptions of objects
+  * --tags  - search phrases also matched to all existing tags assigned to objects
+              Each search phrase treated as a single tag - any transformations, such
+              as splitting into separate tags by commas, are NOT performed
+  * --dupes - each search phrase treated ONLY as object ID, this means that
+              ONLY the identifier field will be matched with the search phrases
+`)
+/* TODO
+   - ranges
+*/
+	os.Exit(1)
 }
