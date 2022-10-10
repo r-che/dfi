@@ -30,13 +30,11 @@ func Init(name, nameLong, progVers string) {
 	// Get real hostname
 	p.AddSeparator(`>> Operating mode (only one can be set)`)
 	p.AddBool(`search`, `enable search mode, used by default if no other modes are set`, &config.Search, false)
+	p.AddSeparator(`  NOTE: Use "--docs search" to get additional information how to use search`)
 	p.AddBool(`show`, `enable show mode`, &config.Show, false)
 	p.AddBool(`set`, `enable set mode`, &config.Set, false)
-	p.AddBool(`del`, `enable del mode`, &config.Del, false)
+	p.AddBool(`del`, `enable deletion mode`, &config.Del, false)
 	p.AddBool(`admin`, `enable admin mode`, &config.Admin, false)
-	p.AddSeparator(`#`)
-	p.AddSeparator(`# NOTE: Use "--docs search" to get additional information how to use search`)
-	p.AddSeparator(`#`)
 
 	// Modes options
 
@@ -93,6 +91,17 @@ func Init(name, nameLong, progVers string) {
 	// Set mode opitions
 	p.AddSeparator(``)
 	p.AddSeparator(`>> Show mode options`)
+	p.AddSeparator(`#`)
+	p.AddSeparator(`# NOTE: Use "--docs set" to get additional information how use show mode`)
+	p.AddSeparator(`#`)
+	p.AddSeparator(`# No special options for this mode`)
+
+	// Deletion mode opitions
+	p.AddSeparator(``)
+	p.AddSeparator(`>> Deletion mode options`)
+	p.AddSeparator(`#`)
+	p.AddSeparator(`# NOTE: Use "--docs del" to get additional information how use deletion  mode`)
+	p.AddSeparator(`#`)
 	p.AddSeparator(`# No special options for this mode`)
 
 	// Other modes common options
@@ -115,13 +124,13 @@ func Init(name, nameLong, progVers string) {
 	p.AddBool(`quiet|q`, `be quiet, do not print additional information`, &config.Quiet, false)
 	p.AddBool(`docs`,
 		`show detailed documentation, arguments (if any) are treated as documentation topics`,
-		&config.Help, false)
+		&config.Docs, false)
 
 	// Parse options
 	p.Parse()
 
-	if config.Help {
-		help(name, nameLong, p.Args())
+	if config.Docs {
+		docs(name, nameLong, p.Args())
 	}
 
 	// Configure logger

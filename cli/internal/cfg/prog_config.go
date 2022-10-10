@@ -51,7 +51,7 @@ type progConfig struct {
 	//
 
 	// Auxiliary options
-	Help		bool
+	Docs		bool
 	Debug		bool
 	NoLogTS		bool
 	Quiet		bool

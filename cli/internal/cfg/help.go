@@ -119,8 +119,36 @@ You can make the show mode output more machine-friendly by using the options:
   * --one-line (-o) - prints each information entry in a single line in simple
                       key:"value" format, separated by spaces
   * --json (-j) - prints information entries as a list of maps in JSON format,
-                  if the option --one-line specified - JSON will be printed
+                  if the option --one-line (-o) specified - JSON will be printed
 				  in a single line
+
+`,
+
+// Documentation about set
+"set":
+`>>>> Set mode <<<<
+
+Usage:
+
+ $ %[1]s --set --tags [--append|A] tag1,tag2,...tagN OBJECT-ID1 OBJECT-ID2 ...
+ $ %[1]s --set --descr [--append|A] "Description of the object(s)" OBJECT-ID1 OBJECT-ID2 ...
+
+The --set mode sets or adds additional information about the object to the database.
+Tags and description field are currently supported.
+
+>>> Using --append (-A) option <<<
+
+By default, when --set command executed without --append option, it overwrites the value of
+the corresponding field. If the --append option is set:
+
+* With --tags, the set of tags provided will be added to the existing set of tags for all
+  objects matching the identifiers given from the command line.
+  If any of the provided tags duplicates any of the existing tags it will not be added -
+  each tag is unique for a particular object.
+
+* With --descr, the description value given from the command line will be concatenated with
+  the existing one by a newline character. If the option --no-newline (-n) specified,
+  a semicolon and space ("; ") will be used to concatenate old and new values.
 
 `,
 
@@ -196,7 +224,7 @@ The value 946771200 is a Unix timestamp corresponding to January 02, 2000 UTC.
 `,
 }
 
-func help(name, nameLong string, topics []string) {
+func docs(name, nameLong string, topics []string) {
 	// If topics is empty
 	if len(topics) == 0 {
 		// Show all available topics
@@ -204,6 +232,9 @@ func help(name, nameLong string, topics []string) {
 			// Modes
 			`search`,
 			`show`,
+			`set`,
+			// TODO `del`,
+			// TODO `admin`
 			// Values
 			`range`,
 			`timestamp`,
@@ -229,7 +260,7 @@ func help(name, nameLong string, topics []string) {
 	for i, topic := range topics {
 		fmt.Printf(helpSubjs[topic] + "\n", name)
 		if i != len(topics) - 1 {
-			fmt.Println("-----")
+			fmt.Println("-----\n")
 		}
 	}
 
@@ -237,5 +268,5 @@ func help(name, nameLong string, topics []string) {
 		fmt.Printf("[WARNING!] No special help for topic %q\n\n", subj)
 	}
 
-	os.Exit(1)
+	os.Exit(0)
 }
