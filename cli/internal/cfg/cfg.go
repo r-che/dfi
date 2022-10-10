@@ -1,10 +1,8 @@
 package cfg
 
 import (
-	"fmt"
 	stdLog "log"
 	"strings"
-	"os"
 	"path/filepath"
 
 	"github.com/r-che/log"
@@ -21,7 +19,7 @@ var progConfigSuff = filepath.Join(".dfi", "cli.json")
 var progConfigDefault = filepath.Join("${HOME}", progConfigSuff)
 var aiiFields = []string{dbms.AIIFieldTags, dbms.AIIFieldDescr}
 
-func Init(name string) {
+func Init(name, nameLong, progVers string) {
 	// Create new parser
 	p := optsparser.NewParser(name,
 		// List of required options
@@ -31,12 +29,14 @@ func Init(name string) {
 
 	// Get real hostname
 	p.AddSeparator(`>> Operating mode (only one can be set)`)
-	p.AddSeparator(`# NOTE: Use --help to get detailed help about operating modes`)
 	p.AddBool(`search`, `enable search mode, used by default if no other modes are set`, &config.Search, false)
 	p.AddBool(`show`, `enable show mode`, &config.Show, false)
 	p.AddBool(`set`, `enable set mode`, &config.Set, false)
 	p.AddBool(`del`, `enable del mode`, &config.Del, false)
 	p.AddBool(`admin`, `enable admin mode`, &config.Admin, false)
+	p.AddSeparator(`#`)
+	p.AddSeparator(`# NOTE: Use "--help search" to get additional information how to use search`)
+	p.AddSeparator(`#`)
 
 	// Modes options
 
@@ -44,7 +44,7 @@ func Init(name string) {
 	p.AddSeparator(`>> Search mode options`)
 	p.AddSeparator(`# In the options below:`)
 	p.AddSeparator(`# - "set of" - means a set of strings separated by a comma (",")`)
-	p.AddSeparator(`# - "range of" - use --help to get help about ranges usage`)
+	p.AddSeparator(`# - "range of" - use "--help ranges" to get help about using ranges`)
 	p.AddString(`mtime`, `range of object modification time`, &config.strMtime, anyVal)
 	p.AddString(`size`,
 		`range of object size, allowed measure units (case does not matter): K,M,G,T,P,E`,
@@ -57,7 +57,9 @@ func Init(name string) {
 	p.AddString(`aii-filled|F`,
 		`set of filled additional information item fields, possible values: ` +
 		strings.Join(aiiFields, ", "), &config.aiiFields, anyVal)
-	p.AddBool(`only-name|N`, `use only file name to match search phrases`, &config.QA.OnlyName, false)
+	p.AddBool(`only-name|N`,
+		`use only object names to match search phrases, use --help to get detailed explanation`,
+		&config.QA.OnlyName, false)
 	p.AddBool(`only-tags|T`,
 		`use only tags field to match search phrases, ` +
 		`implicitly enables --tags`, &config.QA.OnlyTags, false)
@@ -86,6 +88,7 @@ func Init(name string) {
 	p.AddBool(`no-newline|n`, `use "; " instead of new line to join new value ` +
 		`to description (affects --add)`, &config.NoNL, false)
 
+	// Set mode opitions
 	p.AddSeparator(``)
 	p.AddSeparator(`>> Show mode options`)
 	p.AddSeparator(`# No special options for this mode`)
@@ -108,13 +111,15 @@ func Init(name string) {
 	p.AddBool(`debug|d`, `enable debug logging`, &config.Debug, false)
 	p.AddBool(`nologts`, `disable log timestamps`, &config.NoLogTS, false)
 	p.AddBool(`quiet|q`, `be quiet, do not print additional information`, &config.Quiet, false)
-	p.AddBool(`help|H`, `show detailed help`, &config.Help, false)
+	p.AddBool(`help|H`,
+		`show detailed help, arguments (if any) are treated as help subjects`,
+		&config.Help, false)
 
 	// Parse options
 	p.Parse()
 
 	if config.Help {
-		help(name)
+		help(name, nameLong, p.Args())
 	}
 
 	// Configure logger
@@ -133,30 +138,4 @@ func Init(name string) {
 // of existing to avoid accidentally modifications
 func Config() *progConfig {
 	return config.clone()
-}
-
-func help(name string) {
-	fmt.Println(`
->> Search mode usage
-
- $ ` + name + ` [search condition options...] [search phrases...]
-
-By default search phrases (SP) used to match full path of objects. This means that
-will be found objects that contain SP not only in the file name but also in the path.
-E.g. we have files "/data/snow/ball.png" and "/data/snowball.png", SP contain
-word "snow" - both files will be found. To use only name of files for search 
-use option --only-name, in this case only "/data/snow" will be found.
-
-Special cases of using search phrases:
-  * --descr - search phrases also matched to all existing descriptions of objects
-  * --tags  - search phrases also matched to all existing tags assigned to objects
-              Each search phrase treated as a single tag - any transformations, such
-              as splitting into separate tags by commas, are NOT performed
-  * --dupes - each search phrase treated ONLY as object ID, this means that
-              ONLY the identifier field will be matched with the search phrases
-`)
-/* TODO
-   - ranges
-*/
-	os.Exit(1)
 }

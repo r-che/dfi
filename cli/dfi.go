@@ -28,7 +28,7 @@ func main() {
 	log.Open("", ProgName, log.NoFlags)
 
 	// Initiate configuration
-	cfg.Init(ProgName)
+	cfg.Init(ProgName, ProgNameLong, ProgVers)
 
 	// Starting
 	log.D("==== %s %s started ====", ProgNameLong, ProgVers)
