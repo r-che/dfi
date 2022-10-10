@@ -3,9 +3,13 @@ package cfg
 import (
 	"fmt"
 	"os"
+	"strings"
+
+	"github.com/r-che/dfi/types/dbms"
 )
 
 var helpSubjs = map[string]string {
+// Documentation about search
 	"search":
 `>>>> Search mode <<<<
 
@@ -65,38 +69,117 @@ Will be treated as:
  (path contains "keywords set#1" or "keywords set#2")
  AND NOT(size == 1G AND mtime == 2000.01.01)
 
-Certainly, you can use --or and --not options at the same time.`,
+Certainly, you can use --or and --not options at the same time.
+`,
 
-"ranges":	// TODO
-`>>>> Condition ranges <<<<
+// Documentation about values range
+"range":
+`>>>> Range of values <<<<
 
-"TODO RANGES HELP %[1]s!`,
+The --mtime and --size parameters take range of values as arguments.
+
+General range format is:
+
+  START..END
+
+Where START and END are the correct values of a particular type, END value must
+be greater than START, for example:
+
+ $ %[1]s --size 5G..10G
+
+Files with size between 5 and 10 gigabytes (including) will be found.
+
+>>> Open ranges <<<
+
+Using of open ranges are also allowed - either (but NOT both) ends of the range
+can be omitted, in this case the range can be represented by the following forms:
+
+  START.. - range includes values equal and greater START
+  ..END   - range includes values lesser and equal END
+
+For example:
+
+ $ %[1]s --mtime ..1999.01.01
+
+Files with modification time earlier than January 1, 1999 will be found
+
+ $ %[1]s --size 10G..
+
+Files greater than 10 gigabytes will be found.
+
+Note: see "--docs times" to get information about supported timestamp formats.
+
+>>> Single value <<<
+
+A range can also be represented by a single value to match an object to a specific
+value of the corresponding field:
+
+  VALUE
+
+For example:
+
+ $ %[1]s --size 1G
+
+Files with the exact size of 1 gigabyte will be found.
+`,
+
+// Documentation about timestamps
+"timestamp":
+`>>>> Supported timestamp formats <<<<
+
+The option --mtime accepts a range (see "--docs ranges") bounded by timestamps.
+
+Allowed timestamp formats are:
+
+  * UNIX_TIMESTAMP - unsigned integer value
+  * ` + strings.Join(dbms.TsFormats(), "\n  * ") + `
+
+You can use different formats for the beginning and the end of the range:
+
+ $ %[1]s --mtime "2000/01/01 UTC..946771200"
+
+Files with modification time between Jan 01 and Jan 02, 2000 UTC will be found.
+The value 946771200 is a Unix timestamp corresponding to January 02, 2000 UTC.
+
+`,
 }
 
-func help(name, nameLong string, subjs []string) {
-	// Help header
-	fmt.Println("\n>>>>> " + nameLong + " help <<<<<")
-
-	if len(subjs) == 0 {
-		// Show all available help
-		subjs = []string{
+func help(name, nameLong string, topics []string) {
+	// If topics is empty
+	if len(topics) == 0 {
+		// Show all available topics
+		topics = []string{
 			`search`,
-			`ranges`,
+			`range`,
+			`timestamp`,
 		}
 	}
 
-	nfSubjs := make([]string, 0, len(subjs))
-	for _, subj := range subjs {
-		text, ok := helpSubjs[subj]
-		if !ok {
-			nfSubjs = append(nfSubjs, subj)
+	// Help header
+	fmt.Println("\n>>>>> " + nameLong + " documentation <<<<<\n")
+
+	// Filter not existing topics
+	nfTopics := make([]string, 0, len(topics))
+	for i := 0; i < len(topics); {
+		if _, ok := helpSubjs[topics[i]]; ok {
+			i++
 			continue
 		}
-		fmt.Printf("\n" + text + "\n", name)
+
+		nfTopics = append(nfTopics, topics[i])
+		// Remove unknown topic from list
+		topics = append(topics[:i], topics[i+1:]...)
 	}
 
-	for _, subj := range nfSubjs {
-		fmt.Printf("[WARNING!] No special help for %q\n", subj)
+	for i, topic := range topics {
+		fmt.Printf(helpSubjs[topic] + "\n", name)
+		if i != len(topics) - 1 {
+			fmt.Println("-----")
+		}
+	}
+
+	for _, subj := range nfTopics {
+		fmt.Printf("[WARNING!] No special help for topic %q\n\n", subj)
 	}
 
 	os.Exit(1)

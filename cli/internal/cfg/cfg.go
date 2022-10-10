@@ -35,7 +35,7 @@ func Init(name, nameLong, progVers string) {
 	p.AddBool(`del`, `enable del mode`, &config.Del, false)
 	p.AddBool(`admin`, `enable admin mode`, &config.Admin, false)
 	p.AddSeparator(`#`)
-	p.AddSeparator(`# NOTE: Use "--help search" to get additional information how to use search`)
+	p.AddSeparator(`# NOTE: Use "--docs search" to get additional information how to use search`)
 	p.AddSeparator(`#`)
 
 	// Modes options
@@ -44,8 +44,10 @@ func Init(name, nameLong, progVers string) {
 	p.AddSeparator(`>> Search mode options`)
 	p.AddSeparator(`# In the options below:`)
 	p.AddSeparator(`# - "set of" - means a set of strings separated by a comma (",")`)
-	p.AddSeparator(`# - "range of" - use "--help ranges" to get help about using ranges`)
-	p.AddString(`mtime`, `range of object modification time`, &config.strMtime, anyVal)
+	p.AddSeparator(`# - "range of" - use "--docs range" to get help about using range of values`)
+	p.AddString(`mtime`,
+		`range of object modification time, see "--docs timestamp" for details`,
+		&config.strMtime, anyVal)
 	p.AddString(`size`,
 		`range of object size, allowed measure units (case does not matter): K,M,G,T,P,E`,
 		&config.strSize, anyVal)
@@ -58,7 +60,7 @@ func Init(name, nameLong, progVers string) {
 		`set of filled additional information item fields, possible values: ` +
 		strings.Join(aiiFields, ", "), &config.aiiFields, anyVal)
 	p.AddBool(`only-name|N`,
-		`use only object names to match search phrases, use --help to get detailed explanation`,
+		`use only object names to match search phrases, use --docs to get detailed explanation`,
 		&config.QA.OnlyName, false)
 	p.AddBool(`only-tags|T`,
 		`use only tags field to match search phrases, ` +
@@ -111,8 +113,8 @@ func Init(name, nameLong, progVers string) {
 	p.AddBool(`debug|d`, `enable debug logging`, &config.Debug, false)
 	p.AddBool(`nologts`, `disable log timestamps`, &config.NoLogTS, false)
 	p.AddBool(`quiet|q`, `be quiet, do not print additional information`, &config.Quiet, false)
-	p.AddBool(`help|H`,
-		`show detailed help, arguments (if any) are treated as help subjects`,
+	p.AddBool(`docs`,
+		`show detailed documentation, arguments (if any) are treated as documentation topics`,
 		&config.Help, false)
 
 	// Parse options
@@ -130,7 +132,7 @@ func Init(name, nameLong, progVers string) {
 
 	// Check and prepare configuration
 	if err := config.prepare(p.Args()); err != nil {
-		p.Usage(err.Error())
+		p.Usage(err.Error())	// Remove p.Usage(), only print the error and "Use -h for help"
 	}
 }
 

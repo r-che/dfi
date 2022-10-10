@@ -211,41 +211,51 @@ func (qa *QueryArgs) ParseMtimes(mtimeLine string) error {
 }
 
 // Supported formats of timestamps
-var tsFormats = []string {
+func TsFormats() []string {
+	return []string{
 	// "01/02 03:04:05PM '06 -0700" // The reference time, in numerical order.
+		// Custom short formats
+		"2006.01.02",
+		"2006.01.02 MST",
+		"2006-01-02",
+		"2006-01-02 MST",
+		"2006/01/02",
+		"2006/01/02 MST",
+		"2006.01.02 15:04",
+		"2006.01.02 15:04 MST",
+		"2006-01-02 15:04",
+		"2006-01-02 15:04 MST",
+		"2006/01/02 15:04",
+		"2006/01/02 15:04 MST",
+		"2006.01.02 15:04:05",
+		"2006.01.02 15:04:05 MST",
+		"2006-01-02 15:04:05",
+		"2006-01-02 15:04:05 MST",
+		"2006/01/02 15:04:05",
+		"2006/01/02 15:04:05 MST",
 
-	// Custom short formats
-	"2006.01.02",
-	"2006-01-02",
-	"2006/01/02",
-	"2006.01.02 15:04",
-	"2006-01-02 15:04",
-	"2006/01/02 15:04",
-	"2006.01.02 15:04:05",
-	"2006-01-02 15:04:05",
-	"2006/01/02 15:04:05",
+		// Default linux date output
+		"Mon 02 Jan 2006 15:04:05 PM MST",
 
-	// Default linux date output
-	"Mon 02 Jan 2006 15:04:05 PM MST",
-
-	// See standard list there: https://pkg.go.dev/time#pkg-constants
-	time.ANSIC,
-	time.UnixDate,
-	time.RubyDate,
-	time.RFC822,
-	time.RFC822Z,
-	time.RFC850,
-	time.RFC1123,
-	time.RFC1123Z,
-	time.RFC3339,
-	time.RFC3339Nano,
-	time.Kitchen,
-	time.Stamp,
-	time.StampMilli,
-	time.StampMicro,
-	time.StampNano,
-
+		// See standard list there: https://pkg.go.dev/time#pkg-constants
+		time.ANSIC,
+		time.UnixDate,
+		time.RubyDate,
+		time.RFC822,
+		time.RFC822Z,
+		time.RFC850,
+		time.RFC1123,
+		time.RFC1123Z,
+		time.RFC3339,
+		time.RFC3339Nano,
+		time.Kitchen,
+		time.Stamp,
+		time.StampMilli,
+		time.StampMicro,
+		time.StampNano,
+	}
 }
+
 func parseTime(timeStr string) (int64, error) {
 	// Try to convert ts as unix timestamp
 	if ts, err := strconv.ParseInt(timeStr, 10, 64); err == nil {
@@ -254,7 +264,7 @@ func parseTime(timeStr string) (int64, error) {
 	}
 
 	// Try to convert as string representations
-	for _, format := range tsFormats {
+	for _, format := range TsFormats() {
 		if ts, err := time.Parse(format, timeStr); err == nil {
 			// OK, parsed
 			return ts.Unix(), nil
