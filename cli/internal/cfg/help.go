@@ -72,6 +72,58 @@ Will be treated as:
 Certainly, you can use --or and --not options at the same time.
 `,
 
+// Documentation about show
+"show":
+`>>>> Show mode <<<<
+
+Usage:
+
+ $ %[1]s --show OBJECT-ID1 OBJECT-ID2 ...
+
+The --show mode shows information about objects with identifiers given
+by command line arguments. The displayed information includes:
+
+ * Object identifier
+ * Host where the object was found
+ * Absolute path to the object on the host
+ * Type of the object, one of: ` + strings.Join(knownTypes, ", ")  + `
+ * Size of the object in bytes
+ * Modification time in human-readable and in Unix timestamp formats
+ * Additional information if set:
+   * Tags - comma-separated set of tags
+   * Description - text description of the object, can be multiline
+
+>>> Object identification <<<
+
+To show information about objects, you need to identify these objects.
+This can be performed this using the --show-ids (-i) option in the search mode, e.g:
+
+ $ %[1]s --show-ids --size 1G
+ 5f04497f12286af5d709941e0c26ccee8467a9e4 storage-host:/data/backup/data1.bin
+ a690808c0a02510f2fc1ec5e8aeb6ddec1f32b8f storage-host:/data/backup/data2.bin
+
+The objects identifiers are displayed in the first column. Now, you can query
+information about each of these objects using --show mode:
+
+ $ %[1]s --show 5f04497f....8467a9e4 a690808c....c1f32b8f
+
+To avoid copy of object identifiers manually, you can use the --show-only-ids (-I)
+option in search mode, which only prints object identifiers:
+
+ $ %[1]s --show $(%[1]s --show-only-ids --size 1G)
+
+>>> Output modifiers <<<<
+
+You can make the show mode output more machine-friendly by using the options:
+
+  * --one-line (-o) - prints each information entry in a single line in simple
+                      key:"value" format, separated by spaces
+  * --json (-j) - prints information entries as a list of maps in JSON format,
+                  if the option --one-line specified - JSON will be printed
+				  in a single line
+
+`,
+
 // Documentation about values range
 "range":
 `>>>> Range of values <<<<
@@ -149,7 +201,10 @@ func help(name, nameLong string, topics []string) {
 	if len(topics) == 0 {
 		// Show all available topics
 		topics = []string{
+			// Modes
 			`search`,
+			`show`,
+			// Values
 			`range`,
 			`timestamp`,
 		}
