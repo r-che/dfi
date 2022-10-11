@@ -3,7 +3,9 @@ package cleanup
 import (
 	"fmt"
 	"strings"
+	"errors"
 	"os"
+	"io/fs"
 
 	"github.com/r-che/log"
 	"github.com/r-che/dfi/types"
@@ -53,7 +55,7 @@ func Run() error {
 		}
 
 		// Check a type of the errror
-		if os.IsNotExist(err) {
+		if errors.Is(err, fs.ErrNotExist) {
 			log.D("(Cleanup) Path %q does not exist on the local filesystem", path)
 			nx++
 
