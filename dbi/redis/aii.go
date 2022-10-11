@@ -101,8 +101,8 @@ func (rc *RedisClient) ModifyAII(op dbms.DBOperator, args *dbms.AIIArgs, ids []s
 }
 
 func (rc *RedisClient) GetAIIIds(withFields []string) ([]string, error) {
-	// Map to make list of unique identifiers
-	uniqs := map[string]any{}
+	// Set of unique identifiers
+	ids := tools.NewStrSet()
 
 	// If no particular fields were requested
 	if len(withFields) == 0 {
@@ -119,22 +119,10 @@ func (rc *RedisClient) GetAIIIds(withFields []string) ([]string, error) {
 			return nil, fmt.Errorf("(RedisCli:GetAIIIds) cannot load identifiers of objects with filled %q field: %v", field, err)
 		}
 
-		for _, id := range set {
-			uniqs[id] = nil
-		}
+		ids.Add(set...)
 	}
 
-	ids := make([]string, 0, len(uniqs))
-
-	// Push all unique identifiers to ids
-	for id := range uniqs {
-		ids = append(ids, id)
-	}
-
-	// Sort identifiers
-	sort.Strings(ids)
-
-	return ids, nil
+	return ids.List(), nil
 }
 
 func (rc *RedisClient) GetAIIs(ids, retFields []string) (dbms.QueryResultsAII, error) {
@@ -228,7 +216,7 @@ func (rc *RedisClient) addTags(tags []string, ids idKeyMap) (int64, error) {
 		}
 
 		// Make unique sorted list of tags
-		allTags = tools.UniqStrings(allTags)
+		allTags = tools.NewStrSet(allTags...).List()
 
 		// Compare existing tags and new set
 		if tagsStr == strings.Join(allTags, ",") {

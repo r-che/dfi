@@ -7,9 +7,9 @@ import (
 	"github.com/r-che/dfi/common/tools"
 )
 
-func SetString(fp *[]string, setName, vals string, allowed ...string) error {
+func StringsSet(fp *[]string, setName, vals string, allowed ...string) error {
 	// Make list of unique values from vals
-	*fp = tools.UniqStrings(strings.Split(vals, ","))
+	*fp = tools.NewStrSet(strings.Split(vals, ",")...).List()
 
 	// If no allowed values provided
 	if len(allowed) == 0 {

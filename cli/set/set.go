@@ -61,7 +61,7 @@ func setTags(dbc dbms.Client, tagsStr string, ids []string) *types.CmdRV {
 	}
 
 	// Sort and make tags unique
-	tags = tools.UniqStrings(tags)
+	tags = tools.NewStrSet(tags...).List()
 
 	updated, _, err := dbc.ModifyAII(dbms.Update, &dbms.AIIArgs{Tags: tags}, ids, c.SetAdd)
 	if err != nil {

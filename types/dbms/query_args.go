@@ -385,19 +385,19 @@ func parseSize(sizeStr string) (int64, error) {
 }
 
 func (qa *QueryArgs) ParseTypes(typesLine string, allowed []string) error {
-	return parse.SetString(&qa.Types, "type", typesLine, allowed...)
+	return parse.StringsSet(&qa.Types, "type", typesLine, allowed...)
 }
 
 func (qa *QueryArgs) ParseSums(csums string) error {
-	return parse.SetString(&qa.CSums, "checksum", csums)
+	return parse.StringsSet(&qa.CSums, "checksum", csums)
 }
 
 func (qa *QueryArgs) ParseHosts(hostsLine string) error {
-	return parse.SetString(&qa.Hosts, "host", hostsLine)
+	return parse.StringsSet(&qa.Hosts, "host", hostsLine)
 }
 
 func (qa *QueryArgs) ParseAIIFields(fieldsStr string, allowed []string) error {
-	return parse.SetString(&qa.AIIFields, "field name", fieldsStr, allowed...)
+	return parse.StringsSet(&qa.AIIFields, "field name", fieldsStr, allowed...)
 }
 
 func (qa *QueryArgs) AddIds(ids ...string) *QueryArgs {
