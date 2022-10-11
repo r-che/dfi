@@ -54,13 +54,13 @@ func NewClient(dbCfg *dbms.DBConfig) (*RedisClient, error) {
 	// Convert string representation of database identifier to numeric database index
 	dbid, err := strconv.ParseUint(dbCfg.ID, 10, 64)
 	if err != nil {
-		return nil, fmt.Errorf("(RedisCli:NewClient) cannot convert database identifier value to unsigned integer: %v", err)
+		return nil, fmt.Errorf("(RedisCli:NewClient) cannot convert database identifier value to unsigned integer: %w", err)
 	}
 
 	// Read username/password from private data if set
 	user, passw, err := userPasswd(dbCfg.PrivCfg)
 	if err != nil {
-		return nil, fmt.Errorf("(RedisCli:NewClient) failed to load username/password from private configuration: %v", err)
+		return nil, fmt.Errorf("(RedisCli:NewClient) failed to load username/password from private configuration: %w", err)
 	}
 
 	// Initialize Redis client
@@ -123,7 +123,7 @@ func (rc *RedisClient) UpdateObj(fso *types.FSObject) error {
 
 	res := rc.c.HSet(rc.ctx, key, prepareHSetValues(rc.cliHost, fso))
 	if err := res.Err(); err != nil {
-		return fmt.Errorf("(RedisCli:UpdateObj) HSET of key %q returned error: %v", key, err)
+		return fmt.Errorf("(RedisCli:UpdateObj) HSET of key %q returned error: %w", key, err)
 	}
 
 	rc.updated++
@@ -161,7 +161,7 @@ func (rc *RedisClient) Commit() (int64, int64, error) {
 
 		res := rc.c.Del(rc.ctx, rc.toDelete...)
 		if err := res.Err(); err != nil {
-			return rc.updated, res.Val(), fmt.Errorf("(RedisCli:Commit) DEL operation failed: %v", err)
+			return rc.updated, res.Val(), fmt.Errorf("(RedisCli:Commit) DEL operation failed: %w", err)
 		}
 
 		rc.deleted = res.Val()

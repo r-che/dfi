@@ -24,7 +24,7 @@ func (rc *RedisClient) Query(qa *dbms.QueryArgs, retFields []string) (dbms.Query
 	// Get RediSearch client
 	rsc, err := rc.rschInit(metaRschIdx)
 	if err != nil {
-		return nil, fmt.Errorf("(RedisCli:Query) cannot initialize RediSearch client: %v", err)
+		return nil, fmt.Errorf("(RedisCli:Query) cannot initialize RediSearch client: %w", err)
 	}
 
 	// Create simple (non-deep) query
@@ -42,7 +42,7 @@ func (rc *RedisClient) Query(qa *dbms.QueryArgs, retFields []string) (dbms.Query
 		log.D("(RedisCli:Query) Running deep search using SCAN operation...")
 		n, err := rc.scanSearch(rsc, qa, retFields, &qr)
 		if err != nil {
-			return qr, fmt.Errorf("(RedisCli:Query) SCAN search failed: %v", err)
+			return qr, fmt.Errorf("(RedisCli:Query) SCAN search failed: %w", err)
 		}
 		log.D("(RedisCli:Query) Total of %d records were found with a deep (SCAN) search", n)
 	}
@@ -54,7 +54,7 @@ func (rc *RedisClient) QueryAIIIds(qa *dbms.QueryArgs) ([]string, error) {
 	// Get RediSearch client to search by additional information items
 	rsc, err := rc.rschInit(aiiRschIdx)
 	if err != nil {
-		return nil, fmt.Errorf("(RedisCli:QueryAIIIds) cannot initialize RediSearch client: %v", err)
+		return nil, fmt.Errorf("(RedisCli:QueryAIIIds) cannot initialize RediSearch client: %w", err)
 	}
 
 	var chunks []string
@@ -78,7 +78,7 @@ func (rc *RedisClient) QueryAIIIds(qa *dbms.QueryArgs) ([]string, error) {
 
 	ids, err := rshSearchAII(rsc, q)
 	if err != nil {
-		return nil, fmt.Errorf("(RedisCli:QueryAIIIds) cannot execute query %q: %v", q.Raw, err)
+		return nil, fmt.Errorf("(RedisCli:QueryAIIIds) cannot execute query %q: %w", q.Raw, err)
 	}
 
 	log.D("(RedisCli:QueryAIIIds) AII search (tags: %t descr: %t) found identifiers: %v", qa.UseTags, qa.UseDescr, ids)
@@ -111,7 +111,7 @@ func rshSearchAII(cli *rsh.Client, q *rsh.Query) ([]string, error) {
 		// Do search
 		docs, total, err := cli.Search(q)
 		if err != nil {
-			return ids, fmt.Errorf("(RedisCli:rshSearchAII) RediSearch returned %d records and failed: %v", len(ids), err)
+			return ids, fmt.Errorf("(RedisCli:rshSearchAII) RediSearch returned %d records and failed: %w", len(ids), err)
 		}
 
 		log.D("(RedisCli) Scanned offset: %d .. %d, selected %d (total matched %d)", offset, offset + objsPerQuery, len(docs), total)
@@ -145,7 +145,7 @@ func (rc *RedisClient) GetObjects(ids, retFields []string) (dbms.QueryResults, e
 	// Get RediSearch client
 	rsc, err := rc.rschInit(metaRschIdx)
 	if err != nil {
-		return nil, fmt.Errorf("(RedisCli:GetObjects) cannot initialize RediSearch client: %v", err)
+		return nil, fmt.Errorf("(RedisCli:GetObjects) cannot initialize RediSearch client: %w", err)
 	}
 
 	// Make initial query
@@ -159,13 +159,13 @@ func (rc *RedisClient) rschInit(rschIdx string) (*rsh.Client, error) {
 	// Read username/password from private data if set
 	user, passw, err := userPasswd(rc.cfg.PrivCfg)
 	if err != nil {
-		return nil, fmt.Errorf("(RedisCli:rschInit) failed to load username/password from private configuration: %v", err)
+		return nil, fmt.Errorf("(RedisCli:rschInit) failed to load username/password from private configuration: %w", err)
 	}
 
 	// Convert string representation of database identifier to numeric database index
 	dbid, err := strconv.ParseUint(rc.cfg.ID, 10, 64)
 	if err != nil {
-		return nil, fmt.Errorf("(RedisCli:rschInit) cannot convert database identifier value to unsigned integer: %v", err)
+		return nil, fmt.Errorf("(RedisCli:rschInit) cannot convert database identifier value to unsigned integer: %w", err)
 	}
 
 	// Check for DB ID is not 0
@@ -225,7 +225,7 @@ func rshSearch(cli *rsh.Client, q *rsh.Query, retFields []string) (dbms.QueryRes
 		// Do search
 		docs, total, err := cli.Search(q)
 		if err != nil {
-			return qr, fmt.Errorf("(RedisCli:rshSearch) RediSearch returned %d records and failed: %v", len(qr), err)
+			return qr, fmt.Errorf("(RedisCli:rshSearch) RediSearch returned %d records and failed: %w", len(qr), err)
 		}
 
 		log.D("(RedisCli) Scanned offset: %d .. %d, selected %d (total matched %d)", offset, offset + objsPerQuery, len(docs), total)
@@ -462,7 +462,7 @@ func (rc *RedisClient) scanSearch(rsc *rsh.Client, qa *dbms.QueryArgs, retFields
 			if err == RedisNotFound {
 				return 0, fmt.Errorf("identificator field %q does not exist for key %q", dbms.FieldID, k)
 			}
-			return 0, fmt.Errorf("cannot get ID for key %q: %v", k, err)
+			return 0, fmt.Errorf("cannot get ID for key %q: %w", k, err)
 		}
 		// Append extracted ID
 		ids = append(ids, id)

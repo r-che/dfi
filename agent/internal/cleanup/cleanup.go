@@ -71,7 +71,7 @@ func Run() error {
     // Load from database all objects that belong to the current host
 	toDel, err := dbc.LoadHostPaths(match)
 	if err != nil {
-		return fmt.Errorf("(Cleanup) cannot load list of objects paths belong to this host: %v", err)
+		return fmt.Errorf("(Cleanup) cannot load list of objects paths belong to this host: %w", err)
 	}
 
 	// Check for stale data

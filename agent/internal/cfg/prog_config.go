@@ -64,19 +64,19 @@ func (pc *progConfig) loadPriv() error {
 
 	// Check correctness of ownership/permissions of the private file
 	if err := fschecks.PrivOwnership(pc.DBPriv); err != nil {
-		return fmt.Errorf("failed to check ownership/mode the private configuration of DB: %v", err)
+		return fmt.Errorf("failed to check ownership/mode the private configuration of DB: %w", err)
 	}
 
 	// Read configuration file
 	data, err := ioutil.ReadFile(pc.DBPriv)
 	if err != nil {
-		return fmt.Errorf("cannot read private database configuration: %v", err)
+		return fmt.Errorf("cannot read private database configuration: %w", err)
 	}
 
 	// Parse JSON, load it to configuration
 	pc.DBCfg.PrivCfg= map[string]any{}
 	if err = json.Unmarshal(data, &pc.DBCfg.PrivCfg); err != nil {
-		return fmt.Errorf("cannot decode private database configuration %q: %v", pc.DBPriv, err)
+		return fmt.Errorf("cannot decode private database configuration %q: %w", pc.DBPriv, err)
 	}
 
 	// OK

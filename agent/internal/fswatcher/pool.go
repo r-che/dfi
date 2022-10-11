@@ -137,7 +137,7 @@ func (p *Pool) newWatcher(watchPath string, doIndexing bool) (doneChan, error) {
 	if !filepath.IsAbs(watchPath) {
 		absPath, err := filepath.Abs(watchPath)
 		if err != nil {
-			return nil, fmt.Errorf("(watcher:%s) cannot convert non-absolue path %q to absolute form: %v", watchPath, err)
+			return nil, fmt.Errorf("(watcher:%s) cannot convert non-absolue path %q to absolute form: %w", watchPath, err)
 		}
 
 		log.D("(watcher:%s) Converted non-absolute path %q to %q", watchPath, watchPath, absPath)
@@ -147,7 +147,7 @@ func (p *Pool) newWatcher(watchPath string, doIndexing bool) (doneChan, error) {
 	// Create new FS watcher
 	watcher, err := fsn.NewWatcher()
 	if err != nil {
-		return nil, fmt.Errorf("(watcher:%s) cannot create watcher: %v", watchPath, err)
+		return nil, fmt.Errorf("(watcher:%s) cannot create watcher: %w", watchPath, err)
 	}
 
 	// Cached filesystem events
@@ -160,14 +160,14 @@ func (p *Pool) newWatcher(watchPath string, doIndexing bool) (doneChan, error) {
 		// Do recursive scan and reindexing
 		nWatchers, err = p.scanDir(watcher, watchPath, events, DoReindex)
 		if err != nil {
-			return nil, fmt.Errorf("(watcher:%s) cannot reindex: %v", watchPath, err)
+			return nil, fmt.Errorf("(watcher:%s) cannot reindex: %w", watchPath, err)
 		}
 
 		log.I("(watcher:%s) Reindexing done", watchPath)
 	} else {
 		// Run recursive scan without reindexing
 		if nWatchers, err = p.scanDir(watcher, watchPath, events, NoReindex); err != nil {
-			return nil, fmt.Errorf("(watcher:%s) cannot set watcher: %v", watchPath, err)
+			return nil, fmt.Errorf("(watcher:%s) cannot set watcher: %w", watchPath, err)
 		}
 	}
 
@@ -322,7 +322,7 @@ func (p *Pool) scanDir(watcher *fsn.Watcher, dir string, events eventsMap, doInd
 	// Scan directory to watch all subentries
 	entries, err := os.ReadDir(dir)
 	if err != nil {
-		return nWatchers, fmt.Errorf("cannot read entries of directory %q: %v", dir, err)
+		return nWatchers, fmt.Errorf("cannot read entries of directory %q: %w", dir, err)
 	}
 
 	// Keep current termLongVal value to have ability to compare during long-term operations

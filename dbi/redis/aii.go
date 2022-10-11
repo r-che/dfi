@@ -48,7 +48,7 @@ func (rc *RedisClient) ModifyAII(op dbms.DBOperator, args *dbms.AIIArgs, ids []s
 	// 0. Get RediSearch client
 	rsc, err := rc.rschInit(metaRschIdx)
 	if err != nil {
-		return 0, 0, fmt.Errorf("(RedisCli:ModifyAII) cannot initialize RediSearch client: %v", err)
+		return 0, 0, fmt.Errorf("(RedisCli:ModifyAII) cannot initialize RediSearch client: %w", err)
 	}
 
 	// 1. Check for objects with identifiers ids really exist
@@ -62,7 +62,7 @@ func (rc *RedisClient) ModifyAII(op dbms.DBOperator, args *dbms.AIIArgs, ids []s
 	// Run search to get results by IDs
 	qr, err := rshSearch(rsc, q, []string{dbms.FieldID})
 	if err != nil {
-		return 0, 0, fmt.Errorf("(RedisCli:ModifyAII) search failed: %v", err)
+		return 0, 0, fmt.Errorf("(RedisCli:ModifyAII) search failed: %w", err)
 	}
 
 	// Create map indentifiers found in DB
@@ -125,7 +125,7 @@ func (rc *RedisClient) GetAIIIds(withFields []string) ([]string, error) {
 
 		set, err := rc.c.SMembers(rc.ctx, setKey).Result()
 		if err != nil {
-			return nil, fmt.Errorf("(RedisCli:GetAIIIds) cannot load identifiers of objects with filled %q field: %v", field, err)
+			return nil, fmt.Errorf("(RedisCli:GetAIIIds) cannot load identifiers of objects with filled %q field: %w", field, err)
 		}
 
 		ids.Add(set...)
@@ -143,7 +143,7 @@ func (rc *RedisClient) GetAIIs(ids, retFields []string) (dbms.QueryResultsAII, e
 
 		res, err := rc.c.HGetAll(rc.ctx, key).Result()
 		if err != nil {
-			return result, fmt.Errorf("(RedisCli:GetAIIs) cannot get AII for %q: %v", key, err)
+			return result, fmt.Errorf("(RedisCli:GetAIIs) cannot get AII for %q: %w", key, err)
 		}
 
 		// Check for nothing was found
@@ -179,7 +179,7 @@ func (rc *RedisClient) updateAII(args *dbms.AIIArgs, ids idKeyMap, add bool) (in
 		}
 
 		if err != nil {
-			return ttu, tdu, fmt.Errorf("(RedisCli:updateAII) %v", err)
+			return ttu, tdu, fmt.Errorf("(RedisCli:updateAII) %w", err)
 		}
 	}
 
@@ -192,7 +192,7 @@ func (rc *RedisClient) updateAII(args *dbms.AIIArgs, ids idKeyMap, add bool) (in
 		}
 
 		if err != nil {
-			return ttu, tdu, fmt.Errorf("(RedisCli:updateAII) %v", err)
+			return ttu, tdu, fmt.Errorf("(RedisCli:updateAII) %w", err)
 		}
 	}
 
@@ -221,7 +221,7 @@ func (rc *RedisClient) addTags(tags []string, ids idKeyMap) (int64, error) {
 			// Ok, currently no tags for this object, nothing to do
 		} else {
 			// Something went wrong
-			return tu, fmt.Errorf("(RedisCli:addTags) cannot get tags field %q for key %q: %v", dbms.AIIFieldTags, key, err)
+			return tu, fmt.Errorf("(RedisCli:addTags) cannot get tags field %q for key %q: %w", dbms.AIIFieldTags, key, err)
 		}
 
 		// Make unique sorted list of tags
@@ -299,7 +299,7 @@ func (rc *RedisClient) addDescr(descr string, ids idKeyMap, noNL bool) (int64, e
 			fullDescr = descr
 		} else {
 			// Something went wrong
-			return tu, fmt.Errorf("(RedisCli:addDescr) cannot get description field %q for key %q: %v", dbms.AIIFieldDescr, key, err)
+			return tu, fmt.Errorf("(RedisCli:addDescr) cannot get description field %q for key %q: %w", dbms.AIIFieldDescr, key, err)
 		}
 
 		// Set description for the current identifier
@@ -353,7 +353,7 @@ func (rc *RedisClient) setAIIField(id, field, value string, objKey types.ObjKey)
 
 	// Handle error
 	if err := res.Err(); err != nil {
-		return fmt.Errorf("(RedisCli:setAIIField) HSET for key %s (%s = %s) returned error: %v",
+		return fmt.Errorf("(RedisCli:setAIIField) HSET for key %s (%s = %s) returned error: %w",
 			RedisAIIPrefix + id, field, value, err)
 	}
 
@@ -379,7 +379,7 @@ func (rc *RedisClient) deleteAII(args *dbms.AIIArgs, ids idKeyMap) (int64, int64
 		}
 
 		if err != nil {
-			return td, dd, fmt.Errorf("(RedisCli:deleteAII) %v", err)
+			return td, dd, fmt.Errorf("(RedisCli:deleteAII) %w", err)
 		}
 	}
 
@@ -388,7 +388,7 @@ func (rc *RedisClient) deleteAII(args *dbms.AIIArgs, ids idKeyMap) (int64, int64
 		// Clear description for selected identifiers
 		dd, err = rc.clearAIIField(dbms.AIIFieldDescr, ids.Keys())
 		if err != nil {
-			return td, dd, fmt.Errorf("(RedisCli:deleteAII) %v", err)
+			return td, dd, fmt.Errorf("(RedisCli:deleteAII) %w", err)
 		}
 	}
 
@@ -421,7 +421,7 @@ func (rc *RedisClient) delTags(tags []string, ids idKeyMap) (int64, error) {
 				// No tags field there, skip
 				continue
 			}
-			return tu, fmt.Errorf("(RedisCli:delTags) cannot get value %q field of %q: %v", dbms.AIIFieldTags, key, err)
+			return tu, fmt.Errorf("(RedisCli:delTags) cannot get value %q field of %q: %w", dbms.AIIFieldTags, key, err)
 		}
 
 		// Split string by set of tags
@@ -453,7 +453,7 @@ func (rc *RedisClient) delTags(tags []string, ids idKeyMap) (int64, error) {
 		// Need to set new value of tags field value without removed tags
 		n, err := rc.setTags(keepTags, idKeyMap{id: objKey})
 		if err != nil {
-			return tu, fmt.Errorf("(RedisCli:delTags) cannot remove tags %v from %q: %v", tags, id, err)
+			return tu, fmt.Errorf("(RedisCli:delTags) cannot remove tags %v from %q: %w", tags, id, err)
 		}
 
 		tu += n
@@ -464,7 +464,7 @@ func (rc *RedisClient) delTags(tags []string, ids idKeyMap) (int64, error) {
 		// Call clear tags for this AII
 		n, err := rc.clearAIIField(dbms.AIIFieldTags, clearTags.List())
 		if err != nil {
-			return tu, fmt.Errorf("(RedisCli:delTags) cannot clear tags: %v", err)
+			return tu, fmt.Errorf("(RedisCli:delTags) cannot clear tags: %w", err)
 		}
 
 		tu += n
@@ -495,7 +495,7 @@ func (rc *RedisClient) clearAIIField(field string, ids []string) (int64, error) 
 		// Get list of keys of this hash
 		keys, err := rc.c.HKeys(rc.ctx, key).Result()
 		if err != nil {
-			return tc, fmt.Errorf("RedisCli:clearAIIField) cannot get number of keys for %q: %v", key, err)
+			return tc, fmt.Errorf("RedisCli:clearAIIField) cannot get number of keys for %q: %w", key, err)
 		}
 
 		// Count number of fields that are not OID or cleared field
@@ -558,7 +558,7 @@ func (rc *RedisClient) clearAIIField(field string, ids []string) (int64, error) 
 		for _, key := range toDelField {
 			n, err := rc.c.HDel(rc.ctx, key, field).Result()
 			if err != nil {
-				return tc, fmt.Errorf("cannot remove field %q from key %q: %v", field, key, err)
+				return tc, fmt.Errorf("cannot remove field %q from key %q: %w", field, key, err)
 			}
 			tc += n
 		}

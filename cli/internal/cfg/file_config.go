@@ -29,25 +29,25 @@ func (pc *progConfig) loadConf() error {
 		}
 
 		// Something went wrong
-		return fmt.Errorf("cannot access program configuration %q: %v", pc.confPath, err)
+		return fmt.Errorf("cannot access program configuration %q: %w", pc.confPath, err)
 	}
 
 	log.D("Using program configuration from %q", pc.confPath)
 
 	// Configuration should not be public-readable - check correctness of ownership/permissions
 	if err := fschecks.PrivOwnership(pc.confPath); err != nil {
-		return fmt.Errorf("failed to check ownership/mode of program configuraton: %v", err)
+		return fmt.Errorf("failed to check ownership/mode of program configuraton: %w", err)
 	}
 
 	// Read configuration file
 	data, err := ioutil.ReadFile(pc.confPath)
 	if err != nil {
-		return fmt.Errorf("cannot read private database configuration: %v", err)
+		return fmt.Errorf("cannot read private database configuration: %w", err)
 	}
 
 	// Parse JSON, load it to configuration
 	if err = json.Unmarshal(data, &pc.fConf); err != nil {
-		return fmt.Errorf("cannot decode configuration %q: %v", pc.confPath, err)
+		return fmt.Errorf("cannot decode configuration %q: %w", pc.confPath, err)
 	}
 
 	// OK
