@@ -13,6 +13,8 @@ import (
 	"github.com/r-che/optsparser"
 )
 
+const authors = "Roman Chebotarev"
+
 var config *progConfig
 
 // Defaults
@@ -21,7 +23,7 @@ var progConfigSuff = filepath.Join(".dfi", "cli.json")
 var progConfigDefault = filepath.Join("${HOME}", progConfigSuff)
 var aiiFields = []string{dbms.AIIFieldTags, dbms.AIIFieldDescr}
 
-func Init(name, nameLong, progVers string) {
+func Init(name, nameLong, vers string) {
 	// Create new parser
 	p := optsparser.NewParser(name,
 		// List of required options
@@ -127,9 +129,18 @@ func Init(name, nameLong, progVers string) {
 	p.AddBool(`docs`,
 		`show detailed documentation, arguments (if any) are treated as documentation topics`,
 		&config.Docs, false)
+	showVer := false
+	p.AddBool(`version|V`, `output version and authors information and exit`, &showVer, false)
 
 	// Parse options
 	p.Parse()
+
+	if showVer {
+		// Show version/authors info and exit
+		fmt.Printf("%s (%s) %s\n", nameLong, name, vers)
+		fmt.Printf("Written by %s\n", authors)
+		os.Exit(0)
+	}
 
 	if config.Docs {
 		docs(name, nameLong, p.Args())
