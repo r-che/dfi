@@ -144,7 +144,7 @@ Usage:
  $ %[1]s --set --tags [--append|A] tag1,tag2,...tagN OBJECT-ID1 OBJECT-ID2 ...
  $ %[1]s --set --descr [--append|A] "Description of the object(s)" OBJECT-ID1 OBJECT-ID2 ...
 
-The --set mode sets or adds additional information about the object to the database.
+The --set mode sets or adds additional information about the object(s) to the database.
 Tags and description field are currently supported.
 
 >>> Using --append (-A) option <<<
@@ -160,6 +160,33 @@ the corresponding field. If the --append option is set:
 * With --descr, the description value given from the command line will be concatenated with
   the existing one by a newline character. If the option --no-newline (-n) specified,
   a semicolon and space ("; ") will be used to concatenate old and new values.
+
+`,
+
+// Documentation about deletion
+"del":
+`>>>> Deletion mode <<<<
+
+Usage:
+
+ $ %[1]s --del --tags tag1,tag2,...tagN|ALL OBJECT-ID1 OBJECT-ID2 ...
+ $ %[1]s --del --descr OBJECT-ID1 OBJECT-ID2 ...
+
+The --del mode deletes additional information about the object(s) in the database.
+It can delete values from the same fields that are supported by the --set mode
+(see "--docs set").
+
+>>> Deleting tags <<<
+
+With the --tags argument %[1]s tries to remove a set of tags specified by the first argument
+from the list of objects with identifiers specified by other agruments. The value of tags argument
+must be a comma-separated list of tags. If some or all tags do not exist in the tag field, the
+deletion will not be performed.
+
+The tags argument can have the special value ALL, in this case all tags will be removed from
+objects with identifiers specified by other aruments.
+
+>>> Teleting description <<<
 
 `,
 
@@ -231,7 +258,6 @@ You can use different formats for the beginning and the end of the range:
 
 Files with modification time between Jan 01 and Jan 02, 2000 UTC will be found.
 The value 946771200 is a Unix timestamp corresponding to January 02, 2000 UTC.
-
 `,
 }
 
@@ -244,7 +270,7 @@ func docs(name, nameLong string, topics []string) {
 			`search`,
 			`show`,
 			`set`,
-			// TODO `del`,
+			`del`,
 			// TODO `admin`
 			// Values
 			`range`,
