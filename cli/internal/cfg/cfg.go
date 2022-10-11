@@ -141,7 +141,7 @@ func Init(name, nameLong, progVers string) {
 
 	// Check and prepare configuration
 	if err := config.prepare(p.Args()); err != nil {
-		p.Usage(err.Error())	// Remove p.Usage(), only print the error and "Use -h for help"
+		p.Usage(err.Error())	// TODO Remove p.Usage(), only print the error and "Use -h for help"
 	}
 }
 
