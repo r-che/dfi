@@ -24,6 +24,15 @@ func (ikm idKeyMap) String() string {
 
 	return "[" + strings.Join(ids, " ") + "]"
 }
+func (ikm idKeyMap) Keys() []string {
+	ids := make([]string, 0, len(ikm))
+	for id := range ikm {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+
+	return ids
+}
 func (ikm idKeyMap) KeysAny() []any {
 	ids := make([]any, 0, len(ikm))
 	for id := range ikm {
@@ -363,7 +372,7 @@ func (rc *RedisClient) deleteAII(args *dbms.AIIArgs, ids idKeyMap) (int64, int64
 		// Check for first tags for ALL value
 		if args.Tags[0] == dbms.AIIAllTags {
 			// Need to clear all tags
-			td, err = rc.clearAIIField(dbms.AIIFieldTags, ids)
+			td, err = rc.clearAIIField(dbms.AIIFieldTags, ids.Keys())
 		} else {
 			// Need to remove the separate tags
 			td, err = rc.delTags(args.Tags, ids)
@@ -377,7 +386,7 @@ func (rc *RedisClient) deleteAII(args *dbms.AIIArgs, ids idKeyMap) (int64, int64
 	// Delete description if requested
 	if args.Descr == dbms.AIIDelDescr {
 		// Clear description for selected identifiers
-		dd, err = rc.clearAIIField(dbms.AIIFieldDescr, ids)
+		dd, err = rc.clearAIIField(dbms.AIIFieldDescr, ids.Keys())
 		if err != nil {
 			return td, dd, fmt.Errorf("(RedisCli:deleteAII) %v", err)
 		}
@@ -396,8 +405,8 @@ func (rc *RedisClient) delTags(tags []string, ids idKeyMap) (int64, error) {
 
 	tu := int64(0) // Total changed values of tags fields
 
-	// List of AII when tags field should be cleared
-	clearTags := make(idKeyMap, len(ids))
+	// Set of AII when tags field should be cleared
+	clearTags := tools.NewStrSet()
 
 	log.D("(RedisCli:delTags) Collecting AII existing tags")
 	// Do for each identifier
@@ -429,7 +438,7 @@ func (rc *RedisClient) delTags(tags []string, ids idKeyMap) (int64, error) {
 		// Check for nothing to keep
 		if len(keepTags) == 0 {
 			// All tags should be removed from this item, add to queue to deletion
-			clearTags[id] = objKey
+			clearTags.Add(id)
 			// Now continue with the next id
 			continue
 		}
@@ -451,9 +460,9 @@ func (rc *RedisClient) delTags(tags []string, ids idKeyMap) (int64, error) {
 	}
 
 	// Check for AII from which need to remove the tags field
-	if len(clearTags) != 0 {
+	if !clearTags.Empty() {
 		// Call clear tags for this AII
-		n, err := rc.clearAIIField(dbms.AIIFieldTags, ids)
+		n, err := rc.clearAIIField(dbms.AIIFieldTags, clearTags.List())
 		if err != nil {
 			return tu, fmt.Errorf("(RedisCli:delTags) cannot clear tags: %v", err)
 		}
@@ -465,7 +474,7 @@ func (rc *RedisClient) delTags(tags []string, ids idKeyMap) (int64, error) {
 	return tu, nil
 }
 
-func (rc *RedisClient) clearAIIField(field string, ids idKeyMap) (int64, error) {
+func (rc *RedisClient) clearAIIField(field string, ids []string) (int64, error) {
 	// List of keys that can be safely deleted to clearing field
 	toDelKey := make([]string, 0, len(ids))
 	// List of keys on which only the field should be deleted
@@ -479,7 +488,7 @@ func (rc *RedisClient) clearAIIField(field string, ids idKeyMap) (int64, error) 
 
 	log.D("(RedisCli:clearAIIField) Collecting AII info to clearing field %q...", field)
 	// Do for each identifier
-	for id := range ids {
+	for _, id := range ids {
 		// Make a key
 		key := RedisAIIPrefix + id
 
