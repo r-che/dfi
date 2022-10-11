@@ -1,9 +1,11 @@
 package cfg
 
 import (
+	"fmt"
 	stdLog "log"
 	"strings"
 	"path/filepath"
+	"os"
 
 	"github.com/r-che/log"
 	"github.com/r-che/dfi/types"
@@ -30,7 +32,6 @@ func Init(name, nameLong, progVers string) {
 	// Get real hostname
 	p.AddSeparator(`>> Operating mode (only one can be set)`)
 	p.AddBool(`search`, `enable search mode, used by default if no other modes are set`, &config.Search, false)
-	p.AddSeparator(`  NOTE: Use "--docs search" to get additional information how to use search`)
 	p.AddBool(`show`, `enable show mode`, &config.Show, false)
 	p.AddBool(`set`, `enable set mode`, &config.Set, false)
 	p.AddBool(`del`, `enable deletion mode`, &config.Del, false)
@@ -40,6 +41,7 @@ func Init(name, nameLong, progVers string) {
 
 	p.AddSeparator(``)
 	p.AddSeparator(`>> Search mode options`)
+	p.AddSeparator(`# NOTE: Use "--docs search" to get additional information how to use search`)
 	p.AddSeparator(`# In the options below:`)
 	p.AddSeparator(`# - "set of" - means a set of strings separated by a comma (",")`)
 	p.AddSeparator(`# - "range of" - use "--docs range" to get help about using range of values`)
@@ -90,7 +92,7 @@ func Init(name, nameLong, progVers string) {
 
 	// Set mode opitions
 	p.AddSeparator(``)
-	p.AddSeparator(`>> Show mode options`)
+	p.AddSeparator(`>> Set mode options`)
 	p.AddSeparator(`#`)
 	p.AddSeparator(`# NOTE: Use "--docs set" to get additional information how use show mode`)
 	p.AddSeparator(`#`)
@@ -141,7 +143,10 @@ func Init(name, nameLong, progVers string) {
 
 	// Check and prepare configuration
 	if err := config.prepare(p.Args()); err != nil {
-		p.Usage(err.Error())	// TODO Remove p.Usage(), only print the error and "Use -h for help"
+		// Preparation failed, print error and exit
+		fmt.Fprintf(os.Stderr, "%s: %v\n", name, err)
+		fmt.Fprintf(os.Stderr, "Try '%s --help' for more information.\n", name)
+		os.Exit(1)
 	}
 }
 
