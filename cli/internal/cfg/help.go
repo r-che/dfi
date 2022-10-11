@@ -17,6 +17,17 @@ Usage:
 
  $ %[1]s [search mode options...] [search phrases...]
 
+The default search output format is:
+
+ HOSTNAME:/paht/to/file
+
+Where:
+* HOSTNAME is the name of the host where the object was found
+* /paht/to/file - is the absolute path to the object on that host
+
+The output format can be changed by the options --show-ids (-i),
+--show-only-ids (-I), --hosts-groups (-G), --one-line (-o) and --json (-j).
+
 >>> Search phrases <<<
 
 By default search phrases (SP) used to match full path of objects. This means that
