@@ -138,6 +138,7 @@ func Init(name, nameLong, vers string) {
 	if showVer {
 		// Show version/authors info and exit
 		fmt.Printf("%s (%s) %s\n", nameLong, name, vers)
+		fmt.Printf("DBMS backend: %s\n", dbms.Backend)
 		fmt.Printf("Written by %s\n", authors)
 		os.Exit(0)
 	}
