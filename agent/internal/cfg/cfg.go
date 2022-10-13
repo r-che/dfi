@@ -34,34 +34,60 @@ func Init(name, nameLong, vers string) {
 	}
 
 	// Required options
-
+	p.AddSeparator(`# Required options`)
 	// Paths for indexing
-	p.AddString(`indexing-paths|I`, `comma separated list of paths for indexing`, &config.paths, "")
+	p.AddString(`indexing-paths|I`, `comma-separated list of paths for indexing`, &config.paths, "")
 	// Database connection information
-	p.AddString(`dbhost|H`, `database host or IP address and port in HOST:PORT format`, &config.DBCfg.HostPort, "")
+	p.AddString(`dbhost|H`,
+		`database host or IP address and port in HOST:PORT format`, &config.DBCfg.HostPort, "")
 	// Databace indentifier - name, number ans do on
 	p.AddString(`dbid|D`, `database identifier - name, number and so on`, &config.DBCfg.ID, "")
 
 	// Other options
-	p.AddString(`db-priv-cfg|P`, `path to file with DBMS-specific private data - username/passwd, etc...`, &config.DBPrivCfg, "")
-	p.AddBool(`db-readonly`, `do not perform any database updates (read-only mode), used for debugging`, &config.DBReadOnly, false)
-	p.AddString(`hostname`, `override real client hostname by provided value`, &config.DBCfg.CliHost, hostname)
-	p.AddString(`log-file|l`, `log file path`, &config.LogFile, "")
-	p.AddBool(`reindex|R`, `do reindex configured paths at startup`, &config.Reindex, false)
-	p.AddBool(`cleanup|c`, `delete records without existing files on disk and that do not correspond to configured paths`, &config.Cleanup, false)
-	p.AddDuration(`flush-period|F`, `period between flushing FS events to database`, &config.FlushPeriod, 5 * time.Second)
+	p.AddSeparator(``)
+	p.AddSeparator(`# Other options`)
+	p.AddString(`db-priv-cfg|P`,
+		`path to the file with private data specific to the particular DBMS - user/pass, etc...`,
+		&config.DBPrivCfg, "")
+	p.AddBool(`db-readonly`,
+		`do not perform any database updates (read-only mode), can be used for debugging`,
+		&config.DBReadOnly, false)
+	p.AddString(`hostname`,
+		`override real agent's hostname to the provided value`, &config.DBCfg.CliHost, hostname)
+	p.AddString(`log-file|l`, `path to the log file`, &config.LogFile, "")
+	p.AddBool(`reindex|R`,
+		`perform reindexing of configured paths on startup`, &config.Reindex, false)
+	p.AddBool(`cleanup|c`,
+		`delete DB records with no existing files on the disk and not matching the configured paths`,
+		&config.Cleanup, false)
+	p.AddDuration(`flush-period|F`,
+		`period between flushing the collected filesystem events to database`,
+		&config.FlushPeriod, 5 * time.Second)
 	p.AddBool(`checksums|C`,
-		`calculate sha1 summs for all objects. WARNING: this may cause huge disk load and take a long time`,
+		`calculate SHA1 sums for regular files, required for duplicates search support.`,
 		&config.CalcSums, false)
-	p.AddInt64(`max-checksum-size|M`, `maximum size of the file in bytes, checksum of which will be calculated, 0 - no limits`,
+	p.AddSeparator(`  WARNING: Calculation of the checksum can cause a huge load` +
+					` on the disk/CPU and take a long time!`)
+	p.AddInt64(`max-checksum-size|M`,
+		`maximum size of the file in bytes, the checksum of which can be calculated, 0 - no limits`,
 		&config.MaxSumSize, 0)
 
-
 	// Auxiliary options
+	p.AddSeparator(``)
+	p.AddSeparator(`# Auxiliary options`)
 	p.AddBool(`debug|d`, `enable debug logging`, &config.Debug, false)
 	p.AddBool(`nologts|N`, `disable log timestamps`, &config.NoLogTS, false)
 	showVer := false
 	p.AddBool(`version|V`, `output version and authors information and exit`, &showVer, false)
+
+	// Signals handling information
+	p.AddSeparator(``)
+	p.AddSeparator(`# Supported signals:`)
+	p.AddSeparator(`* TERM, INT - stop application`)
+	p.AddSeparator(`* HUP       - reopen log`)
+	p.AddSeparator(`* USR1      - run reindexing`)
+	p.AddSeparator(`* USR2      - run cleanup`)
+	p.AddSeparator(`* QUIT      - stop long-term operations such reindexing, cleanup, etc`)
 
 	// Parse options
 	p.Parse()
