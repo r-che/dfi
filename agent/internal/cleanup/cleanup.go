@@ -14,16 +14,20 @@ import (
 )
 
 func Run() error {
+	// Load application configuration
+	c := cfg.Config()
+
 	// Create new database client
-	dbc, err := dbi.NewClientController(&cfg.Config().DBCfg)
+	dbc, err := dbi.NewClientController(&c.DBCfg)
 	if err != nil {
 		return err
 	}
+	// Check if read-only mode is required
+	if c.DBReadOnly {
+		dbc.SetReadOnly(true)
+	}
 
 	log.I("(Cleanup) Started")
-
-	// Load application configuration
-	c := cfg.Config()
 
 	// Counters of not configured record and stale (not existing on FS) records
 	nc, nx := 0, 0

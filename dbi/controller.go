@@ -96,6 +96,10 @@ func (dbc *DBController) Channel() dbms.DBChan {
 	return dbc.dbChan
 }
 
+func (dbc *DBController) SetReadOnly(v bool) {
+	dbc.dbCli.SetReadOnly(v)
+}
+
 func (dbc *DBController) update(dbOps []*dbms.DBOperation) error {
 	// Keep current termLong value to have ability to compare during long-term updates
 	initTermLong := dbc.termLongVal

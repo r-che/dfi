@@ -6,6 +6,7 @@ import (
 	"context"
 	"strconv"
 	"strings"
+	"errors"
 
 	"github.com/r-che/dfi/types"
 	"github.com/r-che/dfi/types/dbms"
@@ -38,6 +39,7 @@ type RedisClient struct {
 	ctx			context.Context
 	stop		context.CancelFunc
 	cliHost		string
+	readOnly	bool
 	// Provided configuration
 	cfg			*dbms.DBConfig
 
@@ -119,11 +121,17 @@ func (rc *RedisClient) UpdateObj(fso *types.FSObject) error {
 	// Make a key
 	key := RedisObjPrefix + rc.cliHost + ":" + fso.FPath
 
-	log.D("(RedisCli:UpdateObj) HSET => %s\n", key)
 
-	res := rc.c.HSet(rc.ctx, key, prepareHSetValues(rc.cliHost, fso))
-	if err := res.Err(); err != nil {
-		return fmt.Errorf("(RedisCli:UpdateObj) HSET of key %q returned error: %w", key, err)
+	if rc.readOnly {
+		// Read-only datbase mode, do nothing
+		log.W("(RedisCli:UpdateObj) R/O mode IS SET, will not be performed: HSET => %s\n", key)
+	} else {
+		log.D("(RedisCli:UpdateObj) HSET => %s\n", key)
+		// Do real update
+		res := rc.c.HSet(rc.ctx, key, prepareHSetValues(rc.cliHost, fso))
+		if err := res.Err(); err != nil {
+			return fmt.Errorf("(RedisCli:UpdateObj) HSET of key %q returned error: %w", key, err)
+		}
 	}
 
 	rc.updated++
@@ -136,9 +144,13 @@ func (rc *RedisClient) DeleteObj(fso *types.FSObject) error {
 	// Make a key
 	key := RedisObjPrefix + rc.cliHost + ":" + fso.FPath
 
-	log.D("(RedisCli:DeleteObj) DEL (pending) => %s\n", key)
+	if rc.readOnly {
+		log.W("(RedisCli:DeleteObj) R/O mode IS SET, will not be performed: DEL => %s\n", key)
+	} else {
+		log.D("(RedisCli:DeleteObj) DEL (pending) => %s\n", key)
+	}
 
-	// Append key to delete
+	// XXX Append key to delete regardless of R/O mode because it will be skipped in the Commit() operation
 	rc.toDelete = append(rc.toDelete, key)
 
 	// OK
@@ -159,12 +171,61 @@ func (rc *RedisClient) Commit() (int64, int64, error) {
 	if nDel := len(rc.toDelete); nDel != 0 {
 		log.D("(RedisCli:Commit) Need to delete %d keys", nDel)
 
-		res := rc.c.Del(rc.ctx, rc.toDelete...)
-		if err := res.Err(); err != nil {
-			return rc.updated, res.Val(), fmt.Errorf("(RedisCli:Commit) DEL operation failed: %w", err)
+		if rc.readOnly {
+			// Read-only datbase mode, count numbers of keys that would have been deleted on normal mode
+			wd := []string{}	// would be deleted
+			nd := []string{}	// will not be deleted
+
+			for _, key := range rc.toDelete {
+				res := rc.c.HGet(rc.ctx, key, dbms.FieldID)
+				err := res.Err()
+				if err == nil {
+					// Ok, key will be deleted
+					wd = append(wd, key)
+					// Try to check the next key
+					continue
+				}
+
+				//
+				// Cannot delete this key, inspect why
+				//
+
+				// Check kind of error
+				if errors.Is(err, RedisNotFound) {
+					log.E("(RedisCli:Commit) HGET (used instead of DEL on R/O mode) for key %q failed: key is not found", key)
+				} else {
+					// Unknown error
+					log.E("(RedisCli:Commit) HGET (used instead of DEL on R/O mode) for key %q failed: %v", key, err)
+				}
+
+				// Anyway - key will NOT be deleted
+				nd = append(nd, key)
+			}
+
+			// Update deleted counter by number of selected keys that would be deleted
+			rc.deleted = int64(len(wd))
+
+			// Check for keys that would be deleted
+			if len(wd) != 0 {
+				// Print warning message about these keys
+				log.W("(RedisCli:Commit) R/O mode - DO NOT delete %d keys because  %v", len(wd), wd)
+			}
+
+			// Check for keys that would not be deleted
+			if len(nd) != 0 {
+				// Print warning
+				log.W("(RedisCli:Commit) R/O mode - DEL could NOT delete %d keys because not exist or other errors: %v", len(nd), nd)
+			}
+
+		} else {
+			res := rc.c.Del(rc.ctx, rc.toDelete...)
+			if err := res.Err(); err != nil {
+				return rc.updated, res.Val(), fmt.Errorf("(RedisCli:Commit) DEL operation failed: %w", err)
+			}
+
+			rc.deleted = res.Val()
 		}
 
-		rc.deleted = res.Val()
 
 		log.D("(RedisCli:Commit) Done deletion operation")
 	}
@@ -173,6 +234,11 @@ func (rc *RedisClient) Commit() (int64, int64, error) {
 	ru, rd := rc.updated, rc.deleted
 
 	return ru, rd, nil
+}
+
+func (rc *RedisClient) SetReadOnly(ro bool) {
+	log.W("(RedisClient:SetReadOnly) Set database read-only flag to: %v", ro)
+	rc.readOnly = true
 }
 
 func (rc *RedisClient) TermLong() {

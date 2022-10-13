@@ -40,6 +40,11 @@ func main() {
 	if err != nil {
 		log.F("Cannot initiate database controller: %v", err)
 	}
+	// Check if read-only mode is required
+	if c.DBReadOnly {
+		dbc.SetReadOnly(true)
+	}
+	// Run DB controller
 	dbc.Run()
 
 	// Create new watchers pool

@@ -14,6 +14,7 @@ type ClientController interface {
 	Commit() (updated, deleted int64, err error)
 
 	// Management methods
+	SetReadOnly(ro bool)
 	TermLong()
 	Stop()
 }

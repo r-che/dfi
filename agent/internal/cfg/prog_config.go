@@ -26,6 +26,7 @@ type progConfig struct {
 	Cleanup		bool	// Cleanup database
 	FlushPeriod	time.Duration	// Period between flushing FS events to database
 	CalcSums	bool	// Caclculate checksums for regular files
+	DBReadOnly	bool	// Do not update any information in database
 	MaxSumSize	int64	// Maximum size of the file, checksum of which will be calculated
 
 	// Auxiliary options
