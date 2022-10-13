@@ -104,6 +104,8 @@ func (dbc *DBController) update(dbOps []*dbms.DBOperation) error {
 	// Keep current termLong value to have ability to compare during long-term updates
 	initTermLong := dbc.termLongVal
 
+	// Counter for objects that have to be deleted
+	toDelN := int64(0)
     for _, op := range dbOps {
 		// If value of the termLong was updated - need to stop long-term update
 		if dbc.termLongVal != initTermLong {
@@ -121,6 +123,8 @@ func (dbc *DBController) update(dbOps []*dbms.DBOperation) error {
 			if err := dbc.dbCli.DeleteObj(op.ObjectInfo); err != nil {
 				return err
 			}
+			// Increase number of objects for deletion
+			toDelN++
         }
     }
 
@@ -128,6 +132,14 @@ func (dbc *DBController) update(dbOps []*dbms.DBOperation) error {
     updated, deleted, err := dbc.dbCli.Commit()
 	if err != nil {
 		return err
+	}
+
+	// Check for not frequent, but probably situation
+	if deleted != toDelN {
+		// Print explanation message
+		log.W("(DBC) %d objects were expected to be removed, but removed %d. This may be because" +
+			" when some objects were added and deleted before they were added to DB",
+			toDelN, deleted)
 	}
 
 	log.I("(DBC) %d records updated, %d records deleted", updated, deleted)
