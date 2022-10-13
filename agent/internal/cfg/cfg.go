@@ -1,18 +1,23 @@
 package cfg
 
 import (
+	"fmt"
 	"time"
 	"os"
+
+	"github.com/r-che/dfi/types/dbms"
 
 	"github.com/r-che/log"
 	"github.com/r-che/optsparser"
 )
 
+const authors = "Roman Chebotarev"
+
 const fallbackHostname = `FALLBACK-HOSTNAME`
 
 var config progConfig
 
-func Init(name string) {
+func Init(name, nameLong, vers string) {
 	// Create new parser
 	p := optsparser.NewParser(name,
 		// List of required options
@@ -55,9 +60,19 @@ func Init(name string) {
 	// Auxiliary options
 	p.AddBool(`debug|d`, `enable debug logging`, &config.Debug, false)
 	p.AddBool(`nologts|N`, `disable log timestamps`, &config.NoLogTS, false)
+	showVer := false
+	p.AddBool(`version|V`, `output version and authors information and exit`, &showVer, false)
 
 	// Parse options
 	p.Parse()
+
+	if showVer {
+		// Show version/authors info and exit
+		fmt.Printf("%s (%s) %s\n", nameLong, name, vers)
+		fmt.Printf("DBMS backend: %s\n", dbms.Backend)
+		fmt.Printf("Written by %s\n", authors)
+		os.Exit(0)
+	}
 
 	// Check and prepare configuration
 	if err := config.prepare(); err != nil {

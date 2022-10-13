@@ -19,7 +19,7 @@ const (
 
 func main() {
 	// Initiate configuration
-	cfg.Init(ProgName)
+	cfg.Init(ProgName, ProgNameLong, ProgVers)
 	c := cfg.Config()
 
 	// Configure logger
