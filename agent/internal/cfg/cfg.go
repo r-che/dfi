@@ -24,7 +24,7 @@ func Init(name, nameLong, vers string) {
 		`indexing-paths`,
 		`dbhost`,
 		`dbid`,
-	)
+	).SetUsageOnFail(false)	// Disable calling Usage on Parse error to handle returned error by itself
 
 	// Get real hostname
 	hostname, err := os.Hostname()
@@ -89,20 +89,32 @@ func Init(name, nameLong, vers string) {
 	p.AddSeparator(`* USR2      - run cleanup`)
 	p.AddSeparator(`* QUIT      - stop long-term operations such reindexing, cleanup, etc`)
 
+	//
 	// Parse options
-	p.Parse()
+	//
+	err = p.Parse()
 
+	// Before checking for a parsing error, check if the --version parameter has been passed
 	if showVer {
-		// Show version/authors info and exit
+		// Here we can ignore any parsing errors, such as insufficient required options,
+		// unexpected arguments and so on. Just show version/authors info and exit
 		fmt.Printf("%s (%s) %s\n", nameLong, name, vers)
 		fmt.Printf("DBMS backend: %s\n", dbms.Backend)
 		fmt.Printf("Written by %s\n", authors)
+
+		// Ok, no need to test error
 		os.Exit(0)
+	}
+
+	// Now, need to check the parsing error
+	if err != nil {
+		// Real problem, call Usage with error description
+		p.Usage(err)
 	}
 
 	// Check and prepare configuration
 	if err := config.prepare(); err != nil {
-		p.Usage(err.Error())
+		p.Usage(err)
 	}
 }
 
