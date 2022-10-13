@@ -18,7 +18,7 @@ const (
 	sigHup	=	syscall.SIGHUP
 	sigUsr1	=	syscall.SIGUSR1
 	sigUsr2	=	syscall.SIGUSR2
-	sigCont	=	syscall.SIGCONT
+	// FIXME sigCont	=	syscall.SIGCONT
 	sigQuit	=	syscall.SIGQUIT
 )
 
@@ -37,8 +37,8 @@ func waitSignals(dbc *dbi.DBController, wp *fswatcher.Pool) {
 	chClean := make(chan os.Signal, 1)		// Run cleanup
 	signal.Notify(chClean, sigUsr2)
 
-	chStat := make(chan os.Signal, 1)		// Dump statistic to logs
-	signal.Notify(chStat, sigCont)
+	// FIXME chStat := make(chan os.Signal, 1)		// Dump statistic to logs
+	// FIXME signal.Notify(chStat, sigCont)
 
 	chStopOps := make(chan os.Signal, 1)	// Stop long-term operations (reindexing/cleanup)
 	signal.Notify(chStopOps, sigQuit)
@@ -116,9 +116,9 @@ func waitSignals(dbc *dbi.DBController, wp *fswatcher.Pool) {
 					cleanupRun = false
 				}()
 
-			case <-chStat:
-				// TODO Will be implemented later
-				log.W("STUB: dump stat")
+			// FIXME Will be implemented later
+			// FIXME case <-chStat:
+			// FIXME 	log.W("STUB: dump stat")
 
 			case <-chStopOps:
 				wp.TermLong()
