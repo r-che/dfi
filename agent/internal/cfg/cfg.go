@@ -38,7 +38,7 @@ func Init(name string) {
 	p.AddString(`dbid|D`, `database identifier - name, number and so on`, &config.DBCfg.ID, "")
 
 	// Other options
-	p.AddString(`dbprivate|P`, `path to file with DBMS-specific private data - username/passwd, etc...`, &config.DBPriv, "")
+	p.AddString(`db-priv-cfg|P`, `path to file with DBMS-specific private data - username/passwd, etc...`, &config.DBPrivCfg, "")
 	p.AddBool(`db-readonly`, `do not perform any database updates (read-only mode), used for debugging`, &config.DBReadOnly, false)
 	p.AddString(`hostname`, `override real client hostname by provided value`, &config.DBCfg.CliHost, hostname)
 	p.AddString(`log-file|l`, `log file path`, &config.LogFile, "")

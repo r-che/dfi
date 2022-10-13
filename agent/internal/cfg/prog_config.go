@@ -17,7 +17,7 @@ type progConfig struct {
 	// Required options
 	paths		string			// Hidden option to write original value from the command line
 	IdxPaths	[]string
-	DBPriv		string			// Path to file with DBMS-specific private data - username/password, keys and so on
+	DBPrivCfg		string			// Path to file with DBMS-specific private data - username/password, keys and so on
 	DBCfg		dbms.DBConfig
 
 	// Other options
@@ -58,18 +58,18 @@ func (pc *progConfig) prepare() error {
 
 func (pc *progConfig) loadPriv() error {
 	// Return if no private data was set
-	if pc.DBPriv == "" {
+	if pc.DBPrivCfg == "" {
 		// OK
 		return nil
 	}
 
 	// Check correctness of ownership/permissions of the private file
-	if err := fschecks.PrivOwnership(pc.DBPriv); err != nil {
+	if err := fschecks.PrivOwnership(pc.DBPrivCfg); err != nil {
 		return fmt.Errorf("failed to check ownership/mode the private configuration of DB: %w", err)
 	}
 
 	// Read configuration file
-	data, err := ioutil.ReadFile(pc.DBPriv)
+	data, err := ioutil.ReadFile(pc.DBPrivCfg)
 	if err != nil {
 		return fmt.Errorf("cannot read private database configuration: %w", err)
 	}
@@ -77,7 +77,7 @@ func (pc *progConfig) loadPriv() error {
 	// Parse JSON, load it to configuration
 	pc.DBCfg.PrivCfg= map[string]any{}
 	if err = json.Unmarshal(data, &pc.DBCfg.PrivCfg); err != nil {
-		return fmt.Errorf("cannot decode private database configuration %q: %w", pc.DBPriv, err)
+		return fmt.Errorf("cannot decode private database configuration %q: %w", pc.DBPrivCfg, err)
 	}
 
 	// OK
