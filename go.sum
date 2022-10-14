@@ -64,5 +64,5 @@ gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c h1:dUUwHk2QECo/6vqA44rthZ8ie
 gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
 services-code.local/log.git v0.1.7 h1:25sbZ36nGj9+o1Zu3X4zjb6iLUdqgxhXcaJj4NvgKRI=
 services-code.local/log.git v0.1.7/go.mod h1:9wX8Wku2qv8zAuRuRDY0/yOHz+qQ4E5S6ZbktAzrm50=
-services-code.local/optsparser.git v0.1.5 h1:uJOJpQndXr6xGEnIPB9rptLHtBHoeV8Ng6V4gmK17AA=
-services-code.local/optsparser.git v0.1.5/go.mod h1:UEa7o3pBav+bj6/nkjNMGt5x5cNSUPfNu0u/J/OGtdI=
+services-code.local/optsparser.git v0.1.6 h1:Xg7a/5WZCr2fSXvl1qZI6A4Hc7Q0EnDao+cAlR4pjKU=
+services-code.local/optsparser.git v0.1.6/go.mod h1:UEa7o3pBav+bj6/nkjNMGt5x5cNSUPfNu0u/J/OGtdI=
