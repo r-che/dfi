@@ -2,6 +2,7 @@ package parse
 
 import (
 	"testing"
+	"reflect"
 )
 
 func TestStringsSet(t *testing.T) {
@@ -87,31 +88,13 @@ func TestStringsSet(t *testing.T) {
 			continue
 		}
 
-		// Compare result with the wanted value
-		var i int
-		for i = 0; i < len(test.want); i++ {
-			// Check for result length
-			if i == len(res) {
-				// Too short
-				t.Errorf("[%d] case has too short result: got - %#v, want - %#v", testN, res, test.want)
-				goto nextTest
-			}
-
-			// Compare values
-			if res[i] != test.want[i] {
-				// Different values
-				t.Errorf("[%d] case has wrong result: got - %#v, want - %#v", testN, res, test.want)
-				goto nextTest
-			}
+		// Test for produced list
+		if !reflect.DeepEqual(res, test.want) {
+			t.Errorf("[%d] case returns result %#v, want - %#v", testN, res, test.want)
+			// Go to next test
+			continue
 		}
 
-		// Check the end of the result was NOT reached
-		if i != len(res) {
-				// TODO
-			t.Errorf("[%d] case has too long result: got - %#v, want - %#v", testN, res, test.want)
-		}
-
-		nextTest:
 		// Test passed
 	}
 }
