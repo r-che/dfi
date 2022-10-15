@@ -44,8 +44,9 @@ func Init(name, nameLong, vers string) {
 	p.AddString(`dbid|D`, `database identifier - name, number and so on`, &config.DBCfg.ID, "")
 
 	// Other options
-	p.AddSeparator(``)
-	p.AddSeparator(`# Other options`)
+	p.AddSeparator(``,
+		`# Other options`,
+	)
 	p.AddString(`db-priv-cfg|P`,
 		`path to the file with private data specific to the particular DBMS - user/pass, etc...`,
 		&config.DBPrivCfg, "")
@@ -73,21 +74,23 @@ func Init(name, nameLong, vers string) {
 		&config.MaxSumSize, 0)
 
 	// Auxiliary options
-	p.AddSeparator(``)
-	p.AddSeparator(`# Auxiliary options`)
+	p.AddSeparator(``,
+		`# Auxiliary options`,
+	)
 	p.AddBool(`debug|d`, `enable debug logging`, &config.Debug, false)
 	p.AddBool(`nologts|N`, `disable log timestamps`, &config.NoLogTS, false)
 	showVer := false
 	p.AddBool(`version|V`, `output version and authors information and exit`, &showVer, false)
 
 	// Signals handling information
-	p.AddSeparator(``)
-	p.AddSeparator(`# Supported signals:`)
-	p.AddSeparator(`* TERM, INT - stop application`)
-	p.AddSeparator(`* HUP       - reopen log`)
-	p.AddSeparator(`* USR1      - run reindexing`)
-	p.AddSeparator(`* USR2      - run cleanup`)
-	p.AddSeparator(`* QUIT      - stop long-term operations such reindexing, cleanup, etc`)
+	p.AddSeparator(``,
+		`# Supported signals:`,
+		`* TERM, INT - stop application`,
+		`* HUP       - reopen log`,
+		`* USR1      - run reindexing`,
+		`* USR2      - run cleanup`,
+		`* QUIT      - stop long-term operations such reindexing, cleanup, etc`,
+	)
 
 	//
 	// Parse options

@@ -41,12 +41,13 @@ func Init(name, nameLong, vers string) {
 
 	// Modes options
 
-	p.AddSeparator(``)
-	p.AddSeparator(`>> Search mode options`)
-	p.AddSeparator(`# NOTE: Use "--docs search" to get additional information how to use search`)
-	p.AddSeparator(`# In the options below:`)
-	p.AddSeparator(`# - "set of" - means a set of strings separated by a comma (",")`)
-	p.AddSeparator(`# - "range of" - use "--docs range" to get help about using range of values`)
+	p.AddSeparator(``,
+		`>> Search mode options`,
+		`# NOTE: Use "--docs search" to get additional information how to use search`,
+		`# In the options below:`,
+		`# - "set of" - means a set of strings separated by a comma (",")`,
+		`# - "range of" - use "--docs range" to get help about using range of values`,
+	)
 	p.AddString(`mtime`,
 		`range of object modification time, see "--docs timestamp" for details`,
 		&config.strMtime, anyVal)
@@ -85,32 +86,36 @@ func Init(name, nameLong, vers string) {
 	p.AddBool(`hosts-groups|G`,
 		`group results by host instead of single line sorted output`, &config.HostGroups, false)
 
-	p.AddSeparator(``)
-	p.AddSeparator(`>> Set mode options`)
+	p.AddSeparator(``,
+		`>> Set mode options`,
+	)
 	p.AddBool(`append|A`,
 		`append specified data (tags or description) to the object(s)`, &config.SetAdd, false)
 	p.AddBool(`no-newline|n`, `use "; " instead of new line to join new value ` +
 		`to description (affects --add)`, &config.NoNL, false)
 
 	// Set mode opitions
-	p.AddSeparator(``)
-	p.AddSeparator(`>> Set mode options`)
-	p.AddSeparator(`#`)
-	p.AddSeparator(`# NOTE: Use "--docs set" to get additional information how use show mode`)
-	p.AddSeparator(`#`)
-	p.AddSeparator(`# No special options for this mode`)
+	p.AddSeparator(``,
+		`>> Set mode options`,
+		`#`,
+		`# NOTE: Use "--docs set" to get additional information how use show mode`,
+		`#`,
+		`# No special options for this mode`,
+	)
 
 	// Deletion mode opitions
-	p.AddSeparator(``)
-	p.AddSeparator(`>> Deletion mode options`)
-	p.AddSeparator(`#`)
-	p.AddSeparator(`# NOTE: Use "--docs del" to get additional information how use deletion  mode`)
-	p.AddSeparator(`#`)
-	p.AddSeparator(`# No special options for this mode`)
+	p.AddSeparator(``,
+		`>> Deletion mode options`,
+		`#`,
+		`# NOTE: Use "--docs del" to get additional information how use deletion  mode`,
+		`#`,
+		`# No special options for this mode`,
+	)
 
 	// Other modes common options
-	p.AddSeparator(``)
-	p.AddSeparator(`>> Options common to several modes`)
+	p.AddSeparator(``,
+		`>> Options common to several modes`,
+	)
 	p.AddBool(`one-line|o`, `print information about each object in one line, ` +
 		`implicitly enables --quiet`, &config.OneLine, false)
 	p.AddBool(`json|j`, `make JSON output, implicitly enables --quiet`, &config.JSONOut, false)
@@ -120,8 +125,9 @@ func Init(name, nameLong, vers string) {
 		`requires at least one command line argument`, &config.UseDescr, false)
 
 	// Auxiliary options
-	p.AddSeparator("")
-	p.AddSeparator(">> General options")
+	p.AddSeparator(``,
+		`>> General options`,
+	)
 	p.AddString(`cfg|c`, `path to configuration file`, &config.confPath, progConfigDefault)
 	p.AddBool(`debug|d`, `enable debug logging`, &config.Debug, false)
 	p.AddBool(`nologts`, `disable log timestamps`, &config.NoLogTS, false)
