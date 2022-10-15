@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 	"strconv"
+	"errors"
 
 	"github.com/r-che/dfi/types"
 	"github.com/r-che/dfi/types/dbms"
@@ -459,7 +460,7 @@ func (rc *RedisClient) scanSearch(rsc *rsh.Client, qa *dbms.QueryArgs, retFields
 	for _, k := range matched {
 		id, err := rc.c.HGet(rc.ctx, k, dbms.FieldID).Result()
 		if err != nil {
-			if err == RedisNotFound {
+			if errors.Is(err, RedisNotFound) {
 				return 0, fmt.Errorf("identificator field %q does not exist for key %q", dbms.FieldID, k)
 			}
 			return 0, fmt.Errorf("cannot get ID for key %q: %w", k, err)

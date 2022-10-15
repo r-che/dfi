@@ -4,6 +4,7 @@ package redis
 import (
 	"fmt"
 	"strings"
+	"errors"
 	"sort"
 
 	"github.com/r-che/dfi/common/tools"
@@ -217,7 +218,7 @@ func (rc *RedisClient) addTags(tags []string, ids idKeyMap) (int64, error) {
 		if err == nil {
 			// Tags field extracted, make union between extracted existing tags and new tags
 			allTags = append(allTags, strings.Split(tagsStr, ",")...)
-		} else if err == RedisNotFound {
+		} else if errors.Is(err, RedisNotFound) {
 			// Ok, currently no tags for this object, nothing to do
 		} else {
 			// Something went wrong
@@ -294,7 +295,7 @@ func (rc *RedisClient) addDescr(descr string, ids idKeyMap, noNL bool) (int64, e
 			} else {
 				fullDescr = oldDescr + "\n" + descr
 			}
-		} else if err == RedisNotFound {
+		} else if errors.Is(err, RedisNotFound) {
 			// Ok, currently no description for this object
 			fullDescr = descr
 		} else {
@@ -417,7 +418,7 @@ func (rc *RedisClient) delTags(tags []string, ids idKeyMap) (int64, error) {
 		// Get list of keys of this hash
 		aiiTagsStr, err := rc.c.HGet(rc.ctx, key, dbms.AIIFieldTags).Result()
 		if err != nil {
-			if err == RedisNotFound {
+			if errors.Is(err, RedisNotFound) {
 				// No tags field there, skip
 				continue
 			}
