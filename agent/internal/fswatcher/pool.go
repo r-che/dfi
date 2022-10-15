@@ -137,7 +137,8 @@ func (p *Pool) newWatcher(watchPath string, doIndexing bool) (doneChan, error) {
 	if !filepath.IsAbs(watchPath) {
 		absPath, err := filepath.Abs(watchPath)
 		if err != nil {
-			return nil, fmt.Errorf("(watcher:%s) cannot convert non-absolue path %q to absolute form: %w", watchPath, err)
+			return nil, fmt.Errorf(
+				"(watcher:%s) cannot convert non-absolue path %q to absolute form: %w", watchPath, watchPath, err)
 		}
 
 		log.D("(watcher:%s) Converted non-absolute path %q to %q", watchPath, watchPath, absPath)

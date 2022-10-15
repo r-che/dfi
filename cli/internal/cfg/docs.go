@@ -297,7 +297,7 @@ func docs(name, nameLong string, topics []string) {
 	for i, topic := range topics {
 		fmt.Printf(helpSubjs[topic] + "\n", name)
 		if i != len(topics) - 1 {
-			fmt.Println("-----\n")
+			fmt.Printf("-----\n\n")
 		}
 	}
 
