@@ -7,6 +7,10 @@ import (
 	"github.com/r-che/dfi/common/tools"
 )
 
+// StringsSet splits comma-separated list of values vals to the slice, sorts them,
+// and saves to *fp. Returns an error if an empty value is found in the result set
+// set or if the result item does not belong to allowed list. The setName
+// variable is used to specify the name of the set in returned error
 func StringsSet(fp *[]string, setName, vals string, allowed ...string) error {
 	// Make list of unique values from vals
 	*fp = tools.NewStrSet(strings.Split(vals, ",")...).List()
