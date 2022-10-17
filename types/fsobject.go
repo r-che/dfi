@@ -8,6 +8,9 @@ const (
 	CsErrorStub = `<FAIL TO CALCULATE CHECKSUM>`
 )
 
+//
+// Filesystem object
+//
 type FSObject struct {
 	// XXX Do not forget to update FSObjectFieldsNum on changing number of fields in this structure
 	Name		string
@@ -20,6 +23,9 @@ type FSObject struct {
 }
 const FSObjectFieldsNum = 7
 
+//
+// Filesystem events
+//
 type eventType int
 const (
 	EvCreate	= eventType(iota)
@@ -46,7 +52,9 @@ const (
 	ObjSymlink		=	"sym"
 )
 
-// Values of this map represents key-value pairs with requested objects properties
+//
+// Filesystem object key
+//
 type ObjKey struct {
 	Host string
 	Path string
