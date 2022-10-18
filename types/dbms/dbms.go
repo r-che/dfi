@@ -97,6 +97,7 @@ const (
 // UVObjFields returns user valuable object fields
 func UVObjFields() []string {
 	return []string {
+		// XXX Do not forget to update test when update this set of fields
 		FieldID,
 		FieldRPath,
 		FieldType,
