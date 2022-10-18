@@ -270,7 +270,7 @@ func (pc *progConfig) prepareDel() error {
 
 func (pc *progConfig) prepareShow() error {
 	// Check for list of identifiers exists
-	if len(pc.CmdArgs) == 0 {
+	if len(pc.CmdArgs) == 0  && !pc.UseTags {
 		return fmt.Errorf("insufficient arguments for --show commands - no object identifiers provided")
 	}
 

@@ -87,14 +87,14 @@ Certainly, you can use --or and --not options at the same time.
 "show":
 `>>>> Show mode <<<<
 
-Usage:
+1. Usage for objects:
 
  $ %[1]s --show OBJECT-ID1 OBJECT-ID2 ...
 
 The --show mode shows information about objects with identifiers given
 by command line arguments. The displayed information includes:
 
- * Object identifier
+ * Object identifier (see the "Object identification" section below)
  * Host where the object was found
  * Absolute path to the object on the host
  * Type of the object, one of: ` + strings.Join(knownTypes, ", ")  + `
@@ -103,6 +103,17 @@ by command line arguments. The displayed information includes:
  * Additional information if set:
    * Tags - comma-separated set of tags
    * Description - text description of the object, can be multiline
+
+2. Usage for tags:
+
+ $ %[1]s --show --tags [--quiet] [tag1 tag2 ...]
+
+The --show mode with the --tags flag shows all tags that have been set to objects
+or a set of tags from arguments if specified. The result is sorted by the number of
+times the tag has been used, the number of uses is displayed in the first column.
+If the --quiet flag is specified, the amount of tag usage is not displayed, if
+the set of tags was specified in the arguments and some tags from the set were not
+found - these tags will not be shown.
 
 >>> Object identification <<<
 

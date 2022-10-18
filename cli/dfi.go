@@ -81,8 +81,8 @@ func printStatus(rv *types.CmdRV) int {
 		}
 
 		if c.Show || c.Search {
-			// Ignore status output in show mode with --one-line key
-			if c.Show && c.OneLine {
+			// Skip status output in show mode with --one-line or --tags keys
+			if c.Show && (c.OneLine || c.UseTags) {
 				// Print nothing
 			} else {
 				fmt.Printf("%s%d objects found\n", pref, rv.Found())
