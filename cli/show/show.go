@@ -125,15 +125,15 @@ func showTags(dbc dbms.Client) *types.CmdRV {
 	// Check that tags were not provided by command line
 	if tags.Empty() {
 		// Add all tags
-		for _, data := range qr {
-			for _, tag := range strings.Split(data[dbms.AIIFieldTags], ",") {
+		for _, aii := range qr {
+			for _, tag := range aii.Tags {
 				tt[tag]++
 			}
 		}
 	} else {
 		// Add only specified tags
-		for _, data := range qr {
-			for _, tag := range strings.Split(data[dbms.AIIFieldTags], ",") {
+		for _, aii := range qr {
+			for _, tag := range aii.Tags {
 				if (*tags)[tag] {
 					tt[tag]++
 				}
@@ -260,16 +260,15 @@ func showJSONOutput(ids []string, ikm map[string]types.ObjKey, objs dbms.QueryRe
 			}
 		}
 
-		for _, field := range dbms.UVAIIFields() {
-			val, ok := aiis[id][field]
-			// If value empty/not set
-			if !ok {
-				res = append(res, fmt.Sprintf(`%q: ""`, field))
-				continue
-			}
+		//
+		// Add AII values
+		//
 
-			res = append(res, fmt.Sprintf("%q:%q", field, val))
-		}
+		// Tags
+		res = append(res, fmt.Sprintf("%q:%q", dbms.AIIFieldTags, strings.Join(aiis[id].Tags, ",")))	// TODO Add tags as JSON list
+
+		// Description
+		res = append(res, fmt.Sprintf(`%q:%q`, dbms.AIIFieldDescr, aiis[id].Descr))
 
 		fmt.Print(ind + `{` + nl +							// opening brace
 			ind + ind +										// indentation before first key
@@ -287,7 +286,7 @@ func showJSONOutput(ids []string, ikm map[string]types.ObjKey, objs dbms.QueryRe
 	fmt.Print(`]` + "\n")
 }
 
-func showObjOL(objKey types.ObjKey, fields map[string]any, aii map[string]string) {
+func showObjOL(objKey types.ObjKey, fields map[string]any, aii *dbms.AIIArgs) {
 	res := make([]string, 0, len(dbms.UVObjFields()) + len(dbms.UVAIIFields()) + 2 /* host + path */)
 	res = append(res,
 		fmt.Sprintf("host:%q", objKey.Host),
@@ -308,21 +307,20 @@ func showObjOL(objKey types.ObjKey, fields map[string]any, aii map[string]string
 		}
 	}
 
-	for _, field := range dbms.UVAIIFields() {
-		val, ok := aii[field]
-		// If value empty/not set
-		if !ok {
-			res = append(res, field + `:""`)
-			continue
-		}
+	//
+	// Add AII values
+	//
 
-		res = append(res, fmt.Sprintf("%s:%q", field, val))
-	}
+	// Tags
+	res = append(res, fmt.Sprintf("%s:%q", dbms.AIIFieldTags, strings.Join(aii.Tags, ",")))
+
+	// Description
+	res = append(res, fmt.Sprintf(`%s:%q`, dbms.AIIFieldDescr, aii.Descr))
 
 	fmt.Println(strings.Join(res, " "))
 }
 
-func showObj(objKey types.ObjKey, fields map[string]any, aii map[string]string) {
+func showObj(objKey types.ObjKey, fields map[string]any, aii *dbms.AIIArgs) {
 	// Object header
 	fmt.Printf(">>> [ID: %s]\n", fields[dbms.FieldID])
 
@@ -364,13 +362,13 @@ func showObj(objKey types.ObjKey, fields map[string]any, aii map[string]string) 
 	}
 
 	// Print additional information if exists
-	if len(aii) != 0 {
-		if tags := aii[dbms.AIIFieldTags]; tags != "" {
-			fmt.Printf("Tags:      %s\n", aii[dbms.AIIFieldTags])
+	if aii != nil {
+		if tags := strings.Join(aii.Tags, ","); tags != "" {
+			fmt.Printf("Tags:      %s\n", tags)
 		}
-		if descr := aii[dbms.AIIFieldDescr]; descr != "" {
+		if aii.Descr != "" {
 			// Prepend each description line by double space
-			fmt.Printf("Description:\n%s\n", `  ` + strings.ReplaceAll(descr, "\n", "\n  "))
+			fmt.Printf("Description:\n%s\n", `  ` + strings.ReplaceAll(aii.Descr, "\n", "\n  "))
 		}
 	}
 

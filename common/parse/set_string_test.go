@@ -38,19 +38,19 @@ func TestStringsSet(t *testing.T) {
 			vals:		"val1,val2,VAL3,val4,val5",
 			allowed:	[]string{"val1", "val2", "val3", "val4", "val5"},
 			want:		[]string{"val1", "val2", "val3", "val4", "val5"},
-			errStr:		`incorrect incorrect-set,disallowed-value value "VAL3" in set-string "val1,val2,VAL3,val4,val5"`,
+			errStr:		`incorrect incorrect-set,disallowed-value value "VAL3" in the input string: "val1,val2,VAL3,val4,val5"`,
 		},
 		{	// Set with empty values, no allowed values
 			name:		"incorrect-set-with-empty,no-allowed",
 			vals:		"val1,val2,,val4,,val5",
 			want:		[]string{"val1", "val2", "val4", "val5"},
-			errStr:		`empty incorrect-set-with-empty,no-allowed value in set-string "val1,val2,,val4,,val5"`,
+			errStr:		`empty incorrect-set-with-empty,no-allowed value in the input string: "val1,val2,,val4,,val5"`,
 		},
 		{	// Another set with empty values, no allowed values
 			name:		"incorrect-set-with-empty,with-allowed",
 			vals:		",val1,val2,val3,val4,val5,",
 			want:		[]string{"val1", "val2", "val3", "val4", "val5"},
-			errStr:		`empty incorrect-set-with-empty,with-allowed value in set-string ",val1,val2,val3,val4,val5,"`,
+			errStr:		`empty incorrect-set-with-empty,with-allowed value in the input string: ",val1,val2,val3,val4,val5,"`,
 		},
 	}
 

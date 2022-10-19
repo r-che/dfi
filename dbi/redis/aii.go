@@ -153,12 +153,23 @@ func (rc *RedisClient) GetAIIs(ids, retFields []string) (dbms.QueryResultsAII, e
 			continue
 		}
 
-		result[id] = make(map[string]string, len(retFields))
+		// Allocate new AII structure
+		aii := &dbms.AIIArgs{}
+		// Try to get all requested fields from the result
 		for _, field := range retFields {
-			if v, ok := res[field]; ok {
-				result[id][field] = v
+			v, ok := res[field]
+			if !ok {
+				// Field was not found
+				continue
+			}
+
+			// Select field
+			if err := aii.SetFieldStr(field, v); err != nil {
+				return result, fmt.Errorf("(RedisCli:GetAIIs) cannot set field from result: %w", err)
 			}
 		}
+
+		result[id] = aii
 	}
 
 	// OK

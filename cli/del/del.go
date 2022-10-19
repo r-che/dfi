@@ -1,8 +1,6 @@
 package del
 
 import (
-	"strings"
-
 	"github.com/r-che/dfi/types"
 	"github.com/r-che/dfi/types/dbms"
 	"github.com/r-che/dfi/cli/internal/cfg"
@@ -34,31 +32,11 @@ func delTags(dbc dbms.Client, tagsStr string, ids []string) *types.CmdRV {
 
 	log.D("Delete tags %q from: %v", tagsStr, ids)
 
-	// Split tags string and remove empty lines if exists
-	tags := strings.Split(tagsStr, ",")
-	for i := 0; i < len(tags); {
-		// Remove leading/trailing spaces from tag
-		tags[i] = strings.TrimSpace(tags[i])
-
-		// Check tag for special value forbidden to set
-		if tags[i] == dbms.AIIAllTags {
-			// Need to clear all tags, skip processing other tags
-			tags = []string{dbms.AIIAllTags}
-			break
-		}
-
-		// Remove empty tags
-		if tags[i] == "" {
-			tags = append(tags[:i], tags[i+1:]...)
-		} else {
-			i++
-		}
-	}
-	if len(tags) == 0 {
-		return rv.AddErr("invalid tags value from command line: %q", tagsStr)
+	args := &dbms.AIIArgs{}
+	if err := args.SetTagsStr(tagsStr); err != nil {
+		return rv.AddErr("invalid value from command line: %v", err)
 	}
 
-	args := &dbms.AIIArgs{Tags: tags}
 	changed, _, err := dbc.ModifyAII(dbms.Delete, args, ids, c.SetAdd)
 	if err != nil {
 		rv.AddErr("cannot delete tags: %v", err)

@@ -2,7 +2,9 @@ package dbms
 
 import (
 	"fmt"
+	"strings"
 	"github.com/r-che/dfi/types"
+	"github.com/r-che/dfi/common/parse"
 )
 
 // Agent client interface
@@ -74,13 +76,41 @@ type AIIArgs struct {
 	Descr	string
 	NoNL	bool
 }
+func (aa *AIIArgs) SetTagsStr(tagsStr string) error {
+	aa.Tags = []string{}
+	if err := parse.StringsSet(&aa.Tags, AIIFieldTags, tagsStr); err != nil {
+		return err
+	}
+	// Trim spaces from each tag
+	for i := range aa.Tags {
+		aa.Tags[i] = strings.TrimSpace(aa.Tags[i])
+	}
+	return nil
+}
+func (aa *AIIArgs) SetDescr(descr string) {
+	aa.Descr = strings.TrimSpace(descr)
+}
+func (aa *AIIArgs) SetFieldStr(field, value string) error {
+	var err error
+
+	switch field {
+	case AIIFieldDescr:
+		aa.SetDescr(value)
+	case AIIFieldTags:
+		err = aa.SetTagsStr(value)
+	default:
+		return fmt.Errorf("unknown AII field %q (value: %#v)", field, value)
+	}
+
+	return err
+}
 
 type MatchStrFunc func(string) bool
 
 // Map to return query results indexed host + found path
 type QueryResults map[types.ObjKey] map[string]any
 // Map to return AII query results
-type QueryResultsAII map[string]map[string]string
+type QueryResultsAII map[string]*AIIArgs
 
 // Database object fields
 const (

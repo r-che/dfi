@@ -1,9 +1,6 @@
 package set
 
 import (
-	"strings"
-
-	"github.com/r-che/dfi/common/tools"
 	"github.com/r-che/dfi/types"
 	"github.com/r-che/dfi/types/dbms"
 	"github.com/r-che/dfi/cli/internal/cfg"
@@ -37,33 +34,21 @@ func setTags(dbc dbms.Client, tagsStr string, ids []string) *types.CmdRV {
 
 	log.D("Set tags (append: %t) %q for: %v", c.SetAdd, tagsStr, ids)
 
-	// Split tags string and remove empty lines if exists
-	tags := strings.Split(tagsStr, ",")
-	for i := 0; i < len(tags); {
-		// Remove leading/trailing spaces from tag
-		tags[i] = strings.TrimSpace(tags[i])
+	aii := &dbms.AIIArgs{}
+	if err := aii.SetTagsStr(tagsStr); err != nil {
+		return types.NewCmdRV().AddErr("invalid value from command line: %v", err)
+	}
 
+	// Check tags for a special value
+	for _, tag := range aii.Tags {
 		// Check tag for special value forbidden to set
-		if tags[i] == dbms.AIIAllTags {
+		if tag == dbms.AIIAllTags {
 			return types.NewCmdRV().
 				AddErr("tag value %q is a special value that cannot be used as a tag", dbms.AIIAllTags)
 		}
-
-		// Remove empty tags
-		if tags[i] == "" {
-			tags = append(tags[:i], tags[i+1:]...)
-		} else {
-			i++
-		}
-	}
-	if len(tags) == 0 {
-		return types.NewCmdRV().AddErr("invalid tags value from command line: %q", tagsStr)
 	}
 
-	// Sort and make tags unique
-	tags = tools.NewStrSet(tags...).List()
-
-	updated, _, err := dbc.ModifyAII(dbms.Update, &dbms.AIIArgs{Tags: tags}, ids, c.SetAdd)
+	updated, _, err := dbc.ModifyAII(dbms.Update, aii, ids, c.SetAdd)
 	if err != nil {
 		return types.NewCmdRV().
 			AddChanged(updated).
@@ -81,7 +66,9 @@ func setDescr(dbc dbms.Client, descr string, ids []string) *types.CmdRV {
 	log.D("Set description (append: %t) %q for: %v", c.SetAdd, descr, ids)
 
 	// Trim spaces from description and set it to argumets
-	args := &dbms.AIIArgs{Descr: strings.TrimSpace(descr), NoNL: c.NoNL}
+	args := &dbms.AIIArgs{NoNL: c.NoNL}
+	args.SetDescr(descr)
+
 	_, updated, err := dbc.ModifyAII(dbms.Update, args, ids, c.SetAdd)
 	if err != nil {
 		return types.NewCmdRV().

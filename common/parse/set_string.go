@@ -20,7 +20,7 @@ func StringsSet(fp *[]string, setName, vals string, allowed ...string) error {
 		// Check only for empty values
 		for _, v := range *fp {
 			if v == "" {
-				return fmt.Errorf("empty %s value in set-string %q", setName, vals)
+				return fmt.Errorf("empty %s value in the input string: %q", setName, vals)
 			}
 		}
 		// OK
@@ -35,7 +35,7 @@ func StringsSet(fp *[]string, setName, vals string, allowed ...string) error {
 			}
 		}
 
-		return fmt.Errorf("incorrect %s value %q in set-string %q", setName, val, vals)
+		return fmt.Errorf("incorrect %s value %q in the input string: %q", setName, val, vals)
 	}
 
 	// OK
