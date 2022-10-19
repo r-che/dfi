@@ -9,6 +9,7 @@ require (
 	github.com/gomodule/redigo v1.8.3
 	github.com/r-che/log v0.0.0-00010101000000-000000000000
 	github.com/r-che/optsparser v0.0.0-00010101000000-000000000000
+	github.com/r-che/testing v0.0.0-00010101000000-000000000000
 )
 
 require (
@@ -22,3 +23,6 @@ replace github.com/r-che/optsparser => services-code.local/optsparser.git v0.1.7
 
 //replace github.com/r-che/log => ../log
 replace github.com/r-che/log => services-code.local/log.git v0.1.7
+
+//replace github.com/r-che/testing => ../testing
+replace github.com/r-che/testing => services-code.local/testing.git v0.1.1
