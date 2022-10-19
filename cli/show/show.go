@@ -264,11 +264,17 @@ func showJSONOutput(ids []string, ikm map[string]types.ObjKey, objs dbms.QueryRe
 		// Add AII values
 		//
 
-		// Tags
-		res = append(res, fmt.Sprintf("%q:%q", dbms.AIIFieldTags, strings.Join(aiis[id].Tags, ",")))	// TODO Add tags as JSON list
+		if aiis[id] != nil {
+			// Tags
+			tags := make([]string, 0, len(aiis[id].Tags))
+			for _, tag := range aiis[id].Tags {
+				tags = append(tags, fmt.Sprintf("%q", tag))
+			}
+			res = append(res, fmt.Sprintf("%q:[%s]", dbms.AIIFieldTags, strings.Join(tags, ",")))
 
-		// Description
-		res = append(res, fmt.Sprintf(`%q:%q`, dbms.AIIFieldDescr, aiis[id].Descr))
+			// Description
+			res = append(res, fmt.Sprintf(`%q:%q`, dbms.AIIFieldDescr, aiis[id].Descr))
+		}
 
 		fmt.Print(ind + `{` + nl +							// opening brace
 			ind + ind +										// indentation before first key
@@ -311,11 +317,17 @@ func showObjOL(objKey types.ObjKey, fields map[string]any, aii *dbms.AIIArgs) {
 	// Add AII values
 	//
 
-	// Tags
-	res = append(res, fmt.Sprintf("%s:%q", dbms.AIIFieldTags, strings.Join(aii.Tags, ",")))
+	if aii != nil {
+		// Tags
+		res = append(res, fmt.Sprintf("%s:%q", dbms.AIIFieldTags, strings.Join(aii.Tags, ",")))
 
-	// Description
-	res = append(res, fmt.Sprintf(`%s:%q`, dbms.AIIFieldDescr, aii.Descr))
+		// Description
+		res = append(res, fmt.Sprintf("%s:%q", dbms.AIIFieldDescr, aii.Descr))
+	} else {
+		// Empty values of tags and description
+		res = append(res, fmt.Sprintf(`%s:""`, dbms.AIIFieldTags))
+		res = append(res, fmt.Sprintf(`%s:""`, dbms.AIIFieldDescr))
+	}
 
 	fmt.Println(strings.Join(res, " "))
 }
