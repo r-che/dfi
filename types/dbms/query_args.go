@@ -35,12 +35,6 @@ type QueryArgs struct {
 
 	types.SearchFlags
 	types.CommonFlags
-
-	//
-	// Runtime filled fields
-	//
-
-	dupesRefs	map[string]string
 }
 
 func NewQueryArgs() *QueryArgs {
