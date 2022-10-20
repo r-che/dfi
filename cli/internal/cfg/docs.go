@@ -269,6 +269,12 @@ You can use different formats for the beginning and the end of the range:
 
 Files with modification time between Jan 01 and Jan 02, 2000 UTC will be found.
 The value 946771200 is a Unix timestamp corresponding to January 02, 2000 UTC.
+
+Note: since the comma character is the delimiter of the set items, it must be escaped
+in the timestamp value to avoid incorrect parsing of the set values. For example, if
+you want to specify a timestamp like "Monday, 13-Aug-18 16:24:41 UTC", you must run:
+
+ $ %[1]s --mtime "Monday\, 13-Aug-18 16:24:41 UTC"
 `,
 }
 

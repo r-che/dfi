@@ -146,7 +146,11 @@ func (qa *QueryArgs) ParseMtimes(mtimeLine string) error {
 
 	// Need to determine format - set or range?
 	if strings.Index(mtimeLine, dataRangeSep) != -1 {
-		// It should be a range, split to check
+		//
+		// Range provided
+		//
+
+		// Split to check correctness
 		tsRange := strings.Split(mtimeLine, dataRangeSep)
 		// Check for range length - it always should be == 2
 		if len(tsRange) != 2 {
@@ -186,14 +190,22 @@ func (qa *QueryArgs) ParseMtimes(mtimeLine string) error {
 		return nil
 	}
 
+	//
 	// Set of times provided
+	//
+
+	// Replace each escaped comma by fake delimiter to avoid wrong split of TS containing a comma
+	const fakeDelim = "\u0000|\u0000"
+	mtimeLine = strings.ReplaceAll(mtimeLine, `\,`, fakeDelim)
 
 	// Split set and parse one by one
 	qa.MtimeSet = []int64{}
 	for _, timeStr := range strings.Split(mtimeLine, ",") {
-		ts, err := parseTime(timeStr)
+		ts, err := parseTime(
+			// Return commas back if they were replaced by escape character
+			strings.ReplaceAll(timeStr, fakeDelim, ","))
 		if err != nil {
-			return fmt.Errorf("invalid mtimes set %q: %w", mtimeLine, err)
+			return fmt.Errorf("invalid mtimes set: %w", err)
 		}
 
 		// Append parsed TS
@@ -207,7 +219,8 @@ func (qa *QueryArgs) ParseMtimes(mtimeLine string) error {
 // Supported formats of timestamps
 func TsFormats() []string {
 	return []string{
-	// "01/02 03:04:05PM '06 -0700" // The reference time, in numerical order.
+		// "01/02 03:04:05PM '06 -0700" // The reference time, in numerical order.
+
 		// Custom short formats
 		"2006.01.02",
 		"2006.01.02 MST",
