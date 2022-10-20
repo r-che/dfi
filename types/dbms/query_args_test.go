@@ -10,8 +10,6 @@ import (
 	"github.com/r-che/testing/clone"
 )
 
-// TODO Remove "replace" from go.mod
-
 func TestClone(t *testing.T) {
 	sv := clone.NewStructVerifier(
 		// Creator function
