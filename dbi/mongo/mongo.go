@@ -11,7 +11,7 @@ import (
 )
 
 type MongoClient struct {
-
+	*dbms.CommonClient
 }
 
 func NewClient(dbCfg *dbms.DBConfig) (*MongoClient, error) {

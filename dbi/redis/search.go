@@ -158,13 +158,13 @@ func (rc *RedisClient) GetObjects(ids, retFields []string) (dbms.QueryResults, e
 
 func (rc *RedisClient) rschInit(rschIdx string) (*rsh.Client, error) {
 	// Read username/password from private data if set
-	user, passw, err := userPasswd(rc.cfg.PrivCfg)
+	user, passw, err := userPasswd(rc.Cfg.PrivCfg)
 	if err != nil {
 		return nil, fmt.Errorf("(RedisCli:rschInit) failed to load username/password from private configuration: %w", err)
 	}
 
 	// Convert string representation of database identifier to numeric database index
-	dbid, err := strconv.ParseUint(rc.cfg.ID, 10, 64)
+	dbid, err := strconv.ParseUint(rc.Cfg.ID, 10, 64)
 	if err != nil {
 		return nil, fmt.Errorf("(RedisCli:rschInit) cannot convert database identifier value to unsigned integer: %w", err)
 	}
@@ -182,10 +182,10 @@ func (rc *RedisClient) rschInit(rschIdx string) (*rsh.Client, error) {
 		Dial: func() (redis.Conn, error) {
 			if passw == "" {
 				// Simple dial
-				return redis.Dial("tcp", rc.cfg.HostPort, redis.DialDatabase(int(dbid)))
+				return redis.Dial("tcp", rc.Cfg.HostPort, redis.DialDatabase(int(dbid)))
 			}
 			// Dial with authentication
-			return redis.Dial("tcp", rc.cfg.HostPort,
+			return redis.Dial("tcp", rc.Cfg.HostPort,
 				redis.DialDatabase(int(dbid)),
 				redis.DialUsername(user),
 				redis.DialPassword(passw),
@@ -458,7 +458,7 @@ func (rc *RedisClient) scanSearch(rsc *rsh.Client, qa *dbms.QueryArgs, retFields
 	log.D("(RedisCli:scanSearch) Loading identifiers for all matched keys...")
 	ids := make([]string, 0, len(matched))
 	for _, k := range matched {
-		id, err := rc.c.HGet(rc.ctx, k, dbms.FieldID).Result()
+		id, err := rc.c.HGet(rc.Ctx, k, dbms.FieldID).Result()
 		if err != nil {
 			if errors.Is(err, RedisNotFound) {
 				return 0, fmt.Errorf("identificator field %q does not exist for key %q", dbms.FieldID, k)
@@ -496,7 +496,7 @@ func (rc *RedisClient) scanKeyMatch(match string, filter dbms.MatchStrFunc) ([]s
 	// Scan keys space prefixed by pref
 	for i := 0; ; i++ {
 		// Scan for RedisMaxScanKeys items (max)
-		sKeys, cursor, err = rc.c.Scan(rc.ctx, cursor, match, RedisMaxScanKeys).Result()
+		sKeys, cursor, err = rc.c.Scan(rc.Ctx, cursor, match, RedisMaxScanKeys).Result()
 		if err != nil {
 			return nil, err
 		}

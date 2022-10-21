@@ -3,7 +3,6 @@ package redis
 
 import (
 	"fmt"
-	"context"
 	"strconv"
 	"strings"
 	"errors"
@@ -35,21 +34,14 @@ const (
 )
 
 type RedisClient struct {
-	// Pre-configured members
-	ctx			context.Context
-	stop		context.CancelFunc
-	cliHost		string
-	readOnly	bool
-	// Provided configuration
-	cfg			*dbms.DBConfig
+	*dbms.CommonClient
 
-	c		*redis.Client
+	c	*redis.Client
 
 	// Dynamic members
 	toDelete	[]string
 	updated		int64
 	deleted		int64
-	termLongVal int		// should be incremented when need to terminate long-term operation
 }
 
 func NewClient(dbCfg *dbms.DBConfig) (*RedisClient, error) {
@@ -67,18 +59,14 @@ func NewClient(dbCfg *dbms.DBConfig) (*RedisClient, error) {
 
 	// Initialize Redis client
 	rc := &RedisClient{
-		cfg: dbCfg,
+		CommonClient: dbms.NewCommonClient(dbCfg, dbCfg.CliHost),
 		c: redis.NewClient(&redis.Options{
 			Addr:		dbCfg.HostPort,
 			Username:	user,
 			Password:	passw,
 			DB:			int(dbid),
 		}),
-		cliHost:	dbCfg.CliHost,
 	}
-
-	// Separate context for redis client
-	rc.ctx, rc.stop = context.WithCancel(context.Background())
 
 	return rc, nil
 }
@@ -119,16 +107,15 @@ func userPasswd(pcf map[string]any) (string, string, error) {
 
 func (rc *RedisClient) UpdateObj(fso *types.FSObject) error {
 	// Make a key
-	key := RedisObjPrefix + rc.cliHost + ":" + fso.FPath
+	key := RedisObjPrefix + rc.CliHost + ":" + fso.FPath
 
-
-	if rc.readOnly {
+	if rc.ReadOnly {
 		// Read-only datbase mode, do nothing
 		log.W("(RedisCli:UpdateObj) R/O mode IS SET, will not be performed: HSET => %s\n", key)
 	} else {
 		log.D("(RedisCli:UpdateObj) HSET => %s\n", key)
 		// Do real update
-		res := rc.c.HSet(rc.ctx, key, prepareHSetValues(rc.cliHost, fso))
+		res := rc.c.HSet(rc.Ctx, key, prepareHSetValues(rc.CliHost, fso))
 		if err := res.Err(); err != nil {
 			return fmt.Errorf("(RedisCli:UpdateObj) HSET of key %q returned error: %w", key, err)
 		}
@@ -142,9 +129,9 @@ func (rc *RedisClient) UpdateObj(fso *types.FSObject) error {
 
 func (rc *RedisClient) DeleteObj(fso *types.FSObject) error {
 	// Make a key
-	key := RedisObjPrefix + rc.cliHost + ":" + fso.FPath
+	key := RedisObjPrefix + rc.CliHost + ":" + fso.FPath
 
-	if rc.readOnly {
+	if rc.ReadOnly {
 		log.W("(RedisCli:DeleteObj) R/O mode IS SET, will not be performed: DEL => %s\n", key)
 	} else {
 		log.D("(RedisCli:DeleteObj) DEL (pending) => %s\n", key)
@@ -171,13 +158,13 @@ func (rc *RedisClient) Commit() (int64, int64, error) {
 	if nDel := len(rc.toDelete); nDel != 0 {
 		log.D("(RedisCli:Commit) Need to delete %d keys", nDel)
 
-		if rc.readOnly {
+		if rc.ReadOnly {
 			// Read-only datbase mode, count numbers of keys that would have been deleted on normal mode
 			wd := []string{}	// would be deleted
 			nd := []string{}	// will not be deleted
 
 			for _, key := range rc.toDelete {
-				res := rc.c.HGet(rc.ctx, key, dbms.FieldID)
+				res := rc.c.HGet(rc.Ctx, key, dbms.FieldID)
 				err := res.Err()
 				if err == nil {
 					// Ok, key will be deleted
@@ -218,7 +205,7 @@ func (rc *RedisClient) Commit() (int64, int64, error) {
 			}
 
 		} else {
-			res := rc.c.Del(rc.ctx, rc.toDelete...)
+			res := rc.c.Del(rc.Ctx, rc.toDelete...)
 			if err := res.Err(); err != nil {
 				return rc.updated, res.Val(), fmt.Errorf("(RedisCli:Commit) DEL operation failed: %w", err)
 			}
@@ -236,22 +223,9 @@ func (rc *RedisClient) Commit() (int64, int64, error) {
 	return ru, rd, nil
 }
 
-func (rc *RedisClient) SetReadOnly(ro bool) {
-	log.W("(RedisClient:SetReadOnly) Set database read-only flag to: %v", ro)
-	rc.readOnly = true
-}
-
-func (rc *RedisClient) TermLong() {
-	rc.termLongVal++
-}
-
-func (rc *RedisClient) Stop() {
-	rc.stop()
-}
-
 func (rc *RedisClient) LoadHostPaths(match dbms.MatchStrFunc) ([]string, error) {
 	// Make prefix of objects keys
-	pref := RedisObjPrefix + rc.cliHost + ":*"
+	pref := RedisObjPrefix + rc.CliHost + ":*"
 
 	// Output list of keys of paths belong to the host
 	hostPaths := []string{}
@@ -259,7 +233,7 @@ func (rc *RedisClient) LoadHostPaths(match dbms.MatchStrFunc) ([]string, error) 
 	pathOffset:= len(pref) - 1
 
 	// Keep current termLong value to have ability to compare during long-term operations
-	initTermLong := rc.termLongVal
+	initTermLong := rc.TermLongVal
 
 	// Scan() intermediate  variables
 	var cursor uint64
@@ -270,12 +244,12 @@ func (rc *RedisClient) LoadHostPaths(match dbms.MatchStrFunc) ([]string, error) 
 	// Scan keys space prefixed by pref
 	for i := 0; ; i++ {
 		// If value of the termLong was updated - need to terminate long-term operation
-		if rc.termLongVal != initTermLong {
+		if rc.TermLongVal != initTermLong {
 			return nil, fmt.Errorf("(RedisCli:LoadHostPaths) terminated")
 		}
 
 		// Scan for RedisMaxScanKeys items (max)
-		sKeys, cursor, err = rc.c.Scan(rc.ctx, cursor, pref, RedisMaxScanKeys).Result()
+		sKeys, cursor, err = rc.c.Scan(rc.Ctx, cursor, pref, RedisMaxScanKeys).Result()
 		if err != nil {
 			return nil, err
 		}
