@@ -9,7 +9,6 @@ import (
 
 // Agent client interface
 type ClientController interface {
-	// Agent related methods
 	LoadHostPaths(filter MatchStrFunc) (paths []string, err error)
 	UpdateObj(fso *types.FSObject) error
 	DeleteObj(fso *types.FSObject) error
