@@ -33,16 +33,16 @@ func NewCommonClient(dbCfg *DBConfig, cliHost string) *CommonClient {
 	return cc
 }
 
-func (rc *CommonClient) SetReadOnly(ro bool) {
+func (cc *CommonClient) SetReadOnly(ro bool) {
 	log.W("(%sCli:SetReadOnly) Set database read-only flag to: %v", Backend, ro)
-	rc.ReadOnly = true
+	cc.ReadOnly = true
 }
 
-func (rc *CommonClient) TermLong() {
+func (cc *CommonClient) TermLong() {
 	log.W("(%sCli:TermLong) Terminating long operations...", Backend)
-	rc.TermLongVal++
+	cc.TermLongVal++
 }
 
-func (rc *CommonClient) Stop() {
-	rc.stop()
+func (cc *CommonClient) Stop() {
+	cc.stop()
 }
