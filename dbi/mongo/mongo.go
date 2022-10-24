@@ -9,7 +9,7 @@ import (
 	"github.com/r-che/dfi/types/dbms"
 //	"github.com/r-che/dfi/dbi/common"
 
-//	"github.com/r-che/log"
+	"github.com/r-che/log"
 
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -47,6 +47,16 @@ func NewClient(dbCfg *dbms.DBConfig) (*MongoClient, error) {
 	if mc.c, err = mongo.Connect(mc.Ctx, opts); err != nil {
 		return nil, fmt.Errorf("(MongoCli:NewClient) cannot create new client to %s: %w", dbCfg.HostPort, err)
 	}
+
+	// Run pinging to check that DB is actually available
+	go func() {
+		log.I("(MongoCli:NewClient) Pinging %s ...", dbCfg.HostPort)
+		if err := mc.c.Ping(mc.Ctx, nil); err != nil {
+			log.E("(MongoCli:NewClient) Ping returned error: %v", err)
+			return
+		}
+		log.I("(MongoCli:NewClient) DB Pinging was successfull")
+	}()
 
 	return mc, nil
 }
