@@ -22,6 +22,15 @@ func (ss *StrSet) Add(values ...string) {
 		(*ss)[v] = true
 	}
 }
+func (ss *StrSet) Includes(v string) bool {
+	_, ok := (*ss)[v]
+	return ok
+}
+func (ss *StrSet) Del(values ...string) {
+	for _, v := range values {
+		delete(*ss, v)
+	}
+}
 func (ss *StrSet) List() []string {
 	// Unique strings list
 	uStr := make([]string, 0, len(*ss))
