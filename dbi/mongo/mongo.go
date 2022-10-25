@@ -15,6 +15,11 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+const (
+	MongoIDField	=	"_" + dbms.FieldID
+	ObjsCollection	=	"objs"
+)
+
 type MongoClient struct {
 	*dbms.CommonClient
 
