@@ -125,23 +125,37 @@ func (mc *MongoClient) Commit() (int64, int64, error) {
 				nd = append(nd, mc.toDelete...)
 			} else {
 				// Make a list of results
-				var results []bson.M
-				if err = cursor.All(mc.Ctx, &results); err != nil {
-					// Unexpected error
-					log.E("(MongoCli:Commit) Find.Cursor (used instead of Delete on R/O mode) on %s.%s for identifiers %v failed: %v",
-						coll.Database().Name(), coll.Name(), mc.toDelete, err)
-
-					// All identifers will NOT be deleted
-					nd = append(nd, mc.toDelete...)
-				}
+				defer func() {
+					if err := cursor.Close(mc.Ctx); err != nil {
+						log.E("(MongoCli:LoadHostPaths) cannot close cursor: %v", err)
+					}
+				}()
 
 				// Make a set from keys that should be deleted
 				dset := tools.NewStrSet(mc.toDelete...)
 
-				// Check all item from results
-				for _, item := range results {
+				// Keep current termLong value to have ability to compare during long-term operations
+				initTermLong := mc.TermLongVal
+				// Make a list of results
+				for cursor.Next(mc.Ctx) {
+					// If value of the termLong was updated - need to terminate long-term operation
+					if mc.TermLongVal != initTermLong {
+						return 0, int64(len(wd)), fmt.Errorf("(MongoCli:Commit) terminated")
+					}
+
+					// Item to get ID and found-path from the query result
+					var item map[string]string
+					// Try to decode next cursor value to the item
+					if err := cursor.Decode(&item); err != nil {
+						log.E("(MongoCli:Commit) R/O mode, loading suitable to deletion object - cannot decode cursor item: %w", err)
+						// All identifers will NOT be deleted
+						nd = append(nd, mc.toDelete...)
+						// Break cursor loop
+						break
+					}
+
 					// Extract ID field
-					id, ok := item[MongoIDField].(string)
+					id, ok := item[MongoIDField]
 					if !ok {
 						log.E("(MongoCli:Commit) Cannot convert object identifier to string, skip: %#v", item)
 						continue
@@ -246,7 +260,7 @@ func (mc *MongoClient) LoadHostPaths(match dbms.MatchStrFunc) ([]string, error) 
 
 		// Item to get ID and found-path from the query result
 		var item map[string]string
-		// Try to decore next cursor value to the map
+		// Try to decode next cursor value to the map
 		if err := cursor.Decode(&item); err != nil {
 			return nil, fmt.Errorf("(MongoCli:LoadHostPaths) cannot decode cursor item: %w", err)
 		}
