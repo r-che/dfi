@@ -64,10 +64,17 @@ func NewClient(dbCfg *dbms.DBConfig) (*MongoClient, error) {
 			log.E("(MongoCli:NewClient) Ping returned error: %v", err)
 			return
 		}
-		log.I("(MongoCli:NewClient) DB Pinging was successfull")
+		log.I("(MongoCli:NewClient) Pinging %s was successfull", dbCfg.HostPort)
 	})
 
 	return mc, nil
+}
+
+func DisableStartupPing() {
+	// Run once with an empty function to prevent a ping after
+	ping.Do(func() {
+		log.D("(MongoCli:DisablePing) Disabled pinging on client creation")
+	})
 }
 
 func parsePrivCfg(pcf map[string]any) (creds *options.Credential, err error) {

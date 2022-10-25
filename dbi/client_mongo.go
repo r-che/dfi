@@ -12,6 +12,10 @@ func NewClientController(dbCfg *dbms.DBConfig) (dbms.ClientController, error) {
 }
 
 func NewClient(dbCfg *dbms.DBConfig) (dbms.Client, error) {
+	// Disable pinging of database on client creation,
+	// because client usually executes commands immediately
+	mongo.DisableStartupPing()
+
 	// Initiate database client
 	return mongo.NewClient(dbCfg)
 }
