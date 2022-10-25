@@ -208,13 +208,15 @@ func (rc *RedisClient) Commit() (int64, int64, error) {
 			// Check for keys that would be deleted
 			if len(wd) != 0 {
 				// Print warning message about these keys
-				log.W("(RedisCli:Commit) R/O mode - DO NOT delete %d keys because  %v", len(wd), wd)
+				log.W("(RedisCli:Commit) %d key(s) should be deleted but would NOT because R/O mode: %v",
+						len(wd), strings.Join(wd, ", "))
 			}
 
 			// Check for keys that would not be deleted
 			if len(nd) != 0 {
 				// Print warning
-				log.W("(RedisCli:Commit) R/O mode - DEL could NOT delete %d keys because not exist or other errors: %v", len(nd), nd)
+				log.W("(RedisCli:Commit) R/O mode - DEL could NOT delete %d keys because not exist or other errors: %v",
+					len(nd), strings.Join(nd, ", "))
 			}
 
 		} else {
