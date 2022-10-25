@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"sync"
 
 //	"github.com/r-che/dfi/types"
 	"github.com/r-che/dfi/types/dbms"
@@ -31,6 +32,9 @@ type MongoClient struct {
 	deleted		int64
 }
 
+// Once object to execute Ping only once at client creation
+var ping = &sync.Once{}
+
 func NewClient(dbCfg *dbms.DBConfig) (*MongoClient, error) {
 	// Initialize Mongo client
 	mc := &MongoClient{
@@ -54,14 +58,14 @@ func NewClient(dbCfg *dbms.DBConfig) (*MongoClient, error) {
 	}
 
 	// Run pinging to check that DB is actually available
-	go func() {
+	go ping.Do(func() {
 		log.I("(MongoCli:NewClient) Pinging %s ...", dbCfg.HostPort)
 		if err := mc.c.Ping(mc.Ctx, nil); err != nil {
 			log.E("(MongoCli:NewClient) Ping returned error: %v", err)
 			return
 		}
 		log.I("(MongoCli:NewClient) DB Pinging was successfull")
-	}()
+	})
 
 	return mc, nil
 }
