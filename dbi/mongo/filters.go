@@ -58,29 +58,24 @@ func makeFilter(qa *dbms.QueryArgs) bson.D {
 	// Join all collected conditions by logical OR (if any)
 	spAndIds = joinByOr(spAndIds)
 
-
 	//
 	// Build search arguments filter
 	//
 	args := bson.D{}
 
-	/*
-	// TODO
 	if qa.IsMtime() {
-		chunks = append(chunks, makeSetRangeQuery(dbms.FieldMTime, qa.MtimeStart, qa.MtimeEnd, qa.MtimeSet))
+		args = append(args, makeSetRangeQuery(dbms.FieldMTime, qa.MtimeStart, qa.MtimeEnd, qa.MtimeSet))
 	}
-	// TODO
+
 	if qa.IsSize() {
-		chunks = append(chunks, makeSetRangeQuery(dbms.FieldSize, qa.SizeStart, qa.SizeEnd, qa.SizeSet))
+		args = append(args, makeSetRangeQuery(dbms.FieldSize, qa.SizeStart, qa.SizeEnd, qa.SizeSet))
 	}
-	*/
+
 	if qa.IsType() {
-		//chunks = append(chunks, `@` + dbms.FieldType + `:{` +  strings.Join(qa.Types, `|`) + `}`)
 		args = append(args, bson.E{dbms.FieldType, bson.D{bson.E{`$in`, qa.Types}}})
 	}
 
 	if qa.IsChecksum() {
-		//chunks = append(chunks, `@` + dbms.FieldChecksum + `:{` +  strings.Join(qa.CSums, `|`) + `}`)
 		args = append(args, bson.E{dbms.FieldChecksum, bson.D{bson.E{`$in`, qa.CSums}}})
 	}
 
@@ -155,33 +150,36 @@ func joinFilters(qjt queryJoinType, conds ...bson.D) bson.D {
 	return bson.D{{ op, conds }}
 }
 
-func makeSetRangeQuery(field string, min, max int64, set []int64) bson.D {
-	return bson.D{} // TODO
-	/*
+func makeSetRangeQuery(field string, min, max int64, set []int64) bson.E {
 	// Is set is not provided
 	if len(set) == 0 {
-		// Then min/max query
+		//
+		// Then range min..max query
+		//
 
 		// If closed interval
 		if min != 0 && max != 0 {
-			return fmt.Sprintf(`@%s:[%d %d]`, field, min, max)
+			return bson.E{field, bson.D{
+				{`$gte`, min},	// greater or equal then min
+				{`$lte`, max},	// lesser or equal then max
+			}}
 		}
 
 		// Half-open interval
+
 		if min == 0 {
-			return fmt.Sprintf(`@%s:[-inf %d]`, field, max)
+			// Only the top value of the range specified
+			return bson.E{field, bson.D{
+				{`$lte`, max},	// lesser or equal then max
+			}}
 		}
 
-		return fmt.Sprintf(`@%s:[%d +inf]`, field, min)
+		// Only the bottom value of the range specified
+		return bson.E{field, bson.D{
+			{`$gte`, min},	// greater or equal then min
+		}}
 	}
 
 	// Build query from set of values
-	chunks := make([]string, 0, len(set))
-
-	for _, item := range set {
-		chunks = append(chunks, fmt.Sprintf(`@%s:[%d %d]`, field, item, item))
-	}
-
-	return `(` + strings.Join(chunks, `|`) + `)`
-	*/
+	return bson.E{field, bson.D{bson.E{`$in`, set}}}
 }
