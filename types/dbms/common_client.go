@@ -6,6 +6,10 @@ import (
 	"github.com/r-che/log"
 )
 
+
+// On average should be sufficient for most cases, porbably :)
+const ExpectedMaxResults = 32
+
 // Fields and methods common to all clients
 type CommonClient struct {
 	Ctx			context.Context

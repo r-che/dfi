@@ -17,19 +17,23 @@ func NewStrSet(values ...string) *StrSet {
 
 	return &ss
 }
-func (ss *StrSet) Add(values ...string) {
+func (ss *StrSet) Add(values ...string) *StrSet {
 	for _, v := range values {
 		(*ss)[v] = true
 	}
+
+	return ss
 }
 func (ss *StrSet) Includes(v string) bool {
 	_, ok := (*ss)[v]
 	return ok
 }
-func (ss *StrSet) Del(values ...string) {
+func (ss *StrSet) Del(values ...string) *StrSet {
 	for _, v := range values {
 		delete(*ss, v)
 	}
+
+	return ss
 }
 func (ss *StrSet) List() []string {
 	// Unique strings list

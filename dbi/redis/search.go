@@ -211,7 +211,7 @@ func rshSearch(cli *rsh.Client, q *rsh.Query, retFields []string) (dbms.QueryRes
 	//log.D("(RedisCli:rshSearch) Prepared RediSearch query string: %v", q.Raw)	// XXX Raw query may be too long
 
 	// Output result
-	qr := make(dbms.QueryResults, 32)	// 32 - should probably be enough for most cases on average
+	qr := make(dbms.QueryResults, dbms.ExpectedMaxResults)
 
 	// Total selected docs
 	totDocs := 0
