@@ -10,7 +10,7 @@ import (
 	"github.com/r-che/log"
 
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 //
@@ -22,6 +22,14 @@ func (mc *MongoClient) Query(qa *dbms.QueryArgs, retFields []string) (dbms.Query
 	// TODO
 	log.D("Prepared MongoDB BSON query filter: %v\n", filter) // XXX Query may be too long
 
+	//
+	// Create aggregation to get filtered data with _id replaced by id
+	//
+
+	// Filter-replace pipeline
+	filRepPipeline := mongo.Pipeline{
+		bson.D{{ `$match`, filter}},	// apply filter
+	}
 
 	// Create list of requested fields
 	fields := bson.D{}
@@ -29,9 +37,6 @@ func (mc *MongoClient) Query(qa *dbms.QueryArgs, retFields []string) (dbms.Query
 		fields = append(fields, bson.E{Key: field, Value: 1})
 
 	}
-
-	// Find request options
-	opts := options.Find()
 
 	// List of fields required to create object key
 	keyFields := []string{dbms.FieldHost, dbms.FieldFPath}
@@ -46,18 +51,24 @@ func (mc *MongoClient) Query(qa *dbms.QueryArgs, retFields []string) (dbms.Query
 			}
 		}
 
-		// Set projection to the find request options
-		opts.SetProjection(fields)
+		// Add $project stage to pipeline to to set the requested fields set
+		filRepPipeline = append(filRepPipeline, bson.D{{ `$project`, fields }})
 	}
+
+	// Add $addFields stage to replace field name _id by id
+	filRepPipeline = append(filRepPipeline, bson.D{{`$addFields`, bson.D{
+		{MongoIDField, `$REMOVE`},
+		{dbms.FieldID, `$` + MongoIDField},
+	}}})
 
 	// Get collection handler
 	coll := mc.c.Database(mc.Cfg.ID).Collection(ObjsCollection)
 
-	// Run query
-	cursor, err := coll.Find(mc.Ctx, filter, opts)
+	// Run aggregated query
+	cursor, err := coll.Aggregate(mc.Ctx, filRepPipeline)
 	if err != nil {
 		// Unexpected error
-		return nil, fmt.Errorf("(MongoCli:Query) find on %s.%s with filter %v failed: %v",
+		return nil, fmt.Errorf("(MongoCli:Query) aggregate on %s.%s with filter %v failed: %v",
 			coll.Database().Name(), coll.Name(), filter, err)
 	}
 	defer func() {
@@ -70,7 +81,7 @@ func (mc *MongoClient) Query(qa *dbms.QueryArgs, retFields []string) (dbms.Query
 	qr := make(dbms.QueryResults, dbms.ExpectedMaxResults)
 
 	// Required fields that must present in the each result item
-	rqFields := append([]string{MongoIDField}, keyFields...)
+	rqFields := append([]string{dbms.FieldID}, keyFields...)
 
 	// Make a list of results
 	for cursor.Next(mc.Ctx) {
@@ -98,10 +109,6 @@ func (mc *MongoClient) Query(qa *dbms.QueryArgs, retFields []string) (dbms.Query
 			}
 		}
 
-		// Replace MongoIDField by dbms.FieldID in the result
-		item[dbms.FieldID] = item[MongoIDField]	// TODO Need to replace Find() by collection.Aggregate to avoid this renaming
-		delete(item, MongoIDField)
-
 		// Save result
 		qr[types.ObjKey{
 			Host: item[dbms.FieldHost].(string),
@@ -116,7 +123,6 @@ func (mc *MongoClient) Query(qa *dbms.QueryArgs, retFields []string) (dbms.Query
 
 	return qr, nil
 }
-
 
 func (mc *MongoClient) QueryAIIIds(qa *dbms.QueryArgs) (ids []string, err error) {
 	return nil, fmt.Errorf("QueryAIIIds - Not implemented")	// TODO
