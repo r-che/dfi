@@ -18,8 +18,11 @@ import (
 //
 
 func (mc *MongoClient) Query(qa *dbms.QueryArgs, retFields []string) (dbms.QueryResults, error) {
+	// Output result
+	qr := make(dbms.QueryResults, dbms.ExpectedMaxResults)
+
 	// By default run simple regex-based search
-	qr, err := mc.regexSearch(qa, retFields)
+	qr, err := mc.regexSearch(qa, retFields, qr)
 	if err != nil {
 		return nil, fmt.Errorf("(MongoCli:Query) regex search failed with: %w", err)
 	}
@@ -28,15 +31,46 @@ func (mc *MongoClient) Query(qa *dbms.QueryArgs, retFields []string) (dbms.Query
 	if qa.DeepSearch {
 		// Do additional standard SCAN search
 		log.D("(MongoCli:Query) Running deep search - full-text search with {$text: { $search: … }} ...")
-		// TODO log.D("(RedisCli:Query) Total of %d records were found with a deep (SCAN) search", n)
+		n, err := mc.fullTextSearch(qa, retFields, qr)
+		if err != nil {
+			return qr, fmt.Errorf("(MongoCli:Query) full-text search failed: %w", err)
+		}
+		log.D("(MongoCli:Query) Total of %d records were found with a deep (SCAN) search", n)
 	}
 
 	return qr, nil
 }
 
-func (mc *MongoClient) regexSearch(qa *dbms.QueryArgs, retFields []string) (dbms.QueryResults, error) {
-	filter := makeFilter(qa)
+func (mc *MongoClient) regexSearch(qa *dbms.QueryArgs, retFields []string, qr dbms.QueryResults) (dbms.QueryResults, error) {
+	// Make filter for default regexp-based search - join the search
+	// phrases and idenfifiers (if any) with the arguments filter
+	filter := joinFilters(useAnd,
+		// Join all provided conditions (search phrases and idenifiers) by logical OR
+		joinByOr(
+			// Merge search phrases with identifiers (if provided)
+			mergeIdsWithSPs(qa, makeFilterRegexSP(qa)),
+		),
 
+		// Join with the arguments filter
+		makeFilterByArgs(qa),
+	)
+
+	// TODO
+	log.D("(MongoCli:regexSearch) Prepared Mongo query filter: %v", filter)	// XXX Raw query may be too long
+
+	if err := mc.aggregateSearch(filter, retFields, qr); err != nil {
+		return qr, fmt.Errorf("(MongoCli:regexSearch) %w", err)
+	}
+
+	return qr, nil
+}
+
+func (mc *MongoClient) fullTextSearch(qa *dbms.QueryArgs, retFields []string, qrTop dbms.QueryResults) (int, error) {
+
+	return 0, fmt.Errorf("Not implemented") // TODO
+}
+
+func (mc *MongoClient) aggregateSearch(filter bson.D, retFields []string, qr dbms.QueryResults) error {
 	// Filter-replace pipeline
 	filRepPipeline := mongo.Pipeline{
 		bson.D{{ `$match`, filter}},	// apply filter
@@ -46,7 +80,6 @@ func (mc *MongoClient) regexSearch(qa *dbms.QueryArgs, retFields []string) (dbms
 	fields := bson.D{}
 	for _, field := range retFields {
 		fields = append(fields, bson.E{Key: field, Value: 1})
-
 	}
 
 	// List of fields required to create object key
@@ -79,17 +112,14 @@ func (mc *MongoClient) regexSearch(qa *dbms.QueryArgs, retFields []string) (dbms
 	cursor, err := coll.Aggregate(mc.Ctx, filRepPipeline)
 	if err != nil {
 		// Unexpected error
-		return nil, fmt.Errorf("(MongoCli:Query) aggregate on %s.%s with filter %v failed: %v",
+		return fmt.Errorf("(MongoCli:aggregateSearch) aggregate on %s.%s with filter %v failed: %v",
 			coll.Database().Name(), coll.Name(), filter, err)
 	}
 	defer func() {
 		if err := cursor.Close(mc.Ctx); err != nil {
-			log.E("(MongoCli:Query) cannot close cursor: %v", err)
+			log.E("(MongoCli:aggregateSearch) cannot close cursor: %v", err)
 		}
 	}()
-
-	// Output result
-	qr := make(dbms.QueryResults, dbms.ExpectedMaxResults)
 
 	// Required fields that must present in the each result item
 	rqFields := append([]string{dbms.FieldID}, keyFields...)
@@ -99,7 +129,7 @@ func (mc *MongoClient) regexSearch(qa *dbms.QueryArgs, retFields []string) (dbms
 		var item map[string]any
 		// Try to decode next cursor value to the item
 		if err := cursor.Decode(&item); err != nil {
-			log.E("(MongoCli:Query) cannot decode cursor item: %w", err)
+			log.E("(MongoCli:aggregateSearch) cannot decode cursor item: %w", err)
 			// Break cursor loop
 			break
 		}
@@ -108,13 +138,13 @@ func (mc *MongoClient) regexSearch(qa *dbms.QueryArgs, retFields []string) (dbms
 		for _, field := range rqFields {
 			v, ok := item[field]
 			if !ok {
-				log.E("(MongoCli:Query) Skip returned result without" +
+				log.E("(MongoCli:aggregateSearch) Skip returned result without" +
 					" required field %q data: %#v", field, item)
 				continue
 			}
 			// Check that value is string
 			if _, ok := v.(string); !ok {
-				log.E("(MongoCli:Query) Skip returned result with non-string value of" +
+				log.E("(MongoCli:aggregateSearch) Skip returned result with non-string value of" +
 					" required field %q, value: %#v (%T)", field, v, v)
 				continue
 			}
@@ -127,7 +157,7 @@ func (mc *MongoClient) regexSearch(qa *dbms.QueryArgs, retFields []string) (dbms
 		}] = item
 	}
 
-	return qr, nil
+	return nil
 }
 
 func (mc *MongoClient) QueryAIIIds(qa *dbms.QueryArgs) (ids []string, err error) {

@@ -21,25 +21,22 @@ const (
 	useOr
 )
 
-func makeFilter(qa *dbms.QueryArgs) bson.D {
-	//
-	// Using search phrases
-	//
-
-	spAndIds := bson.D{}
+// makeFilterRegexSP makes filter to search by fpath and rpath fields using regular expression
+func makeFilterRegexSP(qa *dbms.QueryArgs) bson.D {
+	spFilter := bson.D{}
 
 	if len(qa.SP) != 0 {
 		if qa.OnlyName {
 			// Use only the "name" field to search
 			for _, phrase := range qa.SP {
-				spAndIds = append(spAndIds,
+				spFilter = append(spFilter,
 					bson.E{dbms.FieldName, primitive.Regex{Pattern: regexp.QuoteMeta(phrase), Options: "i"}},
 				)
 			}
 		} else {
 			//// Use the found path and real path fields to search
 			for _, phrase := range qa.SP {
-				spAndIds = append(spAndIds,
+				spFilter = append(spFilter,
 					bson.E{dbms.FieldFPath, primitive.Regex{Pattern: regexp.QuoteMeta(phrase), Options: "i"}},
 					bson.E{dbms.FieldRPath, primitive.Regex{Pattern: regexp.QuoteMeta(phrase), Options: "i"}},
 				)
@@ -48,16 +45,21 @@ func makeFilter(qa *dbms.QueryArgs) bson.D {
 
 	}
 
-	// Use objects identifiers
-	if qa.IsIds() {
-		for _, id := range qa.Ids {
-			spAndIds = append(spAndIds, bson.E{MongoIDField, id})
-		}
+	return spFilter
+}
+
+// mergeIdsWithSPs merges filters by identifiers to existing filter with search expression with search phrases
+func mergeIdsWithSPs(qa *dbms.QueryArgs, sp bson.D) bson.D {
+	// Append expressions to search by identifiers
+	for _, id := range qa.Ids {
+		sp = append(sp, bson.E{MongoIDField, id})
 	}
 
-	// Join all collected conditions by logical OR (if any)
-	spAndIds = joinByOr(spAndIds)
+	return sp
+}
 
+// makeFilterByArgs makes filter expression to use search arguments like mtime, type of object and so on
+func makeFilterByArgs(qa *dbms.QueryArgs) bson.D {
 	//
 	// Build search arguments filter
 	//
@@ -136,11 +138,7 @@ func makeFilter(qa *dbms.QueryArgs) bson.D {
 	// Case #4 is the default configuration - nothing to check
 	}
 
-	//
-	// Construct resulting query
-	//
-
-	return joinFilters(useAnd, spAndIds, joinFilters(useAnd, args))
+	return args
 }
 
 func joinByNor(conds bson.D) bson.D {
