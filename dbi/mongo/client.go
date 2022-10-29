@@ -22,33 +22,36 @@ func (mc *MongoClient) Query(qa *dbms.QueryArgs, retFields []string) (dbms.Query
 	qr := make(dbms.QueryResults, dbms.ExpectedMaxResults)
 
 	// By default run simple regex-based search
-	qr, err := mc.regexSearch(qa, retFields, qr)
-	if err != nil {
+	if err := mc.runSearch(qa, makeFilterRegexSP(qa), retFields, qr); err != nil {
 		return nil, fmt.Errorf("(MongoCli:Query) regex search failed with: %w", err)
 	}
 
 	// Check for deep search required
 	if qa.DeepSearch {
-		// Do additional standard SCAN search
+		// Save current number of query results
+		n := len(qr)
+
+		// Do additional full text search
 		log.D("(MongoCli:Query) Running deep search - full-text search with {$text: { $search: … }} ...")
-		n, err := mc.fullTextSearch(qa, retFields, qr)
-		if err != nil {
+		if err := mc.runSearch(qa, makeFilterFullTextSearch(qa), retFields, qr); err != nil {
 			return qr, fmt.Errorf("(MongoCli:Query) full-text search failed: %w", err)
 		}
-		log.D("(MongoCli:Query) Total of %d records were found with a deep (SCAN) search", n)
+
+		// Check for some additional objects were found
+		log.D("(MongoCli:Query) Total of %d records were found with a deep (full-text) search", len(qr) - n)
 	}
 
 	return qr, nil
 }
 
-func (mc *MongoClient) regexSearch(qa *dbms.QueryArgs, retFields []string, qr dbms.QueryResults) (dbms.QueryResults, error) {
+func (mc *MongoClient) runSearch(qa *dbms.QueryArgs, spFilter bson.D, retFields []string, qr dbms.QueryResults) error {
 	// Make filter for default regexp-based search - join the search
 	// phrases and idenfifiers (if any) with the arguments filter
 	filter := joinFilters(useAnd,
 		// Join all provided conditions (search phrases and idenifiers) by logical OR
 		joinByOr(
 			// Merge search phrases with identifiers (if provided)
-			mergeIdsWithSPs(qa, makeFilterRegexSP(qa)),
+			mergeIdsWithSPs(qa, spFilter),
 		),
 
 		// Join with the arguments filter
@@ -56,18 +59,13 @@ func (mc *MongoClient) regexSearch(qa *dbms.QueryArgs, retFields []string, qr db
 	)
 
 	// TODO
-	log.D("(MongoCli:regexSearch) Prepared Mongo query filter: %v", filter)	// XXX Raw query may be too long
+	log.D("(MongoCli:runSearch) Prepared Mongo filter for search phrases: %v", filter)	// XXX Raw query may be too long
 
 	if err := mc.aggregateSearch(filter, retFields, qr); err != nil {
-		return qr, fmt.Errorf("(MongoCli:regexSearch) %w", err)
+		return fmt.Errorf("(MongoCli:runSearch) %w", err)
 	}
 
-	return qr, nil
-}
-
-func (mc *MongoClient) fullTextSearch(qa *dbms.QueryArgs, retFields []string, qrTop dbms.QueryResults) (int, error) {
-
-	return 0, fmt.Errorf("Not implemented") // TODO
+	return nil
 }
 
 func (mc *MongoClient) aggregateSearch(filter bson.D, retFields []string, qr dbms.QueryResults) error {
@@ -150,11 +148,16 @@ func (mc *MongoClient) aggregateSearch(filter bson.D, retFields []string, qr dbm
 			}
 		}
 
+		key := types.ObjKey{Host: item[dbms.FieldHost].(string), Path: item[dbms.FieldFPath].(string)}
+
+		// Check for key already exists
+		if _, ok := qr[key]; ok {
+			log.D("(MongoCli:aggregateSearch) Object already found: %v", key)
+			continue
+		}
+
 		// Save result
-		qr[types.ObjKey{
-			Host: item[dbms.FieldHost].(string),
-			Path: item[dbms.FieldFPath].(string),
-		}] = item
+		qr[key] = item
 	}
 
 	return nil

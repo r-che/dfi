@@ -3,6 +3,7 @@ package mongo
 import (
 	"fmt"
 	"regexp"
+	"strings"
 
 //	"github.com/r-che/dfi/types"
 	"github.com/r-che/dfi/types/dbms"
@@ -46,6 +47,29 @@ func makeFilterRegexSP(qa *dbms.QueryArgs) bson.D {
 	}
 
 	return spFilter
+}
+
+// makeFilterFullTextSearch makes filter to use full-text search by search phrases
+func makeFilterFullTextSearch(qa *dbms.QueryArgs) bson.D {
+	// Prepare search phrases before constructing query: if the phrase contains whitespaces,
+	// it should be interpreted as is - need to enclose it by escaped double quotes[1]
+	// [1] https://www.mongodb.com/docs/manual/reference/operator/query/text/#-search-field
+	prepared := make([]string, 0, len(qa.SP))
+	for _, sp := range qa.SP {
+		// Escape backslash with double quote
+		sp = strings.ReplaceAll(sp, `\"`, `"`)
+		if strings.IndexAny(sp, " \t\n") != -1 {
+			// sp contains whitespaces, need to wrap
+			sp = `\"` + sp + `\"`
+		}
+
+		// Append to prepared
+		prepared = append(prepared, sp)
+	}
+
+	return bson.D{{`$text`,
+		bson.D{{ `$search`, strings.Join(prepared, " ")}},
+	}}
 }
 
 // mergeIdsWithSPs merges filters by identifiers to existing filter with search expression with search phrases
