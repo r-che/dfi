@@ -18,13 +18,24 @@ import (
 //
 
 func (mc *MongoClient) Query(qa *dbms.QueryArgs, retFields []string) (dbms.QueryResults, error) {
-	filter := makeFilter(qa)
-	// TODO
-	log.D("Prepared MongoDB BSON query filter: %v\n", filter) // XXX Query may be too long
+	// By default run simple regex-based search
+	qr, err := mc.regexSearch(qa, retFields)
+	if err != nil {
+		return nil, fmt.Errorf("(MongoCli:Query) regex search failed with: %w", err)
+	}
 
-	//
-	// Create aggregation to get filtered data with _id replaced by id
-	//
+	// Check for deep search required
+	if qa.DeepSearch {
+		// Do additional standard SCAN search
+		log.D("(MongoCli:Query) Running deep search - full-text search with {$text: { $search: … }} ...")
+		// TODO log.D("(RedisCli:Query) Total of %d records were found with a deep (SCAN) search", n)
+	}
+
+	return qr, nil
+}
+
+func (mc *MongoClient) regexSearch(qa *dbms.QueryArgs, retFields []string) (dbms.QueryResults, error) {
+	filter := makeFilter(qa)
 
 	// Filter-replace pipeline
 	filRepPipeline := mongo.Pipeline{
@@ -114,11 +125,6 @@ func (mc *MongoClient) Query(qa *dbms.QueryArgs, retFields []string) (dbms.Query
 			Host: item[dbms.FieldHost].(string),
 			Path: item[dbms.FieldFPath].(string),
 		}] = item
-	}
-
-	// Check for deep search required
-	if qa.DeepSearch {
-		// TODO Do search with text index, probably it should replace default search instead of add some data
 	}
 
 	return qr, nil
