@@ -15,36 +15,6 @@ import (
     rsh "github.com/RediSearch/redisearch-go/redisearch"
 )
 
-type idKeyMap map[string]types.ObjKey
-func (ikm idKeyMap) String() string {
-	ids := make([]string, 0, len(ikm))
-	for id := range ikm {
-		ids = append(ids, id)
-	}
-	sort.Strings(ids)
-
-	return "[" + strings.Join(ids, " ") + "]"
-}
-func (ikm idKeyMap) Keys() []string {
-	ids := make([]string, 0, len(ikm))
-	for id := range ikm {
-		ids = append(ids, id)
-	}
-	sort.Strings(ids)
-
-	return ids
-}
-func (ikm idKeyMap) KeysAny() []any {
-	ids := make([]any, 0, len(ikm))
-	for id := range ikm {
-		ids = append(ids, id)
-	}
-	sort.Slice(ids, func(i, j int) bool {
-		return ids[i].(string) < ids[j].(string)
-	})
-	return ids
-}
-
 func (rc *RedisClient) ModifyAII(op dbms.DBOperator, args *dbms.AIIArgs, ids []string, add bool) (int64, int64, error) {
 	// 0. Get RediSearch client
 	rsc, err := rc.rschInit(metaRschIdx)
@@ -67,7 +37,7 @@ func (rc *RedisClient) ModifyAII(op dbms.DBOperator, args *dbms.AIIArgs, ids []s
 	}
 
 	// Create map indentifiers found in DB
-	fids := make(idKeyMap, len(ids))
+	fids := make(types.IdKeyMap, len(ids))
 	for k, v := range qr {
 		id, ok := v[dbms.FieldID]
 		if !ok {
@@ -176,7 +146,7 @@ func (rc *RedisClient) GetAIIs(ids, retFields []string) (dbms.QueryResultsAII, e
 	return result, nil
 }
 
-func (rc *RedisClient) updateAII(args *dbms.AIIArgs, ids idKeyMap, add bool) (int64, int64, error) {
+func (rc *RedisClient) updateAII(args *dbms.AIIArgs, ids types.IdKeyMap, add bool) (int64, int64, error) {
 	var err error
 
 	ttu := int64(0)	// Total tags updated
@@ -212,7 +182,7 @@ func (rc *RedisClient) updateAII(args *dbms.AIIArgs, ids idKeyMap, add bool) (in
 	return ttu, tdu, nil
 }
 
-func (rc *RedisClient) addTags(tags []string, ids idKeyMap) (int64, error) {
+func (rc *RedisClient) addTags(tags []string, ids types.IdKeyMap) (int64, error) {
 	tu := int64(0)	// Total updated tags fields
 
 	// Do for each identifier
@@ -247,7 +217,7 @@ func (rc *RedisClient) addTags(tags []string, ids idKeyMap) (int64, error) {
 		}
 
 		// Set tags for the current identifier
-		if _, err := rc.setTags(allTags, idKeyMap{id: objKey}); err != nil {
+		if _, err := rc.setTags(allTags, types.IdKeyMap{id: objKey}); err != nil {
 			return tu, err
 		}
 
@@ -258,7 +228,7 @@ func (rc *RedisClient) addTags(tags []string, ids idKeyMap) (int64, error) {
 	return tu, nil
 }
 
-func (rc *RedisClient) setTags(tags []string, ids idKeyMap) (int64, error) {
+func (rc *RedisClient) setTags(tags []string, ids types.IdKeyMap) (int64, error) {
 	// Make tags field value
 	tagsVal := strings.Join(tags, ",")
 
@@ -287,7 +257,7 @@ func (rc *RedisClient) setTags(tags []string, ids idKeyMap) (int64, error) {
 	return ts, nil
 }
 
-func (rc *RedisClient) addDescr(descr string, ids idKeyMap, noNL bool) (int64, error) {
+func (rc *RedisClient) addDescr(descr string, ids types.IdKeyMap, noNL bool) (int64, error) {
 	tu := int64(0)	// Total updated description fields
 
 	// Do for each identifier
@@ -315,7 +285,7 @@ func (rc *RedisClient) addDescr(descr string, ids idKeyMap, noNL bool) (int64, e
 		}
 
 		// Set description for the current identifier
-		n, err := rc.setDescr(fullDescr, idKeyMap{id: objKey})
+		n, err := rc.setDescr(fullDescr, types.IdKeyMap{id: objKey})
 		if err != nil {
 			return tu, err
 		}
@@ -327,7 +297,7 @@ func (rc *RedisClient) addDescr(descr string, ids idKeyMap, noNL bool) (int64, e
 	return tu, nil
 }
 
-func (rc *RedisClient) setDescr(descr string, ids idKeyMap) (int64, error) {
+func (rc *RedisClient) setDescr(descr string, ids types.IdKeyMap) (int64, error) {
 	tu := int64(0)	// Total updated description fields
 
 	// Do for each identifier
@@ -373,7 +343,7 @@ func (rc *RedisClient) setAIIField(id, field, value string, objKey types.ObjKey)
 	return nil
 }
 
-func (rc *RedisClient) deleteAII(args *dbms.AIIArgs, ids idKeyMap) (int64, int64, error) {
+func (rc *RedisClient) deleteAII(args *dbms.AIIArgs, ids types.IdKeyMap) (int64, int64, error) {
 	var err error
 
 	td := int64(0)	// Tags deleted
@@ -408,7 +378,7 @@ func (rc *RedisClient) deleteAII(args *dbms.AIIArgs, ids idKeyMap) (int64, int64
 	return td, dd, nil
 }
 
-func (rc *RedisClient) delTags(tags []string, ids idKeyMap) (int64, error) {
+func (rc *RedisClient) delTags(tags []string, ids types.IdKeyMap) (int64, error) {
 	// Convert list of tags to map to check existing tags for need to be deleted
 	toDelTags := make(map[string]bool, len(tags))
 	for _, tag := range tags {
@@ -463,7 +433,7 @@ func (rc *RedisClient) delTags(tags []string, ids idKeyMap) (int64, error) {
 		}
 
 		// Need to set new value of tags field value without removed tags
-		n, err := rc.setTags(keepTags, idKeyMap{id: objKey})
+		n, err := rc.setTags(keepTags, types.IdKeyMap{id: objKey})
 		if err != nil {
 			return tu, fmt.Errorf("(RedisCli:delTags) cannot remove tags %v from %q: %w", tags, id, err)
 		}
