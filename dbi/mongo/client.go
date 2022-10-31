@@ -158,13 +158,13 @@ func (mc *MongoClient) aggregateSearch(collName string, filter bson.D, retFields
 			if !ok {
 				log.E("(MongoCli:aggregateSearch) Skip returned result without" +
 					" required field %q data: %#v", field, item)
-				continue
+				goto nextResult
 			}
 			// Check that value is string
 			if _, ok := v.(string); !ok {
 				log.E("(MongoCli:aggregateSearch) Skip returned result with non-string value of" +
 					" required field %q, value: %#v (%T)", field, v, v)
-				continue
+				goto nextResult
 			}
 		}
 
@@ -173,6 +173,9 @@ func (mc *MongoClient) aggregateSearch(collName string, filter bson.D, retFields
 			Host: item[dbms.FieldHost].(string),
 			Path: item[dbms.FieldFPath].(string)},
 		] = item
+
+		// Point to jump if something wrong with result
+		nextResult:
 	}
 
 	return qr, nil
