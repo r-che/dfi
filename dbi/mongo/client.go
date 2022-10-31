@@ -166,9 +166,19 @@ func (mc *MongoClient) aggregateSearch(filter bson.D, retFields []string, qr dbm
 func (mc *MongoClient) QueryAIIIds(qa *dbms.QueryArgs) (ids []string, err error) {
 	return nil, fmt.Errorf("QueryAIIIds - Not implemented")	// TODO
 }
-func (mc *MongoClient) GetObjects(ids, retFields []string) (qr dbms.QueryResults, err error) {
-	return nil, fmt.Errorf("GetObjects - Not implemented")	// TODO
+
+func (mc *MongoClient) GetObjects(ids, retFields []string) (dbms.QueryResults, error) {
+	// Output result
+	qr := make(dbms.QueryResults, dbms.ExpectedMaxResults)
+
+	if err := mc.runSearch(&dbms.QueryArgs{}, makeFilterIDs(ids), retFields, qr); err != nil {
+		return nil, fmt.Errorf("(MongoCli:Query) regex search failed with: %w", err)
+	}
+
+	// Success
+	return qr, nil
 }
+
 func (mc *MongoClient) GetAIIs(ids, retFields  []string) (qr dbms.QueryResultsAII, err error) {
 	return nil, fmt.Errorf("GetAIIs - Not implemented")	// TODO
 }

@@ -22,6 +22,13 @@ const (
 	useOr
 )
 
+// makeFilterIDs makes filter to search documents by identifiers specified by ids
+func makeFilterIDs(ids []string) bson.D {
+	return bson.D{{
+		MongoIDField, bson.D{bson.E{`$in`, ids}},
+	}}
+}
+
 // makeFilterRegexSP makes filter to search by fpath and rpath fields using regular expression
 func makeFilterRegexSP(qa *dbms.QueryArgs) bson.D {
 	spFilter := bson.D{}

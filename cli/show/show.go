@@ -14,6 +14,10 @@ import (
 
 )
 
+const (
+	invalidMtimeValueFmt	= `<INVALID-MTIME-VALUE(%#v) - %v>`
+)
+
 func Do(dbc dbms.Client) *types.CmdRV {
 	// Get configuration
 	c := cfg.Config()
@@ -346,26 +350,36 @@ func showObj(objKey types.ObjKey, fields map[string]any, aii *dbms.AIIArgs) {
 	}
 
 	fmt.Printf("Type:      %s\n", fields[dbms.FieldType])
-	fmt.Printf("Size:      %s\n", fields[dbms.FieldSize])
+	fmt.Printf("Size:      %v\n", fields[dbms.FieldSize])
 
 	// Check for mtime field found
 	if mtime, ok := fields[dbms.FieldMTime]; ok {
-		// Convert interface{} to string
-		mtimeStr, ok := mtime.(string)
-		if !ok {
-			// Set mtimeStr to invalid value
-			mtimeStr = fmt.Sprintf("non-string %v", mtime)
+		var mtimeTs int64
+		var err error
+
+		// Type of mtime field is DBMS dependent
+		switch mtime.(type) {
+		case int64:
+			// Assign value to mtimeTs as is - it is already Unix timestamp
+			mtimeTs = mtime.(int64)
+		case string:
+			// Convert string Unix timestamp to integer value
+			mtimeTs, err = strconv.ParseInt(mtime.(string), 10, 64)
+		default:
+			err = fmt.Errorf("unexpected mtime type %T", mtime)
 		}
 
-		// Convert string Unix timestamp to integer value
-		ts, err := strconv.ParseInt(mtimeStr, 10, 64)
+
+		var mtimeStr string	// human-readable representation
 		if err == nil {
-			fmt.Printf("MTime:     %s (Unix: %s)\n",
-				time.Unix(ts, 0).Format("2006-01-02 15:04:05 MST"),
-				mtimeStr)
+			mtimeStr = time.Unix(mtimeTs, 0).Format("2006-01-02 15:04:05 MST")
 		} else {
-			fmt.Printf("MTime:    INVALID VALUE %q - %v\n", mtimeStr, err)
+			mtimeStr = fmt.Sprintf(invalidMtimeValueFmt, mtime, err)
+			mtimeTs = -1
 		}
+
+		// Produce output
+		fmt.Printf("MTime:     %s (Unix: %d)\n", mtimeStr, mtimeTs)
 	}
 
 	// Is checksum was set
