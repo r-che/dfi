@@ -18,37 +18,44 @@ import (
 //
 
 func (mc *MongoClient) Query(qa *dbms.QueryArgs, retFields []string) (dbms.QueryResults, error) {
-	// By default run simple regex-based search
-	qr, err := mc.runSearch(MongoObjsColl, qa, makeFilterRegexSP(qa), retFields)
+	// By default run full text search
+	log.D("(MongoCli:Query) Running full-text search with {$text: { $search: … }} ...")
+	qr, err := mc.runSearch(MongoObjsColl, qa, makeFilterFullTextSearch(qa), retFields)
 	if err != nil {
-		return nil, fmt.Errorf("(MongoCli:Query) regex search failed with: %w", err)
+		return qr, fmt.Errorf("(MongoCli:Query) full-text search failed: %w", err)
 	}
 
-	// Check for deep search required
-	if qa.DeepSearch {
-		// Do additional full text search
-		log.D("(MongoCli:Query) Running deep search - full-text search with {$text: { $search: … }} ...")
-		qrDeep, err := mc.runSearch(MongoObjsColl, qa, makeFilterFullTextSearch(qa), retFields)
-		if err != nil {
-			return qr, fmt.Errorf("(MongoCli:Query) full-text search failed: %w", err)
-		}
-
-		// Save number of found items before merging
-		n := len(qr)
-
-		// Merge qrDeep with qr
-		for k, v := range qrDeep {
-			// Check for key already exists
-			if _, ok := qr[k]; ok {
-				log.D("(MongoCli:Query) Object already found: %v", k)
-				continue
-			}
-			// Update existing query results
-			qr[k] = v
-		}
-
-		log.D("(MongoCli:Query) Total of %d records were found with a deep (full-text) search", len(qr) - n)
+	// Check for deep search is not required
+	if !qa.DeepSearch {
+		// Return resulst
+		return qr, nil
 	}
+
+	//
+	// Run additional regex-based search
+	//
+
+	log.D("(MongoCli:Query) Running regex based deep search ...")
+	qrDeep, err := mc.runSearch(MongoObjsColl, qa, makeFilterRegexSP(qa), retFields)
+	if err != nil {
+		return nil, fmt.Errorf("(MongoCli:Query) deep (regex-based) search failed with: %w", err)
+	}
+
+	// Save number of found items before merging
+	n := len(qr)
+
+	// Merge qrDeep with qr
+	for k, v := range qrDeep {
+		// Check for key already exists
+		if _, ok := qr[k]; ok {
+			log.D("(MongoCli:Query) Object already found: %v", k)
+			continue
+		}
+		// Update existing query results
+		qr[k] = v
+	}
+
+	log.D("(MongoCli:Query) Total %d additional records were found using deep (regex-based) search", len(qr) - n)
 
 	return qr, nil
 }
