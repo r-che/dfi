@@ -24,16 +24,16 @@ func (mc *MongoClient) UpdateObj(fso *types.FSObject) error {
 
 	if mc.ReadOnly {
 		log.W("(MongoCli:UpdateObj) R/O mode IS SET, Insert/Update of %q collection" +
-				" will NOT be performed => %s\n", ObjsCollection, mc.CliHost + ":" + fso.FPath)
+				" will NOT be performed => %s\n", MongoObjsColl, mc.CliHost + ":" + fso.FPath)
 		// Increase the update counter and return no errors
 		mc.updated++
 		// OK
 		return nil
 	}
-	log.D("(MongoCli:UpdateObj) Insert/Update of collection %q => %s\n", ObjsCollection, mc.CliHost + ":" + fso.FPath)
+	log.D("(MongoCli:UpdateObj) Insert/Update of collection %q => %s\n", MongoObjsColl, mc.CliHost + ":" + fso.FPath)
 
 	// Get collection handler
-	coll := mc.c.Database(mc.Cfg.ID).Collection(ObjsCollection)
+	coll := mc.c.Database(mc.Cfg.ID).Collection(MongoObjsColl)
 
 	// Update/Insert object
 	id := common.MakeID(mc.CliHost, fso)
@@ -100,7 +100,7 @@ func (mc *MongoClient) Commit() (int64, int64, error) {
 	}()
 
 	// Get collection handler
-	coll := mc.c.Database(mc.Cfg.ID).Collection(ObjsCollection)
+	coll := mc.c.Database(mc.Cfg.ID).Collection(MongoObjsColl)
 
 	// Create filter by identifiers
 	filter := bson.D{{
@@ -222,10 +222,10 @@ func (mc *MongoClient) LoadHostPaths(match dbms.MatchStrFunc) ([]string, error) 
 	hostPaths := []string{}
 
 	log.D("(MongoCli:LoadHostPaths) Scanning %s.%s for objects belonging to the host %q ...",
-		mc.Cfg.ID, ObjsCollection, mc.Cfg.CliHost)
+		mc.Cfg.ID, MongoObjsColl, mc.Cfg.CliHost)
 
 	// Get collection handler
-	coll := mc.c.Database(mc.Cfg.ID).Collection(ObjsCollection)
+	coll := mc.c.Database(mc.Cfg.ID).Collection(MongoObjsColl)
 
 	// Create filter by identifiers
 	filter := bson.D{{ dbms.FieldHost, mc.Cfg.CliHost }}

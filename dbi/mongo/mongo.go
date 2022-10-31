@@ -18,7 +18,8 @@ import (
 
 const (
 	MongoIDField	=	"_" + dbms.FieldID
-	ObjsCollection	=	"objs"
+	MongoObjsColl	=	"objs"
+	MongoAIIColl	= "aii"
 )
 
 type MongoClient struct {
