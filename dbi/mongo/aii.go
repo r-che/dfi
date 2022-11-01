@@ -10,8 +10,9 @@ import (
 
 	"github.com/r-che/log"
 
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-//	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func (mc *MongoClient) ModifyAII(op dbms.DBOperator, args *dbms.AIIArgs, ids []string, add bool) (int64, int64, error) {
@@ -47,7 +48,7 @@ func (mc *MongoClient) ModifyAII(op dbms.DBOperator, args *dbms.AIIArgs, ids []s
 			strings.Join(sIds.List(), " "))
 	}
 
-	fmt.Println(idkm)
+	log.D("(MongoCli:ModifyAII) OK - all required objects exist")
 
 	// 2. Select modification operator
 
@@ -59,130 +60,331 @@ func (mc *MongoClient) ModifyAII(op dbms.DBOperator, args *dbms.AIIArgs, ids []s
 	default:
 		panic(fmt.Sprintf("Unsupported AAI modification operator %v", op))
 	}
-
-	// Unreachable
-	return -1, -1, nil
 }
 
 func (mc *MongoClient) updateAII(args *dbms.AIIArgs, idkm types.IdKeyMap, add bool) (int64, int64, error) {
-	ttu := int64(0)	// Total tags updated
-	tdu := int64(0)	// Total descriptions updated
-	var err error
+	// Check for no fields required to set
+	if args.Tags == nil && args.Descr == "" {
+		return 0, 0, fmt.Errorf("(MongoCli:updateAII) no fields required to set")
+	}
+
+	//
+	// Get information about existing AII
+	//
 
 	// List of fields that need to be loaded from DB
-	rqFields := make([]string, 0, 2)
+	var rqFields []string
 
-	// Update tags if exist
-	if len(args.Tags) != 0 && add {
-		// Need to load existing tags, add tags field
-		rqFields = append(rqFields, dbms.AIIFieldTags)
+	// If need to add information to existing items
+	if add {
+		// Need to load existing values of the fields
+		rqFields := make([]string, 0, 2)
+
+		// Check for tags field should be updated by adding new tags set to the existing set
+		if args.Tags != nil && add {
+			// Add the tags field name to the requested fields set to get existing tags
+			rqFields = append(rqFields, dbms.AIIFieldTags)
+		}
+
+		// Check for description field should be updated by adding new value to existing
+		if args.Descr != "" && add {
+			// Add the description field name to the requested fields set to get existing description
+			rqFields = append(rqFields, dbms.AIIFieldDescr)
+		}
+	} else {
+		// Need to set (overwrite if items already exist) information in AII,
+		// no need to load existing information, only object's identifiers are required
+		rqFields = []string{dbms.FieldID}
 	}
 
-	// Update description if exist
-	if args.Descr != "" && add {
-		// Need to load existing description
-		rqFields = append(rqFields, dbms.AIIFieldDescr)
-	}
-
+	// Load existing objects
 	var qr dbms.QueryResults
-	// If some fields were requested - need to load existing AII about objects identified by ids
-	if len(rqFields) != 0 {
-		// Load existing objects
-		if qr, err = mc.runSearch(MongoAIIColl, &dbms.QueryArgs{}, makeFilterIDs(idkm.Keys()), rqFields); err != nil {
-			return 0, 0, fmt.Errorf("(MongoCli:updateAII) cannot load fields required for update: %w", err)
-		}
+	qr, err := mc.runSearch(MongoAIIColl, &dbms.QueryArgs{}, makeFilterIDs(idkm.Keys()), rqFields)
+	if err != nil {
+		return 0, 0, fmt.Errorf("(MongoCli:updateAII) cannot load fields required for update: %w", err)
 	}
 
-	// Process all found results
-	// NOTE! qr is not empty only if:
-	// - add is true
-	// - objects specified by ids have any data for target field (description or tags are set)
+	//
+	// Perform update/insert operations
+	//
 
-	// Resulted map with tags and descriptions
-	setAII := map[string]*dbms.AIIArgs{}
-
-	for _, aii := range qr {
-		itemData := dbms.AIIArgs{}
-
-		//
-		// Check for tags field exists
-		//
-		if tagsData, ok := aii[dbms.AIIFieldTags]; ok {
-			// Check for correct type of tags
-			tagsArr, ok := tagsData.(primitive.A)
-			if !ok {
-				log.E("MongoCli:updateAII) AII item contains invalid field %q - type of field is %T," +
-					" want primitive.A (array), item: %#v", dbms.AIIFieldTags, tagsData, aii)
-				// Skip this item
-				goto nextAII
-			}
-
-			// Create set of tags from specified tags
-			tags := tools.NewStrSet(args.Tags...)
-			// Check and convert each tag from loaded tags data, then add to resulting set
-			for _, tagVal := range tagsArr {
-				tag, ok := tagVal.(string)
-				if !ok {
-					// Skip this item
-					goto nextAII
-				}
-
-				// Add tag to the resulting set
-				tags.Add(tag)
-			}
-
-			// Set tags to the item data
-			itemData.Tags = tags.List()
-		}
-
-		//
-		// Check for description field exists
-		//
-		if descrData, ok := aii[dbms.AIIFieldDescr]; ok {
-			// Check for correct type of description
-			descr, ok := descrData.(string)
-			if !ok {
-				log.E("MongoCli:updateAII) AII item contains invalid field %q - type of field is %T," +
-					" want string, item: %#v", dbms.AIIFieldDescr, descrData, aii)
-				// Skip this item
-				goto nextAII
-			}
-
-			// Append new description value to the existing
-			itemData.Descr = descr + tools.Tern(args.NoNL, `; `, "\n") + args.Descr
-		}
-
-		// Store item data
-		setAII[aii[dbms.FieldID].(string)] = &itemData
-
-		// Point to jump if something wrong with result
-		nextAII:
+	// Check for new values should be appended to existing
+	if add {
+		return mc.appendAII(args, idkm, qr)
 	}
 
-	// Check setAII for each identifier to find identifiers that were not handled in the preivous loop
-	for _, id := range idkm.Keys() {
-		// Get item
-		if item := setAII[id]; item != nil {
-			if len(args.Tags) != 0 && len(item.Tags) == 0 {
-				// Set tags field
-				item.Tags = args.Tags
-			}
+	// Just update them otherwise
+	return mc.setAII(args, idkm, qr)
+}
 
-			if args.Descr != "" && item.Descr == "" {
-				item.Descr = args.Descr
-			}
-		} else {
-			// Need to set new values for this item
-			setAII[id] = &dbms.AIIArgs{
-				Tags:	args.Tags,
-				Descr: args.Descr,
-			}
+func (mc *MongoClient) appendAII(args *dbms.AIIArgs, idkm types.IdKeyMap, qr dbms.QueryResults) (int64, int64, error) {
+	var ttu, tdu int64 // total tags/decription updates counters
+
+	// Get collection handler
+	coll := mc.c.Database(mc.Cfg.ID).Collection(MongoAIIColl)
+
+	for id, key := range idkm {
+		// Make set of fields that need to be set
+		doc := bson.D{}
+
+		// Get AII for the object with key from query results
+		aii := qr[key]
+		// Check for nothing was loaded from DB for such object
+		if aii == nil {
+			// Currently, no AII exists in DB for this object, use empty map
+			aii = dbms.QRItem{}
+
+			// Add required fields to new AII document
+			doc = append(doc, bson.E{`$set`, bson.D{
+				{dbms.AIIFieldHost, key.Host},
+				{dbms.AIIFieldFPath, key.Path},
+			}})
 		}
+
+		// Tags/description updated counters for the current item
+		var tu, du int64
+
+		// Get list of tags which have to be set
+		if tags, err := addTags(args, aii); err != nil {
+			log.E("(MongoCli:appendAII) cannot add/set tags: %v", err)
+			continue
+		} else if tags != nil {
+			// Append tags field
+			doc = append(doc, bson.E{`$set`, bson.D{{dbms.AIIFieldTags, tags}}})
+			// Increase counter of tags updates
+			tu++
+		}
+
+		// Add/set description
+		if descr, err := addDescr(args, aii); err != nil {
+			log.E("(MongoCli:appendAII) cannot add/set description: %v", err)
+			continue
+		} else if descr != "" {
+			// Append description
+			doc = append(doc, bson.E{`$set`, bson.D{{dbms.AIIFieldDescr, descr}}})
+			// Increase counter of description updates
+			du++
+		}
+
+		// Check for no fields in the document
+		if len(doc) == 0 {
+			// No updates are required for this document
+			continue
+		}
+
+		// Do update/insert
+		res, err := coll.UpdateOne(mc.Ctx,
+			bson.D{{MongoIDField, id}},			// Update exactly this ID
+			doc,
+			options.Update().SetUpsert(true),
+		)
+
+		if err != nil {
+			return ttu, tdu, fmt.Errorf("(MongoCli:appendAII) updateOne (id: %s) on %s.%s failed: %w",
+					id, coll.Database().Name(), coll.Name(), err)
+		}
+
+		if res.MatchedCount == 0 && res.UpsertedCount == 0 {
+			return ttu, tdu, fmt.Errorf("(MongoCli:appendAII) updateOne (id: %s) on %s.%s returned success," +
+				" but no documents were changed", id, coll.Database().Name(), coll.Name())
+		}
+
+		// Update counters
+		ttu += tu
+		tdu += du
 	}
 
-	return -1, -1, fmt.Errorf("updateAII not implemented")	// TODO
+	log.D("(MongoCli:appendAII) Data update (append) completed for %s, updated - %d tags, %d descriptions",
+		idkm.Keys(), ttu, tdu)
+
 	// OK
 	return ttu, tdu, nil
+}
+
+func (mc *MongoClient) setAII(args *dbms.AIIArgs, idkm types.IdKeyMap, qr dbms.QueryResults) (int64, int64, error) {
+	// Need to set tags/descr field to all items
+
+	var ttu, tdu int64	// total tags/total descriptions updated
+
+	// Make a set with identifiers for which no records were found in the AII collection
+	needInsert := tools.NewStrSet(idkm.Keys()...)	// put all identifiers scheduled to update
+	// Then remove the existing ones in the AII collection
+	for _, v := range qr {
+		needInsert.Del(v[dbms.FieldID].(string))
+	}
+
+	//
+	// Make a set of fields with values that need to be updated
+	//
+	fields := bson.D{}
+
+	// Is tags provided?
+	if args.Tags != nil {
+		// Append tags
+		fields = append(fields, bson.E{`$set`, bson.D{{dbms.AIIFieldTags, args.Tags}}})
+		// Update counter
+		ttu = int64(len(idkm) - len(*needInsert))
+	}
+
+	// Is description provided?
+	if args.Descr != "" {
+		// Append description
+		fields = append(fields, bson.E{`$set`, bson.D{{dbms.AIIFieldDescr, args.Descr}}})
+		// Update counter
+		tdu = int64(len(idkm) - len(*needInsert))
+	}
+
+	// Get collection handler
+	coll := mc.c.Database(mc.Cfg.ID).Collection(MongoAIIColl)
+
+	// Check that NOT all AII have to be inserted - some need to be updated
+	if len(*needInsert) != len(idkm) {
+		// Ok, we some objects in AII collection, update them
+		res, err := coll.UpdateMany(
+			mc.Ctx,
+			makeFilterIDs(idkm.Keys()),
+			fields,
+		)
+
+		if err != nil {
+			return 0, 0, fmt.Errorf("(MongoCli:setAII) updateMany (ids: %s) on %s.%s failed: %w",
+					idkm.Keys(), coll.Database().Name(), coll.Name(), err)
+		}
+
+		if res.MatchedCount == 0 && res.UpsertedCount == 0 {
+			return 0, 0, fmt.Errorf("(MongoCli:UpdateObj) updateMany (ids: %s) on %s.%s returned success," +
+				" but no documents were changed", idkm.Keys(), coll.Database().Name(), coll.Name())
+		}
+	}
+
+	log.D("(MongoCli:setAII) %d AII record(s) were successfuly set", len(idkm) - len(*needInsert))
+
+	// Check for nothing to insert
+	if len(*needInsert) == 0 {
+		// OK, no insertions required
+		return ttu, tdu, nil
+	}
+
+	//
+	// Insert fields that currently do not exist in the AII collection
+	//
+
+	log.D("(MongoCli:setAII) Inserting new AII records...")
+
+	// Update/Insert AII, do this one by one because UpdateMany() does not support SetUpsert(true) option
+	for _, id := range needInsert.List() {
+		// Create a new document
+		doc := bson.D{{`$set`, bson.D{
+			{MongoIDField,			id},
+			{dbms.AIIFieldHost,		idkm[id].Host},
+			{dbms.AIIFieldFPath,	idkm[id].Path},
+		}}}
+
+		// Add fields that have to beset
+		doc = append(doc, fields...)
+
+		// Do update/insert
+		res, err := coll.UpdateOne(mc.Ctx,
+			bson.D{{MongoIDField, id}},			// Update exactly this ID
+			doc,
+			options.Update().SetUpsert(true),	// do insert if no object with this ID was found
+		)
+
+		if err != nil {
+			return ttu, tdu, fmt.Errorf("(MongoCli:setAII) updateOne (id: %s) on %s.%s failed: %w",
+					id, coll.Database().Name(), coll.Name(), err)
+		}
+
+		if res.MatchedCount == 0 && res.UpsertedCount == 0 {
+			return ttu, tdu, fmt.Errorf("(MongoCli:setAII) updateOne (id: %s) on %s.%s returned success," +
+				" but no documents were changed", id, coll.Database().Name(), coll.Name())
+		}
+
+		// Update counters
+		ttu += tools.Tern(args.Tags != nil, int64(1), 0)
+		tdu += tools.Tern(args.Descr != "", int64(1), 0)
+	}
+
+	log.D("(MongoCli:setAII) %d AII record(s) were successfuly inserted", len(*needInsert))
+
+	// OK
+	return ttu, tdu, nil
+}
+
+func addTags(args *dbms.AIIArgs, aii dbms.QRItem) ([]string, error) {
+	// Check for any tags specified
+	if args.Tags == nil {
+		// Nothing to do
+		return nil, nil
+	}
+
+	// Check for tags field exists
+	tagsData, ok := aii[dbms.AIIFieldTags]
+	if !ok {
+		// Tags field does not exist, return argument as is
+		return args.Tags, nil
+	}
+
+	//
+	// Need to update existing tags value
+	//
+
+	// Check for correct type of tags
+	tagsArr, ok := tagsData.(primitive.A)
+	if !ok {
+		return nil, fmt.Errorf("(MongoCli:updateAII) AII item contains invalid field %q - type of field is %T," +
+			" want primitive.A (array), item: %#v", dbms.AIIFieldTags, tagsData, aii)
+	}
+
+	// Make a set of existing tags
+	tags := tools.NewStrSet()
+	// Check and convert each tag from loaded tags data, then add to resulting set
+	for _, tagVal := range tagsArr {
+		tag, ok := tagVal.(string)
+		if !ok {
+			// Skip this item
+			return nil, fmt.Errorf("(MongoCli:updateAII) AII item contains field %q with non-string item value: %#v" +
+				dbms.AIIFieldTags, aii)
+		}
+
+		// Add tag to the resulting set
+		tags.Add(tag)
+	}
+
+	// Add to set tags provided by arguments, get the set complement
+	// to determine was the tags field updated or not
+	if addedTags := len(tags.AddComplement(args.Tags...)); addedTags == 0 {
+		// No tags were added
+		return nil, nil
+	}
+
+	// Return merged list of tags
+	return tags.List(), nil
+}
+
+func addDescr(args *dbms.AIIArgs, aii map[string]any) (string, error) {
+	// Check for description specified
+	if args.Descr == "" {
+		// Nothing to do
+		return "", nil
+	}
+
+	// Check for description field does not exists
+	descrData, ok := aii[dbms.AIIFieldDescr]
+	if !ok {
+		// Tags field does not exist, need to set argument as is
+		return args.Descr, nil
+	}
+
+	// Check for correct type of description
+	descr, ok := descrData.(string)
+	if !ok {
+		return "", fmt.Errorf("MongoCli:updateAII) AII item contains invalid field %q -" +
+			" type of field is %T, want string, item: %#v", dbms.AIIFieldDescr, descrData, aii)
+	}
+
+	// Append new description value to the existing
+	return descr + tools.Tern(args.NoNL, `; `, "\n") + args.Descr, nil
 }
 
 func (mc *MongoClient) deleteAII(args *dbms.AIIArgs, idkm types.IdKeyMap) (int64, int64, error) {

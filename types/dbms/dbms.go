@@ -107,7 +107,8 @@ func (aa *AIIArgs) SetFieldStr(field, value string) error {
 type MatchStrFunc func(string) bool
 
 // Map to return query results indexed host + found path
-type QueryResults map[types.ObjKey] map[string]any
+type QRItem map[string]any
+type QueryResults map[types.ObjKey] QRItem
 // Map to return AII query results
 type QueryResultsAII map[string]*AIIArgs
 
@@ -141,6 +142,10 @@ const (
 	AIIFieldTags	=	"tags"
 	AIIFieldDescr	=	"descr"
 	AIIFieldOID		=	"oid"
+	// The following two fields duplicate object fields to have ability to make guess
+	// of belonging to the AII when the object to which it belonged was removed/renamed
+	AIIFieldHost	=	FieldHost
+	AIIFieldFPath	=	FieldFPath
 
 	AIIAllTags		=	"ALL"
 	AIIDelDescr		=	"\u0000\u0000DELETE DESCRIPTION\u0000\u0000"
