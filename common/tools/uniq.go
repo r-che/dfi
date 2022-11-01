@@ -35,6 +35,34 @@ func (ss *StrSet) Del(values ...string) *StrSet {
 
 	return ss
 }
+func (ss *StrSet) Complement(values ...string) []string {
+	compl := make([]string, 0, len(values))
+	for _, v := range values {
+		if _, ok := (*ss)[v]; !ok {
+			compl = append(compl, v)
+		}
+	}
+
+	return NewStrSet(compl...).List()	// make values unique
+}
+func (ss *StrSet) AddComplement(values ...string) []string {
+	compl := make([]string, 0, len(values))
+	for _, v := range values {
+		// Is value already exists?
+		if _, ok := (*ss)[v]; ok {
+			// Skip it
+			continue
+		}
+
+		// Add value to the complement
+		compl = append(compl, v)
+
+		// Add to the set
+		(*ss)[v] = true
+	}
+
+	return NewStrSet(compl...).List()	// make values unique
+}
 func (ss *StrSet) List() []string {
 	// Unique strings list
 	uStr := make([]string, 0, len(*ss))
