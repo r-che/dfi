@@ -58,6 +58,12 @@ func makeFilterRegexSP(qa *dbms.QueryArgs) bson.D {
 
 // makeFilterFullTextSearch makes filter to use full-text search by search phrases
 func makeFilterFullTextSearch(qa *dbms.QueryArgs) bson.D {
+	// Check for any search phrases set
+	if len(qa.SP) == 0 {
+		// No search phrases
+		return nil
+	}
+
 	// Prepare search phrases before constructing query: if the phrase contains whitespaces,
 	// it should be interpreted as is - need to enclose it by escaped double quotes[1]
 	// [1] https://www.mongodb.com/docs/manual/reference/operator/query/text/#-search-field
