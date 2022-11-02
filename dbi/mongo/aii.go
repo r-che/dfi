@@ -15,6 +15,44 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+func (mc *MongoClient) GetAIIIds(withFields []string) ([]string, error) {
+	// If no particular fields were requested
+	if len(withFields) == 0 {
+		// Use all user valuable fields
+		withFields = dbms.UVAIIFields()
+	}
+
+	// Make fields filter
+	fields := bson.D{}
+	for _, field := range withFields {
+		fields = append(fields, bson.E{
+			field, bson.D{{`$exists`, true}},
+		})
+	}
+
+	// Need to get AIIs which have any of the fields
+	qr, err := mc.aggregateSearch(MongoAIIColl,
+		// Join all fields by OR to match document that have at least one field from the fields set
+		joinByOr(fields),
+		 // Need to get only the identifier field
+		[]string{dbms.FieldID})
+	if err != nil {
+		return nil, fmt.Errorf("(MongoCli:GetAIIs) cannot load identifiers of objects" +
+			" that have filled AII fields %v: %w", withFields, err)
+	}
+
+	// Collect identifiers from the result
+	ids := make([]string, 0, len(qr))
+	for _, res := range qr {
+		// Get object identifier, do not use safe type check because the value
+		// of dbms.FieldID field already checked for string type in mc.aggregateSearch()
+		ids = append(ids, res[dbms.FieldID].(string))
+	}
+
+	// OK
+	return ids, nil
+}
+
 func (mc *MongoClient) GetAIIs(ids, retFields []string) (dbms.QueryResultsAII, error) {
 	// Load data for AII with requested identifiers
 	qr, err := mc.aggregateSearch(MongoAIIColl, makeFilterIDs(ids), retFields)

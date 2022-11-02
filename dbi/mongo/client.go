@@ -194,6 +194,3 @@ func (mc *MongoClient) GetObjects(ids, retFields []string) (dbms.QueryResults, e
 	// Success
 	return qr, nil
 }
-func (mc *MongoClient) GetAIIIds(withFields []string) (ids []string, err error) {
-	return nil, fmt.Errorf("GetAIIIds - Not implemented")	// TODO
-}
