@@ -62,6 +62,7 @@ func (mc *MongoClient) Query(qa *dbms.QueryArgs, retFields []string) (dbms.Query
 }
 
 func (mc *MongoClient) runSearch(collName string, qa *dbms.QueryArgs, spFilter bson.D, retFields []string) (dbms.QueryResults, error) {
+	fmt.Println("spFilter:", spFilter.Map())	// TODO Need to check that spFilter contains `$text` operator, if true - need to pass special value that signals that $text is used
 	// Make filter for default regexp-based search - join the search
 	// phrases and idenfifiers (if any) with the arguments filter
 	filter := joinFilters(useAnd,
@@ -78,7 +79,7 @@ func (mc *MongoClient) runSearch(collName string, qa *dbms.QueryArgs, spFilter b
 	// TODO
 	log.D("(MongoCli:runSearch) Prepared Mongo filter for search in %q: %v", collName, filter)	// XXX Raw query may be too long
 
-	qr, err := mc.aggregateSearch(collName, filter, retFields)
+	qr, err := mc.aggregateSearch(collName, filter, retFields, qa)
 	if err != nil {
 		return nil, fmt.Errorf("(MongoCli:runSearch) %w", err)
 	}
@@ -86,10 +87,11 @@ func (mc *MongoClient) runSearch(collName string, qa *dbms.QueryArgs, spFilter b
 	return qr, nil
 }
 
-func (mc *MongoClient) aggregateSearch(collName string, filter bson.D, retFields []string) (dbms.QueryResults, error) {
+func (mc *MongoClient) aggregateSearch(collName string, filter bson.D, retFields []string,
+										variadic ...any) (dbms.QueryResults, error) {
 	// Filter-replace pipeline
 	filRepPipeline := mongo.Pipeline{
-		bson.D{{ `$match`, filter}},	// apply filter
+		bson.D{{ `$match`, filter }},	// apply filter
 	}
 
 	// Create list of requested fields
@@ -121,8 +123,14 @@ func (mc *MongoClient) aggregateSearch(collName string, filter bson.D, retFields
 		{dbms.FieldID, `$` + MongoIDField},
 	}}})
 
+	// Process variadic arguments
+	filRepPipeline = pipelineConfVariadic(filRepPipeline, variadic)
+
 	// Get collection handler
 	coll := mc.c.Database(mc.Cfg.ID).Collection(collName)
+
+	// TODO
+	fmt.Println("\nfilRepPipeline:", filRepPipeline,"\n")
 
 	// Run aggregated query
 	cursor, err := coll.Aggregate(mc.Ctx, filRepPipeline)

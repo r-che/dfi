@@ -6,7 +6,74 @@ import (
 
 	"github.com/r-che/dfi/common/tools"
 	"github.com/r-che/dfi/types/dbms"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/bson"
 )
+
+const minNameTextMatchScore = 200	// empiric value
+
+func pipelineConfVariadic(pipeline mongo.Pipeline, configs []any) mongo.Pipeline {
+	// Try to interpret each additional configuration parameter
+	for _, conf := range configs {
+		// Choose type of configuration
+		switch conf.(type) {
+		case *dbms.QueryArgs:
+			// Get a correct pointer
+			qa := conf.(*dbms.QueryArgs)
+
+			// Check for OnlyName is not set
+			if !qa.OnlyName {
+				// Currently, nothing to do
+				continue
+			}
+
+			// TODO 
+
+
+			// Need to add filter to pipeline to match documents with very high search score
+			// which can only have a document with the name field matched by full-text filter,
+			// but only if the $text filter used in the $match pipeline argument
+
+			for _, doc := range pipeline {
+				// Lookup for $match operator in this document
+				match, ok := doc.Map()[`$match`].(bson.D)
+				if !ok {
+					// Skip it
+					continue
+				}
+
+				// Lookup each entry in the $match operator for $text operator
+				for _, entry := range match {
+					if entry.Key == `$text` {
+						goto addScoreFilter
+					}
+				}
+			}
+			// No `$text` operator found
+			fmt.Println("NOT MODIFY:", pipeline)
+			continue
+
+			addScoreFilter:
+			fmt.Println("MODIFY PIPELINE:", pipeline)	// TODO
+			// Modify pipeline
+			pipeline = append(pipeline,
+				// Add pseudo-field to get search score
+				bson.D{{`$addFields`, bson.D{{`score`, bson.D{{`$meta`, `textScore`}}}}}},
+				// Filter results by score
+				bson.D{{`$match`, bson.D{{`score`, bson.D{{`$gte`, minNameTextMatchScore}}}}}},
+				// Remove pseudo-field from the output fields set
+				bson.D{{`$addFields`, bson.D{{`score`, `$REMOVE`}}}},
+			)
+
+		default:
+			panic(fmt.Sprintf("unknown variadic configuration parameter for pipeline:" +
+				" type - %T, value - %#v", conf, conf))
+		}
+	}
+
+	// OK
+	return pipeline
+}
 
 func addTags(args *dbms.AIIArgs, aii dbms.QRItem) ([]string, error) {
 	// Check for any tags specified
