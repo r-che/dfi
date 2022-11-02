@@ -103,6 +103,18 @@ func (aa *AIIArgs) SetFieldStr(field, value string) error {
 
 	return err
 }
+func (aa *AIIArgs) SetFieldList(field string, value []string) error {
+	var err error
+
+	switch field {
+	case AIIFieldTags:
+		aa.Tags = value
+	default:
+		return fmt.Errorf("unknown AII field %q (value: %#v)", field, value)
+	}
+
+	return err
+}
 
 type MatchStrFunc func(string) bool
 
