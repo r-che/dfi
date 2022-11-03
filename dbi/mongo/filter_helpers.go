@@ -155,14 +155,16 @@ func filterMakeFullTextSearch(qa *dbms.QueryArgs) *Filter {
 		prepared = append(prepared, sp)
 	}
 
-	return NewFilter().SetExpr(bson.D{bson.E{`$text`,
-		bson.D{{ `$search`, strings.Join(prepared, " ")},
-	}}})
+	return NewFilter().
+		SetFullText().
+		SetExpr(bson.D{bson.E{`$text`,
+			bson.D{{ `$search`, strings.Join(prepared, " ")},
+		}}})
 }
 
 // mergeIdsWithSPs merges filters by identifiers to existing filter with search expression with search phrases
 func filterMergeWithIDs(filter *Filter, ids []string) *Filter {
-	newFilter := NewFilter().SetExpr(filter.Expr())
+	newFilter := filter.Clone()
 	// Append expressions to search by identifiers
 	for _, id := range ids {
 		newFilter.Append(bson.E{MongoIDField, id})

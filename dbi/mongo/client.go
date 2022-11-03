@@ -62,8 +62,8 @@ func (mc *MongoClient) Query(qa *dbms.QueryArgs, retFields []string) (dbms.Query
 }
 
 func (mc *MongoClient) runSearch(collName string, qa *dbms.QueryArgs, spFilter *Filter, retFields []string) (dbms.QueryResults, error) {
-	// Create new filter using provided search phrases
-	filter := NewFilter().SetExpr(spFilter.Expr())
+	// Create a new filter as a clone of the filter with search phrases
+	filter := spFilter.Clone()
 
 	// Is object identifiers specified by query arguments?
 	if qa.IsIds() {
@@ -90,7 +90,7 @@ func (mc *MongoClient) aggregateSearch(collName string, filter *Filter, retField
 										variadic ...any) (dbms.QueryResults, error) {
 	// Filter-replace pipeline
 	filRepPipeline := mongo.Pipeline{
-		bson.D{{ `$match`, filter.expr }},	// apply filter
+		bson.D{{ `$match`, filter.Expr() }},	// apply filter
 	}
 
 	// Create list of requested fields
@@ -123,13 +123,10 @@ func (mc *MongoClient) aggregateSearch(collName string, filter *Filter, retField
 	}}})
 
 	// Process variadic arguments
-	filRepPipeline = pipelineConfVariadic(filRepPipeline, variadic)
+	filRepPipeline = pipelineConfVariadic(filter, filRepPipeline, variadic)
 
 	// Get collection handler
 	coll := mc.c.Database(mc.Cfg.ID).Collection(collName)
-
-	// TODO
-	fmt.Println("\nfilRepPipeline:", filRepPipeline,"\n")
 
 	// Run aggregated query
 	cursor, err := coll.Aggregate(mc.Ctx, filRepPipeline)
