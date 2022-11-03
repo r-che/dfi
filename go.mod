@@ -31,7 +31,7 @@ require (
 )
 
 //replace github.com/r-che/optsparser => ../optsparser
-replace github.com/r-che/optsparser => services-code.local/optsparser.git v0.1.7
+replace github.com/r-che/optsparser => services-code.local/optsparser.git v0.1.8
 
 //replace github.com/r-che/log => ../log
 replace github.com/r-che/log => services-code.local/log.git v0.1.7
