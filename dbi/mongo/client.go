@@ -62,17 +62,18 @@ func (mc *MongoClient) Query(qa *dbms.QueryArgs, retFields []string) (dbms.Query
 }
 
 func (mc *MongoClient) runSearch(collName string, qa *dbms.QueryArgs, spFilter *Filter, retFields []string) (dbms.QueryResults, error) {
-	// Make filter for default regexp-based search - join the search
-	// phrases and idenfifiers (if any) with the arguments filter
-	filter := NewFilter().JoinWithOther(useAnd,
-		// 1. Merge filter with identifiers from qa (if provided)
-		filterMergeWithIDs(spFilter, qa).	// TODO Need to rework this place because not each case of using this function uses search phrases
-			// 2. Join all provided conditions (search phrases and idenifiers) by logical OR
-			JoinByOr(),
+	// Create new filter using provided search phrases
+	filter := NewFilter().SetExpr(spFilter.Expr())
 
-		// Join with the arguments filter
-		filterMakeByArgs(qa),
-	)
+	// Is object identifiers specified by query arguments?
+	if qa.IsIds() {
+		// Need to merge these identifers with search phrases using logical OR
+		filter = filterMergeWithIDs(filter, qa.Ids).JoinByOr()
+	}
+
+	// Join filter with search phrases and probably identifiers with the
+	// query aruments (such mtime, type and so on) using logical AND
+	filter = filter.JoinWithOthers(useAnd, filterMakeByArgs(qa))
 
 	// TODO
 	log.D("(MongoCli:runSearch) Prepared Mongo filter for search in %q: %v", collName, filter)	// XXX Raw query may be too long

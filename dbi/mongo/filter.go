@@ -19,9 +19,7 @@ type Filter struct {
 }
 
 func NewFilter() *Filter {
-	return &Filter{
-		// TODO expression: primitive.D{},
-	}
+	return &Filter{}
 }
 
 func (f *Filter) Expr() bson.D {
@@ -98,7 +96,7 @@ func (f *Filter) JoinByOr() *Filter {
 		SetExpr(bson.D{bson.E{`$or`, orConds}})
 }
 
-func (f *Filter) JoinWithOther(qjt queryJoinType, filters ...*Filter) *Filter {
+func (f *Filter) JoinWithOthers(qjt queryJoinType, filters ...*Filter) *Filter {
 	joined := []bson.D{}
 
 	if f.Len() != 0 {
