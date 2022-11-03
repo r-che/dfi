@@ -15,7 +15,9 @@ const (
 
 type Filter struct {
 	expr bson.D	// search expression
-	// TODO Some flags
+
+	// Filter flags
+	ftSearch	bool	// MUST be true if filter contains $text operator
 }
 
 func NewFilter() *Filter {
@@ -54,6 +56,16 @@ func (f *Filter) SetExpr(expr primitive.D) *Filter {
 	return f
 }
 
+func (f *Filter) SetFullText() *Filter {
+	f.ftSearch = true
+
+	return f
+}
+
+func (f *Filter) FullText() bool {
+	return f.ftSearch
+}
+
 func (f *Filter) Append(expr ...primitive.E) *Filter {
 	for _, item := range expr {
 		f.expr = append(f.expr, item)
@@ -65,7 +77,7 @@ func (f *Filter) Append(expr ...primitive.E) *Filter {
 func (f *Filter) JoinByNor() *Filter {
 	if f.Len() == 0 {
 		// Nothing to join, just return clone
-		return NewFilter().Clone()
+		return f.Clone()
 	}
 
 	if f.Len() == 1 {
@@ -78,7 +90,7 @@ func (f *Filter) JoinByNor() *Filter {
 		norConds = append(norConds, bson.D{cond})
 	}
 
-	return NewFilter().SetExpr(bson.D{bson.E{`$nor`, norConds}})
+	return f.Clone().SetExpr(bson.D{bson.E{`$nor`, norConds}})
 }
 
 func (f *Filter) JoinByOr() *Filter {
@@ -112,12 +124,12 @@ func (f *Filter) JoinWithOthers(qjt queryJoinType, filters ...*Filter) *Filter {
 
 	if len(joined) == 0 {
 		// Return empty filter
-		return NewFilter()
+		return f.Clone()
 	}
 
 	if len(joined) == 1 {
 		// Return new filter created from the first condition
-		return NewFilter().SetExpr(joined[0])
+		return f.Clone().SetExpr(joined[0])
 	}
 
 	var op string
@@ -130,7 +142,7 @@ func (f *Filter) JoinWithOthers(qjt queryJoinType, filters ...*Filter) *Filter {
 		panic(fmt.Sprintf(`Unsupported query join type "%d", filters: %v`, qjt, joined))
 	}
 
-	return NewFilter().SetExpr(bson.D{bson.E{ op, joined }})
+	return f.Clone().SetExpr(bson.D{bson.E{ op, joined }})
 }
 
 // NegFilter converts list of filter conditions from:
@@ -148,5 +160,5 @@ func (f *Filter) NegFilter() *Filter {
 		})
 	}
 
-	return NewFilter().SetExpr(neg)
+	return f.Clone().SetExpr(neg)
 }
