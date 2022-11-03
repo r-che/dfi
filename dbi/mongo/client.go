@@ -21,7 +21,7 @@ func (mc *MongoClient) Query(qa *dbms.QueryArgs, retFields []string) (dbms.Query
 	// By default run full text search
 	log.D("(MongoCli:Query) Running %s search ...",
 		tools.Tern(len(qa.SP) == 0, "only arguments-based", "full-text"))
-	qr, err := mc.runSearch(MongoObjsColl, qa, makeFilterFullTextSearch(qa), retFields)
+	qr, err := mc.runSearch(MongoObjsColl, qa, filterMakeFullTextSearch(qa), retFields)
 	if err != nil {
 		return qr, fmt.Errorf("(MongoCli:Query) full-text search failed: %w", err)
 	}
@@ -37,7 +37,7 @@ func (mc *MongoClient) Query(qa *dbms.QueryArgs, retFields []string) (dbms.Query
 	//
 
 	log.D("(MongoCli:Query) Running regex based deep search ...")
-	qrDeep, err := mc.runSearch(MongoObjsColl, qa, makeFilterRegexSP(qa), retFields)
+	qrDeep, err := mc.runSearch(MongoObjsColl, qa, filterMakeRegexSP(qa), retFields)
 	if err != nil {
 		return nil, fmt.Errorf("(MongoCli:Query) deep (regex-based) search failed with: %w", err)
 	}
@@ -61,19 +61,17 @@ func (mc *MongoClient) Query(qa *dbms.QueryArgs, retFields []string) (dbms.Query
 	return qr, nil
 }
 
-func (mc *MongoClient) runSearch(collName string, qa *dbms.QueryArgs, spFilter bson.D, retFields []string) (dbms.QueryResults, error) {
-	fmt.Println("spFilter:", spFilter.Map())	// TODO Need to check that spFilter contains `$text` operator, if true - need to pass special value that signals that $text is used
+func (mc *MongoClient) runSearch(collName string, qa *dbms.QueryArgs, spFilter *Filter, retFields []string) (dbms.QueryResults, error) {
 	// Make filter for default regexp-based search - join the search
 	// phrases and idenfifiers (if any) with the arguments filter
-	filter := joinFilters(useAnd,
-		// Join all provided conditions (search phrases and idenifiers) by logical OR
-		joinByOr(
-			// Merge search phrases with identifiers (if provided)
-			mergeIdsWithSPs(qa, spFilter),
-		),
+	filter := NewFilter().JoinWithOther(useAnd,
+		// 1. Merge filter with identifiers from qa (if provided)
+		filterMergeWithIDs(spFilter, qa).	// TODO Need to rework this place because not each case of using this function uses search phrases
+			// 2. Join all provided conditions (search phrases and idenifiers) by logical OR
+			JoinByOr(),
 
 		// Join with the arguments filter
-		makeFilterByArgs(qa),
+		filterMakeByArgs(qa),
 	)
 
 	// TODO
@@ -87,11 +85,11 @@ func (mc *MongoClient) runSearch(collName string, qa *dbms.QueryArgs, spFilter b
 	return qr, nil
 }
 
-func (mc *MongoClient) aggregateSearch(collName string, filter bson.D, retFields []string,
+func (mc *MongoClient) aggregateSearch(collName string, filter *Filter, retFields []string,
 										variadic ...any) (dbms.QueryResults, error) {
 	// Filter-replace pipeline
 	filRepPipeline := mongo.Pipeline{
-		bson.D{{ `$match`, filter }},	// apply filter
+		bson.D{{ `$match`, filter.expr }},	// apply filter
 	}
 
 	// Create list of requested fields
@@ -195,7 +193,7 @@ func (mc *MongoClient) QueryAIIIds(qa *dbms.QueryArgs) (ids []string, err error)
 }
 
 func (mc *MongoClient) GetObjects(ids, retFields []string) (dbms.QueryResults, error) {
-	qr, err := mc.runSearch(MongoObjsColl, &dbms.QueryArgs{}, makeFilterIDs(ids), retFields)
+	qr, err := mc.runSearch(MongoObjsColl, &dbms.QueryArgs{}, filterMakeIDs(ids), retFields)
 	if err != nil {
 		return nil, fmt.Errorf("(MongoCli:GetObjects) regex search failed with: %w", err)
 	}

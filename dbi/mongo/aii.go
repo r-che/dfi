@@ -33,7 +33,7 @@ func (mc *MongoClient) GetAIIIds(withFields []string) ([]string, error) {
 	// Need to get AIIs which have any of the fields
 	qr, err := mc.aggregateSearch(MongoAIIColl,
 		// Join all fields by OR to match document that have at least one field from the fields set
-		joinByOr(fields),
+		NewFilter().SetExpr(fields).JoinByOr(),
 		 // Need to get only the identifier field
 		[]string{dbms.FieldID})
 	if err != nil {
@@ -55,7 +55,7 @@ func (mc *MongoClient) GetAIIIds(withFields []string) ([]string, error) {
 
 func (mc *MongoClient) GetAIIs(ids, retFields []string) (dbms.QueryResultsAII, error) {
 	// Load data for AII with requested identifiers
-	qr, err := mc.aggregateSearch(MongoAIIColl, makeFilterIDs(ids), retFields)
+	qr, err := mc.aggregateSearch(MongoAIIColl, filterMakeIDs(ids), retFields)
 	if err != nil {
 		return nil, fmt.Errorf("(MongoCli:GetAIIs) %w", err)
 	}
@@ -120,7 +120,7 @@ func (mc *MongoClient) ModifyAII(op dbms.DBOperator, args *dbms.AIIArgs, ids []s
 	// Check for all objects with specified identifiers exist
 	//
 
-	qr, err := mc.aggregateSearch(MongoObjsColl, makeFilterIDs(ids), []string{dbms.FieldID})
+	qr, err := mc.aggregateSearch(MongoObjsColl, filterMakeIDs(ids), []string{dbms.FieldID})
 	if err != nil {
 		return 0, 0, fmt.Errorf("(MongoCli:ModifyAII) %w", err)
 	}
@@ -195,7 +195,7 @@ func (mc *MongoClient) updateAII(args *dbms.AIIArgs, idkm types.IdKeyMap, add bo
 
 	// Load existing objects
 	var qr dbms.QueryResults
-	qr, err := mc.runSearch(MongoAIIColl, &dbms.QueryArgs{}, makeFilterIDs(idkm.Keys()), rqFields)
+	qr, err := mc.runSearch(MongoAIIColl, &dbms.QueryArgs{}, filterMakeIDs(idkm.Keys()), rqFields)
 	if err != nil {
 		return 0, 0, fmt.Errorf("(MongoCli:updateAII) cannot load fields required for update: %w", err)
 	}
@@ -338,7 +338,7 @@ func (mc *MongoClient) setAII(args *dbms.AIIArgs, idkm types.IdKeyMap, qr dbms.Q
 		// Ok, we some objects in AII collection, update them
 		res, err := coll.UpdateMany(
 			mc.Ctx,
-			makeFilterIDs(idkm.Keys()),
+			filterMakeIDs(idkm.Keys()).Expr(),
 			fields,
 		)
 
