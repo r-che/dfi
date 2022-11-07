@@ -408,6 +408,123 @@ func (mc *MongoClient) setAII(args *dbms.AIIArgs, idkm types.IdKeyMap, qr dbms.Q
 }
 
 func (mc *MongoClient) deleteAII(args *dbms.AIIArgs, idkm types.IdKeyMap) (int64, int64, error) {
-	// TODO
-	return -1, -1, fmt.Errorf("deleteAII not implemented")
+	var err error
+
+	td := int64(0)	// Tags deleted
+	dd := int64(0)	// Descriptions deleted
+
+	// Delete tags if requested
+	if args.Tags != nil {
+		// Check for first tags for ALL value
+		if args.Tags[0] == dbms.AIIAllTags {
+			// Need to clear all tags
+			td, err = mc.clearAIIField(dbms.AIIFieldTags, idkm.Keys())
+		} else {
+			// Need to remove the separate tags
+			td, err = mc.delTags(args.Tags, idkm)
+		}
+
+		if err != nil {
+			return td, dd, fmt.Errorf("(RedisCli:deleteAII) %w", err)
+		}
+	}
+
+	// Delete description if requested
+	if args.Descr == dbms.AIIDelDescr {
+		// Clear description for selected identifiers
+		dd, err = mc.clearAIIField(dbms.AIIFieldDescr, idkm.Keys())
+		if err != nil {
+			return td, dd, fmt.Errorf("(RedisCli:deleteAII) %w", err)
+		}
+	}
+
+	// OK
+	return td, dd, nil
+}
+
+func (mc *MongoClient) delTags(tags []string, idkm types.IdKeyMap) (int64, error) {
+	// Convert list of tags to set to check existing tags for need to be deleted
+	toDelTags := tools.NewStrSet(tags...)
+
+	tu := int64(0) // Total changed values of tags fields
+
+	log.D("(MongoCli:delTags) Collecting AII existing tags")
+
+	qr, err := mc.GetAIIs(idkm.Keys(), []string{dbms.AIIFieldTags})
+	if err != nil {
+		return 0, fmt.Errorf("(MongoCli:delTags) cannot load existing tags values: %w", err)
+	}
+
+	// List of ID for which tags field should be cleared
+	var clearTags []string
+
+	// Get collection handler
+	coll := mc.c.Database(mc.Cfg.ID).Collection(MongoAIIColl)
+
+	// Do for each loaded result
+	for id, aii := range qr {
+		// Select tags to keep
+		keepTags := toDelTags.Complement(aii.Tags...)
+
+		// Check for length of existing tags is the same that keep
+		if len(aii.Tags) == len(keepTags) {
+			// No tags should be removed from this item, skip
+			log.D("(MongoCli:delTags) No tags update required for %s", id)
+			continue
+		}
+
+		// If empty list of keep tags - need to remove (unset) tags field
+		if len(keepTags) == 0 {
+			// Add identifier to queue
+			clearTags = append(clearTags, id)
+			// Skip this item
+			continue
+		}
+
+		// Need to set new value of tags field value without removed tags
+		res, err := coll.UpdateOne(mc.Ctx,
+			bson.D{{MongoIDField, id}},									// set filter
+			bson.D{{`$set`, bson.D{{dbms.AIIFieldTags, keepTags}}}})	// set field value
+		if err != nil {
+				return tu, fmt.Errorf("(RedisCli:delTags) cannot remove tags %v from %q: %w", tags, id, err)
+		}
+
+		if res.MatchedCount == 0 && res.UpsertedCount == 0 {
+			return tu, fmt.Errorf("(MongoCli:UpdateObj) updateOne (id: %s) on %s.%s returned success," +
+				" but no documents were changed", id, coll.Database().Name(), coll.Name())
+		}
+
+		// Success, increase updated tags counter
+		tu++
+	}
+
+	if len(clearTags) == 0 {
+		// All done, return
+		return tu, nil
+	}
+
+	// Need to remove tags fields from documents enumerated in clearTags
+	td, err := mc.clearAIIField(dbms.AIIFieldTags, clearTags)
+	if err != nil {
+		return tu, fmt.Errorf("(MongoCli:UpdateObj) cannot delete tags %v from %v: %w", tags, clearTags, err)
+	}
+
+	// OK
+	return tu + td, nil
+}
+
+func (mc *MongoClient) clearAIIField(field string, ids []string) (int64, error) {
+	// List of keys that can be safely deleted to clearing field
+	toDelKey := make([]string, 0, len(ids))
+	// List of keys on which only the field should be deleted
+	toDelField := make([]string, 0, len(ids))
+
+	// Total cleared
+	tc := int64(0)
+
+	_,_,_ = toDelKey, toDelField, tc	// TODO
+
+	log.D("(RedisCli:clearAIIField) Collecting AII info to clearing field %q...", field)
+
+	return 0, fmt.Errorf("clearAIIField - not implemented") // TODO
 }
