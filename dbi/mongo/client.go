@@ -18,12 +18,12 @@ import (
 //
 
 func (mc *MongoClient) Query(qa *dbms.QueryArgs, retFields []string) (dbms.QueryResults, error) {
-	// By default run full text search
-	log.D("(MongoCli:Query) Running %s search ...",
-		tools.Tern(len(qa.SP) == 0, "only arguments-based", "full-text"))
+	searchType := tools.Tern(len(qa.SP) == 0, "only arguments-based", "full-text")
+
+	log.D("(MongoCli:Query) Running %s search ...", searchType)
 	qr, err := mc.runSearch(MongoObjsColl, qa, filterMakeFullTextSearch(qa), retFields)
 	if err != nil {
-		return qr, fmt.Errorf("(MongoCli:Query) full-text search failed: %w", err)
+		return qr, fmt.Errorf("(MongoCli:Query) %s search failed: %w", searchType, err)
 	}
 
 	// Check for deep search is not required or not possible (without search phrases)

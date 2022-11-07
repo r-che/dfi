@@ -170,7 +170,7 @@ func filterMergeWithIDs(filter *Filter, ids []string) *Filter {
 		newFilter.Append(bson.E{MongoIDField, id})
 	}
 
-	return filter
+	return newFilter
 }
 
 func filterMakeSetRangeExpr(field string, min, max int64, set []int64) bson.E {
