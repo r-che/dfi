@@ -99,13 +99,10 @@ func (mc *MongoClient) aggregateSearch(collName string, filter *Filter, retField
 		fields = append(fields, bson.E{Key: field, Value: 1})
 	}
 
-	// List of fields required to create object key
-	keyFields := []string{dbms.FieldHost, dbms.FieldFPath}
-
 	// Is requested fields not empty?
 	if len(fields) != 0 {
 		// Check for some field required to creation of object key was not added
-		if kfSet := tools.NewStrSet(keyFields...).Del(retFields...); len(*kfSet) != 0 {
+		if kfSet := tools.NewStrSet(objMandatoryFields...).Del(retFields...); !kfSet.Empty() {
 			// Add these fields to request
 			for _, field := range kfSet.List() {
 				fields = append(fields, bson.E{Key: field, Value: 1})
@@ -142,7 +139,7 @@ func (mc *MongoClient) aggregateSearch(collName string, filter *Filter, retField
 	}()
 
 	// Required fields that must present in the each result item
-	rqFields := append([]string{dbms.FieldID}, keyFields...)
+	rqFields := append([]string{dbms.FieldID}, objMandatoryFields...)
 
 	// Output result
 	qr := make(dbms.QueryResults, dbms.ExpectedMaxResults)
@@ -184,6 +181,25 @@ func (mc *MongoClient) aggregateSearch(collName string, filter *Filter, retField
 	}
 
 	return qr, nil
+}
+
+func (mc *MongoClient) delFieldById(collName, field string, ids []string) (int64, error) {
+	// Get collection handler
+	coll := mc.c.Database(mc.Cfg.ID).Collection(collName)
+
+	res, err := coll.UpdateMany(mc.Ctx,
+		filterMakeIDs(ids).Expr(),					// set filter
+		bson.D{{`$unset`, bson.D{{field, nil}}}})	// unset field value
+	if err != nil {
+			return 0, fmt.Errorf("(MongoCli:delField) cannot remove field %q from %q: %w", field, ids, err)
+	}
+
+	if res.MatchedCount == 0 && res.ModifiedCount == 0 {
+		return 0, fmt.Errorf("(MongoCli:delField) updateMany (ids: %v) on %s.%s returned success," +
+			" but no documents were changed", ids, coll.Database().Name(), coll.Name())
+	}
+
+	return res.ModifiedCount, nil
 }
 
 func (mc *MongoClient) QueryAIIIds(qa *dbms.QueryArgs) (ids []string, err error) {

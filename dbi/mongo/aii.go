@@ -425,7 +425,7 @@ func (mc *MongoClient) deleteAII(args *dbms.AIIArgs, idkm types.IdKeyMap) (int64
 		}
 
 		if err != nil {
-			return td, dd, fmt.Errorf("(RedisCli:deleteAII) %w", err)
+			return td, dd, fmt.Errorf("(MongoCli:deleteAII) %w", err)
 		}
 	}
 
@@ -434,7 +434,7 @@ func (mc *MongoClient) deleteAII(args *dbms.AIIArgs, idkm types.IdKeyMap) (int64
 		// Clear description for selected identifiers
 		dd, err = mc.clearAIIField(dbms.AIIFieldDescr, idkm.Keys())
 		if err != nil {
-			return td, dd, fmt.Errorf("(RedisCli:deleteAII) %w", err)
+			return td, dd, fmt.Errorf("(MongoCli:deleteAII) %w", err)
 		}
 	}
 
@@ -486,11 +486,11 @@ func (mc *MongoClient) delTags(tags []string, idkm types.IdKeyMap) (int64, error
 			bson.D{{MongoIDField, id}},									// set filter
 			bson.D{{`$set`, bson.D{{dbms.AIIFieldTags, keepTags}}}})	// set field value
 		if err != nil {
-				return tu, fmt.Errorf("(RedisCli:delTags) cannot remove tags %v from %q: %w", tags, id, err)
+				return tu, fmt.Errorf("(MongoCli:delTags) cannot remove tags %v from %q: %w", tags, id, err)
 		}
 
-		if res.MatchedCount == 0 && res.UpsertedCount == 0 {
-			return tu, fmt.Errorf("(MongoCli:UpdateObj) updateOne (id: %s) on %s.%s returned success," +
+		if res.MatchedCount == 0 && res.ModifiedCount == 0 {
+			return tu, fmt.Errorf("(MongoCli:delTags) updateOne (id: %s) on %s.%s returned success," +
 				" but no documents were changed", id, coll.Database().Name(), coll.Name())
 		}
 
@@ -515,16 +515,85 @@ func (mc *MongoClient) delTags(tags []string, idkm types.IdKeyMap) (int64, error
 
 func (mc *MongoClient) clearAIIField(field string, ids []string) (int64, error) {
 	// List of keys that can be safely deleted to clearing field
-	toDelKey := make([]string, 0, len(ids))
+	toDelAII := make([]string, 0, len(ids))
 	// List of keys on which only the field should be deleted
 	toDelField := make([]string, 0, len(ids))
 
 	// Total cleared
 	tc := int64(0)
 
-	_,_,_ = toDelKey, toDelField, tc	// TODO
+	//
+	// Need to load field names for each id
+	//
 
-	log.D("(RedisCli:clearAIIField) Collecting AII info to clearing field %q...", field)
+	log.D("(MongoCli:clearAIIField) Collecting AII info to clearing field %q on %v...", field, ids)
 
-	return 0, fmt.Errorf("clearAIIField - not implemented") // TODO
+	qr, err := mc.aggregateSearch(MongoAIIColl, filterMakeIDs(ids), nil)
+	if err != nil {
+		return 0, fmt.Errorf("(MongoClient:clearAIIField) cannot load AII objects fields: %w", err)
+	}
+
+	// Enumerate all resuts to check that all fields except identifier + required fields need to be deleted
+	for _, aii := range qr {
+		// Get all fields from AII
+		fields := tools.NewStrSet()
+		for field := range aii {
+			fields.Add(field)
+		}
+
+		// Clean fields
+		fields.Del(field).				// delete field that should be cleared
+			Del(dbms.FieldID).			// delete field with identifier
+			Del(objMandatoryFields...)	// delete all non-AII mandatory field
+
+		// Check for fields is empty
+		if fields.Empty() {
+			// Then AII with this ID can be removed completely
+			toDelAII = append(toDelAII, aii[dbms.FieldID].(string))
+		} else {
+			// Only field has to be removed, because some other valuable field present in AII
+			toDelField = append(toDelField, aii[dbms.FieldID].(string))
+		}
+	}
+
+	// Is fields should be removed from documents?
+	if len(toDelField) != 0 {
+		// Delete them
+		log.D("(MongoClient:clearAIIField) Clearing field %q in: %v", field, toDelField)
+		td, err := mc.delFieldById(MongoAIIColl, field, toDelField)
+		if err != nil {
+			return tc, fmt.Errorf("(MongoClient:clearAIIField) cannot clear: %w", err)
+		}
+
+		// Increase cleared counter
+		tc += td
+	}
+
+	// Is AII documents should be deleted?
+	if len(toDelAII) != 0 {
+		// Delete them
+		log.D("(MongoClient:clearAIIField) Removing AIIs: %v", toDelAII)
+
+		coll := mc.c.Database(mc.Cfg.ID).Collection(MongoAIIColl)
+
+		res, err := coll.DeleteMany(mc.Ctx, filterMakeIDs(toDelAII).Expr())
+		if err != nil {
+			return tc, fmt.Errorf("(MongoClient:clearAIIField) cannot remove AIIs with ids %v: %w", toDelAII, err)
+		}
+
+		if res.DeletedCount == 0 {
+			return 0, fmt.Errorf("(MongoCli:clearAIIField) deleteMany (ids: %v) on %s.%s returned success," +
+				" but no documents were changed", toDelAII, coll.Database().Name(), coll.Name())
+		}
+
+		// Increase cleared counter
+		tc += res.DeletedCount
+	}
+
+	if tc == 0 {
+		log.D("(MongoCli:clearAIIField) Nothing to clear")
+	}
+
+	// OK
+	return tc, nil
 }

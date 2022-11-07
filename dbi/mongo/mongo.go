@@ -22,6 +22,8 @@ const (
 	MongoAIIColl	=	"aii"
 )
 
+var objMandatoryFields = []string{dbms.FieldHost, dbms.FieldFPath}
+
 type MongoClient struct {
 	*dbms.CommonClient
 
