@@ -15,6 +15,12 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+// Duplicates of original fields found path and name with values transformed for tokenization
+const (
+	MongoFieldTFPath	=	"tfpath"
+	MongoFieldTName		=	"tname"
+)
+
 //
 // Agent client interface
 //
@@ -38,7 +44,14 @@ func (mc *MongoClient) UpdateObj(fso *types.FSObject) error {
 	// Update/Insert object
 	id := common.MakeID(mc.CliHost, fso)
 	doc := bson.D{{`$set`, bson.D{
+		// Mongo-specific fields
 		{MongoFieldID,			id},
+		// Create additional fields for tokenization by replacing underscores to spaces to improve MongoDB
+		// full-text search results due to default tokenizator does not use underscores as separator
+		{MongoFieldTFPath,		strings.ReplaceAll(fso.FPath, "_", " ")},
+		{MongoFieldTName,		strings.ReplaceAll(fso.Name, "_", " ")},
+
+		// Common fields
 		{dbms.FieldHost,		mc.CliHost},
 		{dbms.FieldName,		fso.Name},
 		{dbms.FieldFPath,		fso.FPath},

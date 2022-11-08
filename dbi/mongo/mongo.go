@@ -17,9 +17,9 @@ import (
 )
 
 const (
-	MongoFieldID	=	"_" + dbms.FieldID
-	MongoObjsColl	=	"objs"
-	MongoAIIColl	=	"aii"
+	MongoFieldID		=	"_" + dbms.FieldID
+	MongoObjsColl		=	"objs"
+	MongoAIIColl		=	"aii"
 )
 
 var objMandatoryFields = []string{dbms.FieldHost, dbms.FieldFPath}
