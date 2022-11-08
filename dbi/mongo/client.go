@@ -202,10 +202,6 @@ func (mc *MongoClient) delFieldById(collName, field string, ids []string) (int64
 	return res.ModifiedCount, nil
 }
 
-func (mc *MongoClient) QueryAIIIds(qa *dbms.QueryArgs) (ids []string, err error) {
-	return nil, fmt.Errorf("QueryAIIIds - Not implemented")	// TODO
-}
-
 func (mc *MongoClient) GetObjects(ids, retFields []string) (dbms.QueryResults, error) {
 	qr, err := mc.runSearch(MongoObjsColl, &dbms.QueryArgs{}, filterMakeIDs(ids), retFields)
 	if err != nil {

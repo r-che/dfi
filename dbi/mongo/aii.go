@@ -3,6 +3,7 @@ package mongo
 import (
 	"fmt"
 	"strings"
+	"regexp"
 
 	"github.com/r-che/dfi/types"
 	"github.com/r-che/dfi/types/dbms"
@@ -596,4 +597,52 @@ func (mc *MongoClient) clearAIIField(field string, ids []string) (int64, error) 
 
 	// OK
 	return tc, nil
+}
+
+func (mc *MongoClient) QueryAIIIds(qa *dbms.QueryArgs) ([]string, error) {
+	// AII fields filter
+	aiiFilter := NewFilter()
+
+	// Check for need to use tags
+	if qa.UseTags {
+		// Append filters by tags
+		for _, phrase:= range qa.SP {
+			aiiFilter.Append(bson.E{dbms.AIIFieldTags,
+				primitive.Regex{Pattern: regexp.QuoteMeta(phrase), Options: "i"}})
+		}
+	}
+
+	// Check for need to use description
+	if qa.UseDescr {
+		// Append filters by description
+		for _, phrase:= range qa.SP {
+			aiiFilter.Append(bson.E{dbms.AIIFieldDescr,
+					primitive.Regex{Pattern: regexp.QuoteMeta(phrase), Options: "i"}})
+		}
+	}
+
+	// Join created filter
+	aiiFilter = aiiFilter.JoinByOr()
+
+	// Run search to select identifiers of objects with matched fields
+	log.D("(MongoCli:QueryAIIIds) Run regexp-based search by AII collection using filter %v", aiiFilter)
+
+	qr, err := mc.aggregateSearch(MongoAIIColl,
+		aiiFilter,				// filter by fields
+		[]string{dbms.FieldID}) // get only the identifier field
+	if err != nil {
+		return nil, fmt.Errorf("(MongoCli:QueryAIIIds) cannot load identifiers of objects" +
+			" matched by AII fields: %w", err)
+	}
+
+	// Collect identifiers from the result
+	ids := make([]string, 0, len(qr))
+	for _, res := range qr {
+		// Get object identifier, do not use safe type check because the value
+		// of dbms.FieldID field already checked for string type in mc.aggregateSearch()
+		ids = append(ids, res[dbms.FieldID].(string))
+	}
+
+	// OK
+	return ids, nil
 }
