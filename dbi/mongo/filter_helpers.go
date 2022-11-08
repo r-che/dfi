@@ -127,7 +127,7 @@ func filterMakeRegexSP(qa *dbms.QueryArgs) *Filter {
 // filterMakeIDs makes filter to search documents by identifiers specified by ids
 func filterMakeIDs(ids []string) *Filter {
 	return NewFilter().SetExpr(bson.D{bson.E{
-		MongoIDField, bson.D{bson.E{`$in`, ids},
+		MongoFieldID, bson.D{bson.E{`$in`, ids},
 	}}})
 }
 
@@ -167,7 +167,7 @@ func filterMergeWithIDs(filter *Filter, ids []string) *Filter {
 	newFilter := filter.Clone()
 	// Append expressions to search by identifiers
 	for _, id := range ids {
-		newFilter.Append(bson.E{MongoIDField, id})
+		newFilter.Append(bson.E{MongoFieldID, id})
 	}
 
 	return newFilter

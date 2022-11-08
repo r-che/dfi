@@ -115,8 +115,8 @@ func (mc *MongoClient) aggregateSearch(collName string, filter *Filter, retField
 
 	// Add $addFields stage to replace field name _id by id
 	filRepPipeline = append(filRepPipeline, bson.D{{`$addFields`, bson.D{
-		{MongoIDField, `$REMOVE`},
-		{dbms.FieldID, `$` + MongoIDField},
+		{MongoFieldID, `$REMOVE`},
+		{dbms.FieldID, `$` + MongoFieldID},
 	}}})
 
 	// Process variadic arguments

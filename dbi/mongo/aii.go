@@ -271,7 +271,7 @@ func (mc *MongoClient) appendAII(args *dbms.AIIArgs, idkm types.IdKeyMap, qr dbm
 
 		// Do update/insert
 		res, err := coll.UpdateOne(mc.Ctx,
-			bson.D{{MongoIDField, id}},			// Update exactly this ID
+			bson.D{{MongoFieldID, id}},			// Update exactly this ID
 			doc,
 			options.Update().SetUpsert(true),
 		)
@@ -372,7 +372,7 @@ func (mc *MongoClient) setAII(args *dbms.AIIArgs, idkm types.IdKeyMap, qr dbms.Q
 	for _, id := range needInsert.List() {
 		// Create a new document
 		doc := bson.D{{`$set`, bson.D{
-			{MongoIDField,			id},
+			{MongoFieldID,			id},
 			{dbms.AIIFieldHost,		idkm[id].Host},
 			{dbms.AIIFieldFPath,	idkm[id].Path},
 		}}}
@@ -382,7 +382,7 @@ func (mc *MongoClient) setAII(args *dbms.AIIArgs, idkm types.IdKeyMap, qr dbms.Q
 
 		// Do update/insert
 		res, err := coll.UpdateOne(mc.Ctx,
-			bson.D{{MongoIDField, id}},			// Update exactly this ID
+			bson.D{{MongoFieldID, id}},			// Update exactly this ID
 			doc,
 			options.Update().SetUpsert(true),	// do insert if no object with this ID was found
 		)
@@ -484,7 +484,7 @@ func (mc *MongoClient) delTags(tags []string, idkm types.IdKeyMap) (int64, error
 
 		// Need to set new value of tags field value without removed tags
 		res, err := coll.UpdateOne(mc.Ctx,
-			bson.D{{MongoIDField, id}},									// set filter
+			bson.D{{MongoFieldID, id}},									// set filter
 			bson.D{{`$set`, bson.D{{dbms.AIIFieldTags, keepTags}}}})	// set field value
 		if err != nil {
 				return tu, fmt.Errorf("(MongoCli:delTags) cannot remove tags %v from %q: %w", tags, id, err)

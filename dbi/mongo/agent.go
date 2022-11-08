@@ -38,7 +38,7 @@ func (mc *MongoClient) UpdateObj(fso *types.FSObject) error {
 	// Update/Insert object
 	id := common.MakeID(mc.CliHost, fso)
 	doc := bson.D{{`$set`, bson.D{
-		{MongoIDField,			id},
+		{MongoFieldID,			id},
 		{dbms.FieldHost,		mc.CliHost},
 		{dbms.FieldName,		fso.Name},
 		{dbms.FieldFPath,		fso.FPath},
@@ -50,7 +50,7 @@ func (mc *MongoClient) UpdateObj(fso *types.FSObject) error {
 	}}}
 
 	res, err := coll.UpdateOne(mc.Ctx,
-		bson.D{{MongoIDField, id}},			// Update exactly this ID
+		bson.D{{MongoFieldID, id}},			// Update exactly this ID
 		doc,
 		options.Update().SetUpsert(true),	// do insert if no object with this ID was found
 	)
@@ -104,7 +104,7 @@ func (mc *MongoClient) Commit() (int64, int64, error) {
 
 	// Create filter by identifiers
 	filter := bson.D{{
-		MongoIDField, bson.D{{ `$in`, mc.toDelete }},
+		MongoFieldID, bson.D{{ `$in`, mc.toDelete }},
 	}}
 
 	// Check for keys to delete
@@ -155,7 +155,7 @@ func (mc *MongoClient) Commit() (int64, int64, error) {
 					}
 
 					// Extract ID field
-					id, ok := item[MongoIDField]
+					id, ok := item[MongoFieldID]
 					if !ok {
 						log.E("(MongoCli:Commit) Cannot convert object identifier to string, skip: %#v", item)
 						continue
@@ -234,7 +234,7 @@ func (mc *MongoClient) LoadHostPaths(match dbms.MatchStrFunc) ([]string, error) 
 	cursor, err := coll.Find(mc.Ctx, filter, options.Find().
 		// Include only the identifier and found-path fields
 		SetProjection(bson.D{
-			{MongoIDField, 1},
+			{MongoFieldID, 1},
 			{dbms.FieldFPath, 1},
 		}))
 	if err != nil {
@@ -269,10 +269,10 @@ func (mc *MongoClient) LoadHostPaths(match dbms.MatchStrFunc) ([]string, error) 
 		if path, ok := item[dbms.FieldFPath]; !ok {
 			// Looks like incorrect data from DB - no path field was found,
 			// extract record identifier
-			if id, ok := item[MongoIDField]; !ok {
+			if id, ok := item[MongoFieldID]; !ok {
 				// Totally incorrect data, even mandatory identifier does not exist
 				log.E("(MongoCli:LoadHostPaths) incorrect data item loaded from DB - no %q and %q fields found: %#v",
-					dbms.FieldFPath, MongoIDField, item)
+					dbms.FieldFPath, MongoFieldID, item)
 			} else {
 				// Print error about object without found-path field
 				log.E("(MongoCli:LoadHostPaths) item with id %q does not contain %q field", id, dbms.FieldFPath)

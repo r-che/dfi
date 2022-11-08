@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	MongoIDField	=	"_" + dbms.FieldID
+	MongoFieldID	=	"_" + dbms.FieldID
 	MongoObjsColl	=	"objs"
 	MongoAIIColl	=	"aii"
 )
