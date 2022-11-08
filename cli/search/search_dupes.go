@@ -58,13 +58,13 @@ func searchDupes(dbc dbms.Client, qa *dbms.QueryArgs) *types.CmdRV {
 
 	for objKey, fields := range qr {
 		// Extract identifier
-		id, ok := extrField(objKey, fields, dbms.FieldID, rv)
+		id, ok := extrFieldStr(objKey, fields, dbms.FieldID, rv)
 		if !ok {
 			continue
 		}
 
 		// Extract checksum
-		csum, ok := extrField(objKey, fields, dbms.FieldChecksum, rv)
+		csum, ok := extrFieldStr(objKey, fields, dbms.FieldChecksum, rv)
 		if !ok {
 			continue
 		}
@@ -141,7 +141,7 @@ func loadDupesRefs(dbc dbms.Client, rv *types.CmdRV) (map[string]*types.FSObject
 	// Assign checksums
 	for objKey, fields := range qr {
 		// Extract identifier
-		id, ok := extrField(objKey, fields, dbms.FieldID, rv)
+		id, ok := extrFieldStr(objKey, fields, dbms.FieldID, rv)
 		if !ok {
 			continue
 		}
@@ -153,7 +153,7 @@ func loadDupesRefs(dbc dbms.Client, rv *types.CmdRV) (map[string]*types.FSObject
 		}
 
 		// Extract type field
-		oType, ok := extrField(objKey, fields, dbms.FieldType, rv)
+		oType, ok := extrFieldStr(objKey, fields, dbms.FieldType, rv)
 		if !ok {
 			continue
 		}
@@ -167,7 +167,7 @@ func loadDupesRefs(dbc dbms.Client, rv *types.CmdRV) (map[string]*types.FSObject
 		}
 
 		// Extract checksum
-		csum, ok := extrField(objKey, fields, dbms.FieldChecksum, rv)
+		csum, ok := extrFieldStr(objKey, fields, dbms.FieldChecksum, rv)
 		if !ok {
 			continue
 		}
@@ -214,14 +214,10 @@ func loadDupesRefs(dbc dbms.Client, rv *types.CmdRV) (map[string]*types.FSObject
 	return objRefs, nil
 }
 
-func extrField(objKey types.ObjKey, fields map[string]any, fn string, rv *types.CmdRV) (string, bool) {
-	fVal, ok := fields[fn]
-	if !ok {
-		if fn == dbms.FieldID || fields[dbms.FieldID] == "" {
-			rv.AddWarn("Skip invalid object %q without field %q", objKey, fn)
-		} else {
-			rv.AddWarn("Skip invalid object %s (%s) without field %q", fields[dbms.FieldID], objKey, fn)
-		}
+func extrFieldStr(objKey types.ObjKey, fields map[string]any, fn string, rv *types.CmdRV) (string, bool) {
+	fVal, err := extrFieldRaw(fields, fn)
+	if err != nil {
+		rv.AddWarn("Skip invalid object with key %s - %w", objKey, err)
 		return "", false
 	}
 
@@ -235,21 +231,58 @@ func extrField(objKey types.ObjKey, fields map[string]any, fn string, rv *types.
 }
 
 func extrFieldInt64(objKey types.ObjKey, fields map[string]any, fn string, rv *types.CmdRV) (int64, bool) {
-	// Extract as string first
-	strVal, ok := extrField(objKey, fields, fn, rv)
-	if !ok {
-		return 0, false
-	}
-
-	// Convert string to integer
-	intVal, err := strconv.ParseInt(strVal, 10, 64)
+	// Extract raw field value
+	fVal, err := extrFieldRaw(fields, fn)
 	if err != nil {
-		// Skip incorrect object
-		rv.AddWarn("Skip invalid object %q with incorrect value of field %q: %q", objKey, dbms.FieldSize, strVal)
+		rv.AddWarn("Skip invalid object with key %s - %w", objKey, err)
 		return 0, false
 	}
 
-	return intVal, true
+	// Check for value type
+	switch fVal.(type) {
+	// int64 value
+	case int64:
+		// Ok, return as is
+		return fVal.(int64), true
+
+	// string value
+	case string:
+		// Convert string to integer
+		intVal, err := strconv.ParseInt(fVal.(string), 10, 64)
+		if err != nil {
+			// Skip incorrect object
+			rv.AddWarn("Skip invalid object %q with incorrect value of field %q: %v", objKey, dbms.FieldSize, fVal)
+			return 0, false
+		}
+
+		return intVal, true
+
+	// Unsupported type
+	default:
+		rv.AddWarn("Skip invalid object %q with unsupported type of value of the field %q: %#v", objKey, fn,  fVal)
+	}
+
+	return 0, false
+}
+
+func extrFieldRaw(fields dbms.QRItem, fn string) (any, error) {
+	fVal, ok := fields[fn]
+	if ok {
+		return fVal, nil
+	}
+
+	//
+	// Requested was not found
+	//
+
+	// Check that the field identifier was requested
+	if fn == dbms.FieldID || fields[dbms.FieldID] == "" {
+		// Return error without identifier
+		return nil, fmt.Errorf("object does not contain field %q", fn)
+	}
+
+	// Return error with identifier
+	return nil, fmt.Errorf("object (ID: %s) does not contain field %q", fields[dbms.FieldID], fn)
 }
 
 func printDupes(refObjs map[string]*types.FSObject, dm map[string][]dupeInfo) {
