@@ -121,7 +121,7 @@ func filterMakeRegexSP(qa *dbms.QueryArgs) *Filter {
 
 	}
 
-	return spFilter
+	return spFilter.JoinByOr()
 }
 
 // filterMakeIDs makes filter to search documents by identifiers specified by ids
