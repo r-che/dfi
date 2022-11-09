@@ -43,15 +43,10 @@ func (mc *MongoClient) UpdateObj(fso *types.FSObject) error {
 
 	// Update/Insert object
 	id := common.MakeID(mc.CliHost, fso)
-	doc := bson.D{{`$set`, bson.D{
-		// Mongo-specific fields
+	fields := bson.D{
+		// Using mongo-specific identifier field name instead of standard dbms.FieldID
 		{MongoFieldID,			id},
-		// Create additional fields for tokenization by replacing underscores to spaces to improve MongoDB
-		// full-text search results due to default tokenizator does not use underscores as separator
-		{MongoFieldTFPath,		strings.ReplaceAll(fso.FPath, "_", " ")},
-		{MongoFieldTName,		strings.ReplaceAll(fso.Name, "_", " ")},
-
-		// Common fields
+		// Standard fields set
 		{dbms.FieldHost,		mc.CliHost},
 		{dbms.FieldName,		fso.Name},
 		{dbms.FieldFPath,		fso.FPath},
@@ -60,11 +55,29 @@ func (mc *MongoClient) UpdateObj(fso *types.FSObject) error {
 		{dbms.FieldSize,		fso.Size},
 		{dbms.FieldMTime,		fso.MTime},
 		{dbms.FieldChecksum,	fso.Checksum},
-	}}}
+	}
 
+	//
+	// Improve tokenization:
+	// MongoDB tokenizer does not do tokenization by underscores, but  underscores
+	// are often used instead of spaces in file system object names. To  improve
+	// full-text search - add additional fields with values created from
+	// original FPath and Name values by replacing underscores with spaces
+	//
+
+	if strings.Index(fso.FPath, "_") != -1 {
+		fields = append(fields, bson.E{MongoFieldTFPath, strings.ReplaceAll(fso.FPath, "_", " ")})
+	}
+	if strings.Index(fso.Name, "_") != -1 {
+		fields = append(fields, bson.E{MongoFieldTName, strings.ReplaceAll(fso.Name, "_", " ")})
+	}
+
+	//
+	// Update item
+	//
 	res, err := coll.UpdateOne(mc.Ctx,
 		bson.D{{MongoFieldID, id}},			// Update exactly this ID
-		doc,
+		bson.D{{`$set`, fields}},
 		options.Update().SetUpsert(true),	// do insert if no object with this ID was found
 	)
 	if err != nil {
