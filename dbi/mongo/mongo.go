@@ -76,7 +76,7 @@ func NewClient(dbCfg *dbms.DBConfig) (*MongoClient, error) {
 func DisableStartupPing() {
 	// Run once with an empty function to prevent a ping after
 	ping.Do(func() {
-		log.D("(MongoCli:DisablePing) Disabled pinging on client creation")
+		log.D("(MongoCli:DisableStartupPing) Disabled pinging on client creation")
 	})
 }
 

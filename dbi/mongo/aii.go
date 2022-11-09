@@ -38,7 +38,7 @@ func (mc *MongoClient) GetAIIIds(withFields []string) ([]string, error) {
 		 // Need to get only the identifier field
 		[]string{dbms.FieldID})
 	if err != nil {
-		return nil, fmt.Errorf("(MongoCli:GetAIIs) cannot load identifiers of objects" +
+		return nil, fmt.Errorf("(MongoCli:GetAIIIds) cannot load identifiers of objects" +
 			" that have filled AII fields %v: %w", withFields, err)
 	}
 
@@ -507,7 +507,7 @@ func (mc *MongoClient) delTags(tags []string, idkm types.IdKeyMap) (int64, error
 	// Need to remove tags fields from documents enumerated in clearTags
 	td, err := mc.clearAIIField(dbms.AIIFieldTags, clearTags)
 	if err != nil {
-		return tu, fmt.Errorf("(MongoCli:UpdateObj) cannot delete tags %v from %v: %w", tags, clearTags, err)
+		return tu, fmt.Errorf("(MongoCli:delTags) cannot delete tags %v from %v: %w", tags, clearTags, err)
 	}
 
 	// OK

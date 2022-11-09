@@ -158,7 +158,7 @@ func (mc *MongoClient) Commit() (int64, int64, error) {
 				// Make a list of results
 				defer func() {
 					if err := cursor.Close(mc.Ctx); err != nil {
-						log.E("(MongoCli:LoadHostPaths) cannot close cursor: %v", err)
+						log.E("(MongoCli:Commit) cannot close cursor: %v", err)
 					}
 				}()
 
