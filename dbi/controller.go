@@ -1,11 +1,11 @@
 package dbi
 
 import (
-	"fmt"
 	"context"
 	"sync"
 
 	"github.com/r-che/log"
+	"github.com/r-che/dfi/types"
 	"github.com/r-che/dfi/types/dbms"
 )
 
@@ -70,11 +70,13 @@ func (dbc *DBController) Run() {
 				// Wait for set of values from watchers
 				case dbOps := <-dbc.dbChan:
 					// Process database operations
-					if err := dbc.update(dbOps); err != nil {
-						log.E("(DBC) Update operations failed: %v", err)
-					} else {
-						log.I("(DBC) Done %d operations", len(dbOps))
+					rv := dbc.update(dbOps)
+					if !rv.OK() {
+						log.E("(DBC) Update operations returned %d errors: {ERROR: %s}",
+							len(rv.Errs()), rv.ErrsJoin("}, {ERROR: "))
 					}
+
+					log.I("(DBC) Completed %d operations", rv.Changed())
 				// Wait for finish signal from context
 				case <-dbc.ctx.Done():
 					// Stop DB client
@@ -100,7 +102,10 @@ func (dbc *DBController) SetReadOnly(v bool) {
 	dbc.dbCli.SetReadOnly(v)
 }
 
-func (dbc *DBController) update(dbOps []*dbms.DBOperation) error {
+func (dbc *DBController) update(dbOps []*dbms.DBOperation) *types.CmdRV {
+	// Summary return value
+	rv := types.NewCmdRV()
+
 	// Keep current termLong value to have ability to compare during long-term updates
 	initTermLong := dbc.termLongVal
 
@@ -109,29 +114,35 @@ func (dbc *DBController) update(dbOps []*dbms.DBOperation) error {
     for _, op := range dbOps {
 		// If value of the termLong was updated - need to stop long-term update
 		if dbc.termLongVal != initTermLong {
-			return fmt.Errorf("terminated")
+			rv.AddErr("terminated")
+			// Break loop to commit
+			break
 		}
 
         switch op.Op {
+		// Object need to be updated
 		case dbms.Update:
 			// Add/update data in DB
 			if err := dbc.dbCli.UpdateObj(op.ObjectInfo); err != nil {
-				return err
+				rv.AddErr(err)
 			}
+
+		// Object need to be deleted
 		case dbms.Delete:
 			// Delete data from DB
 			if err := dbc.dbCli.DeleteObj(op.ObjectInfo); err != nil {
-				return err
+				rv.AddErr(err)
+			} else {
+				// Increase number of objects for deletion
+				toDelN++
 			}
-			// Increase number of objects for deletion
-			toDelN++
         }
     }
 
     // Commit operations
     updated, deleted, err := dbc.dbCli.Commit()
 	if err != nil {
-		return err
+		return rv.AddErr(err)
 	}
 
 	// Check for not frequent, but probably situation
@@ -144,6 +155,9 @@ func (dbc *DBController) update(dbOps []*dbms.DBOperation) error {
 
 	log.I("(DBC) %d records updated, %d records deleted", updated, deleted)
 
-	// OK
-	return nil
+	// Set number of changed objects
+	rv.AddChanged(updated + deleted)
+
+	// Done
+	return rv
 }
