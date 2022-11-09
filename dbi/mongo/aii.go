@@ -242,7 +242,7 @@ func (mc *MongoClient) appendAII(args *dbms.AIIArgs, idkm types.IdKeyMap, qr dbm
 		var tu, du int64
 
 		// Get list of tags which have to be set
-		if tags, err := addTags(args, aii); err != nil {
+		if tags, err := mergeTags(args, aii); err != nil {
 			log.E("(MongoCli:appendAII) cannot add/set tags: %v", err)
 			continue
 		} else if tags != nil {
@@ -253,7 +253,7 @@ func (mc *MongoClient) appendAII(args *dbms.AIIArgs, idkm types.IdKeyMap, qr dbm
 		}
 
 		// Add/set description
-		if descr, err := addDescr(args, aii); err != nil {
+		if descr, err := mergeDescr(args, aii); err != nil {
 			log.E("(MongoCli:appendAII) cannot add/set description: %v", err)
 			continue
 		} else if descr != "" {
@@ -349,7 +349,7 @@ func (mc *MongoClient) setAII(args *dbms.AIIArgs, idkm types.IdKeyMap, qr dbms.Q
 		}
 
 		if res.MatchedCount == 0 && res.UpsertedCount == 0 {
-			return 0, 0, fmt.Errorf("(MongoCli:UpdateObj) updateMany (ids: %s) on %s.%s returned success," +
+			return 0, 0, fmt.Errorf("(MongoCli:setAII) updateMany (ids: %s) on %s.%s returned success," +
 				" but no documents were changed", idkm.Keys(), coll.Database().Name(), coll.Name())
 		}
 	}

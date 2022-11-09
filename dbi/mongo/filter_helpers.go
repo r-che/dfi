@@ -174,35 +174,35 @@ func filterMergeWithIDs(filter *Filter, ids []string) *Filter {
 }
 
 func filterMakeSetRangeExpr(field string, min, max int64, set []int64) bson.E {
-	// Is set is not provided
-	if len(set) == 0 {
-		//
-		// Then range min..max query
-		//
+	// Is set not provided
+	if len(set) != 0 {
+		// Build query from set of values
+		return bson.E{field, bson.D{bson.E{`$in`, set}}}
+	}
 
-		// If closed interval
-		if min != 0 && max != 0 {
-			return bson.E{field, bson.D{
-				{`$gte`, min},	// greater or equal then min
-				{`$lte`, max},	// lesser or equal then max
-			}}
-		}
+	//
+	// The set of search values is not provided, then make range min..max query
+	//
 
-		// Half-open interval
-
-		if min == 0 {
-			// Only the top value of the range specified
-			return bson.E{field, bson.D{
-				{`$lte`, max},	// lesser or equal then max
-			}}
-		}
-
-		// Only the bottom value of the range specified
+	// If closed interval
+	if min != 0 && max != 0 {
 		return bson.E{field, bson.D{
 			{`$gte`, min},	// greater or equal then min
+			{`$lte`, max},	// lesser or equal then max
 		}}
 	}
 
-	// Build query from set of values
-	return bson.E{field, bson.D{bson.E{`$in`, set}}}
+	// Half-open interval
+
+	if min == 0 {
+		// Only the top value of the range specified
+		return bson.E{field, bson.D{
+			{`$lte`, max},	// lesser or equal then max
+		}}
+	}
+
+	// Only the bottom value of the range specified
+	return bson.E{field, bson.D{
+		{`$gte`, min},	// greater or equal then min
+	}}
 }

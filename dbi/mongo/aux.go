@@ -60,7 +60,7 @@ func pipelineConfVariadic(filter *Filter, pipeline mongo.Pipeline, configs []any
 	return pipeline
 }
 
-func addTags(args *dbms.AIIArgs, aii dbms.QRItem) ([]string, error) {
+func mergeTags(args *dbms.AIIArgs, aii dbms.QRItem) ([]string, error) {
 	// Check for any tags specified
 	if args.Tags == nil {
 		// Nothing to do
@@ -81,7 +81,7 @@ func addTags(args *dbms.AIIArgs, aii dbms.QRItem) ([]string, error) {
 	// Check for correct type of tags
 	tagsArr, ok := tagsData.(primitive.A)
 	if !ok {
-		return nil, fmt.Errorf("(MongoCli:updateAII) AII item contains invalid field %q - type of field is %T," +
+		return nil, fmt.Errorf("(MongoCli:mergeTags) AII item contains invalid field %q - type of field is %T," +
 			" want primitive.A (array), item: %#v", dbms.AIIFieldTags, tagsData, aii)
 	}
 
@@ -92,7 +92,7 @@ func addTags(args *dbms.AIIArgs, aii dbms.QRItem) ([]string, error) {
 		tag, ok := tagVal.(string)
 		if !ok {
 			// Skip this item
-			return nil, fmt.Errorf("(MongoCli:updateAII) AII item contains field %q with non-string item value: %#v" +
+			return nil, fmt.Errorf("(MongoCli:mergeTags) AII item contains field %q with non-string item value: %#v" +
 				dbms.AIIFieldTags, aii)
 		}
 
@@ -111,7 +111,7 @@ func addTags(args *dbms.AIIArgs, aii dbms.QRItem) ([]string, error) {
 	return tags.List(), nil
 }
 
-func addDescr(args *dbms.AIIArgs, aii map[string]any) (string, error) {
+func mergeDescr(args *dbms.AIIArgs, aii map[string]any) (string, error) {
 	// Check for description specified
 	if args.Descr == "" {
 		// Nothing to do
@@ -128,7 +128,7 @@ func addDescr(args *dbms.AIIArgs, aii map[string]any) (string, error) {
 	// Check for correct type of description
 	descr, ok := descrData.(string)
 	if !ok {
-		return "", fmt.Errorf("MongoCli:updateAII) AII item contains invalid field %q -" +
+		return "", fmt.Errorf("MongoCli:mergeDescr) AII item contains invalid field %q -" +
 			" type of field is %T, want string, item: %#v", dbms.AIIFieldDescr, descrData, aii)
 	}
 

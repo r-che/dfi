@@ -61,6 +61,16 @@ func (mc *MongoClient) Query(qa *dbms.QueryArgs, retFields []string) (dbms.Query
 	return qr, nil
 }
 
+func (mc *MongoClient) GetObjects(ids, retFields []string) (dbms.QueryResults, error) {
+	qr, err := mc.runSearch(MongoObjsColl, &dbms.QueryArgs{}, filterMakeIDs(ids), retFields)
+	if err != nil {
+		return nil, fmt.Errorf("(MongoCli:GetObjects) regex search failed with: %w", err)
+	}
+
+	// Success
+	return qr, nil
+}
+
 func (mc *MongoClient) runSearch(collName string, qa *dbms.QueryArgs, spFilter *Filter, retFields []string) (dbms.QueryResults, error) {
 	// Create a new filter as a clone of the filter with search phrases
 	filter := spFilter.Clone()
@@ -200,14 +210,4 @@ func (mc *MongoClient) delFieldById(collName, field string, ids []string) (int64
 	}
 
 	return res.ModifiedCount, nil
-}
-
-func (mc *MongoClient) GetObjects(ids, retFields []string) (dbms.QueryResults, error) {
-	qr, err := mc.runSearch(MongoObjsColl, &dbms.QueryArgs{}, filterMakeIDs(ids), retFields)
-	if err != nil {
-		return nil, fmt.Errorf("(MongoCli:GetObjects) regex search failed with: %w", err)
-	}
-
-	// Success
-	return qr, nil
 }
