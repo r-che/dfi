@@ -33,6 +33,12 @@ func searchDupes(dbc dbms.Client, qa *dbms.QueryArgs) *types.CmdRV {
 		return rv.AddErr(err)
 	}
 
+	// Check for we have any data to check
+	if len(refObjs) == 0 {
+		// No data, return now
+		return rv
+	}
+
 	// Map contains the correspondence between checksum<=>reference object
 	cr := make(map[string]csData, len(refObjs))
 
