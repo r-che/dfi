@@ -57,6 +57,11 @@ func (mc *MongoClient) UpdateObj(fso *types.FSObject) error {
 		{dbms.FieldChecksum,	fso.Checksum},
 	}
 
+	// Validate fields
+	if err := validateUtf8Values(fields); err != nil {
+		return fmt.Errorf("(MongoCli:UpdateObj) invalid filesytem object with path %q: %w", fso.FPath, err)
+	}
+
 	//
 	// Improve tokenization:
 	// MongoDB tokenizer does not do tokenization by underscores, but  underscores
@@ -81,8 +86,8 @@ func (mc *MongoClient) UpdateObj(fso *types.FSObject) error {
 		options.Update().SetUpsert(true),	// do insert if no object with this ID was found
 	)
 	if err != nil {
-		return fmt.Errorf("(MongoCli:UpdateObj) updateOne (id: %s) on %s.%s failed: %w",
-				id, coll.Database().Name(), coll.Name(), err)
+		return fmt.Errorf("(MongoCli:UpdateObj) updateOne (id: %s, found path: %q) on %s.%s failed: %w",
+				id, fso.FPath, coll.Database().Name(), coll.Name(), err)
 	}
 
 	if res.MatchedCount == 0 && res.UpsertedCount == 0 {

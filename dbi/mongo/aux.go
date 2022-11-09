@@ -2,12 +2,14 @@ package mongo
 
 import (
 	"fmt"
-	"go.mongodb.org/mongo-driver/bson/primitive"
+	"unicode/utf8"
 
 	"github.com/r-che/dfi/common/tools"
 	"github.com/r-che/dfi/types/dbms"
+
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 const (
@@ -158,4 +160,23 @@ func primArrToStrList(val any) ([]string, error) {
 	}
 
 	return out, nil
+}
+
+func validateUtf8Values(doc bson.D) error {
+	for _, item := range doc {
+		// Try to convert to string representation
+		strVal, ok := item.Value.(string)
+		// Skip all non-strings
+		if !ok {
+			continue
+		}
+
+		// Check
+		if !utf8.Valid([]byte(strVal)) {
+			return fmt.Errorf("(MongoCli:validateUtf8Values) field %q contains invalid utf8 sequence: %#v", item.Key, item.Value)
+		}
+	}
+
+	// OK
+	return nil
 }
