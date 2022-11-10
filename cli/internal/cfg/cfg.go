@@ -27,7 +27,7 @@ func Init(name, nameLong, vers string) {
 	// Create new parser
 	p := optsparser.NewParser(name,
 		// List of required options
-	)
+	).SetUsageOnFail(false)
 
 	config = NewConfig()
 
@@ -86,22 +86,16 @@ func Init(name, nameLong, vers string) {
 	p.AddBool(`hosts-groups|G`,
 		`group results by host instead of single line sorted output`, &config.HostGroups, false)
 
+
+	// Set mode opitions
 	p.AddSeparator(``,
 		`>> Set mode options`,
+		`# NOTE: Use "--docs set" to get additional information how use show mode`,
 	)
 	p.AddBool(`append|A`,
 		`append specified data (tags or description) to the object(s)`, &config.SetAdd, false)
 	p.AddBool(`no-newline|n`, `use "; " instead of new line to join new value ` +
 		`to description (affects --add)`, &config.NoNL, false)
-
-	// Set mode opitions
-	p.AddSeparator(``,
-		`>> Set mode options`,
-		`#`,
-		`# NOTE: Use "--docs set" to get additional information how use show mode`,
-		`#`,
-		`# No special options for this mode`,
-	)
 
 	// Deletion mode opitions
 	p.AddSeparator(``,
@@ -138,8 +132,9 @@ func Init(name, nameLong, vers string) {
 	p.AddBool(`version|V`, `output version and authors information and exit`, &showVer, false)
 
 	// Parse options
-	p.Parse()
+	err := p.Parse()
 
+	// Is version requested? We can show it without error checking
 	if showVer {
 		// Show version/authors info and exit
 		fmt.Printf("%s (%s) %s\n", nameLong, name, vers)
@@ -148,7 +143,17 @@ func Init(name, nameLong, vers string) {
 		os.Exit(0)
 	}
 
+	// Now, need to check parsing error
+	if err != nil {
+		// Some problems with command line options
+		fmt.Fprintf(os.Stderr, "%s: usage error - %v\n", name, err)
+		fmt.Fprintf(os.Stderr, "Try '%s --help' for more information.\n", name)
+		os.Exit(1)
+	}
+
+	// Is documentation requested?
 	if config.Docs {
+		// Print requested documentation and exit
 		docs(name, nameLong, p.Args())
 	}
 

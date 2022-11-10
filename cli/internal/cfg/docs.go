@@ -25,8 +25,8 @@ Where:
 * HOSTNAME is the name of the host where the object was found
 * /paht/to/file - is the absolute path to the object on that host
 
-The output format can be changed by the options --show-ids (-i),
---show-only-ids (-I), --hosts-groups (-G), --one-line (-o) and --json (-j).
+The output format can be changed by the options --show-ids (-i), --show-only-ids (-I),
+--hosts-groups (-G), --one-line (-o) and --json (-j).
 
 >>> Search phrases <<<
 
@@ -143,7 +143,6 @@ You can make the show mode output more machine-friendly by using the options:
   * --json (-j) - prints information entries as a list of maps in JSON format,
                   if the option --one-line (-o) specified - JSON will be printed
 				  in a single line
-
 `,
 
 // Documentation about set
@@ -171,7 +170,6 @@ the corresponding field. If the --append option is set:
 * With --descr, the description value given from the command line will be concatenated with
   the existing one by a newline character. If the option --no-newline (-n) specified,
   a semicolon and space ("; ") will be used to concatenate old and new values.
-
 `,
 
 // Documentation about deletion
@@ -197,8 +195,10 @@ deletion will not be performed.
 The tags argument can have the special value ALL, in this case all tags will be removed from
 objects with identifiers specified by other aruments.
 
->>> Teleting description <<<
+>>> Deleting description <<<
 
+By performing the delete description operation, the description is deleted in its entirety.
+There is no option to partially delete a description.
 `,
 
 // Documentation about values range
@@ -275,6 +275,7 @@ in the timestamp value to avoid incorrect parsing of the set values. For example
 you want to specify a timestamp like "Monday, 13-Aug-18 16:24:41 UTC", you must run:
 
  $ %[1]s --mtime "Monday\, 13-Aug-18 16:24:41 UTC"
+
 `,
 }
 
