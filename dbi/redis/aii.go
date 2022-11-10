@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 	"errors"
-	"sort"
 
 	"github.com/r-che/dfi/common/tools"
 	"github.com/r-che/log"

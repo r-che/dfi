@@ -33,10 +33,17 @@ func main() {
 	// Starting
 	log.D("==== %s %s started ====", ProgNameLong, ProgVers)
 
+	// Loading common configuration
 	c := cfg.Config()
 
+	// Check for database configuration
+	dbCfg := c.DBConfig()
+	if dbCfg == nil {
+		log.F("the configuration file has no database connection settings")
+	}
+
 	// Init new database client
-	dbc, err := dbi.NewClient(c.DBConfig())
+	dbc, err := dbi.NewClient(dbCfg)
 	if err != nil {
 		log.F("Cannot initialize database client: %v", err)
 	}

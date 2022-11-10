@@ -77,7 +77,7 @@ func NewConfig() *progConfig {
 }
 
 func (pc *progConfig) DBConfig() *dbms.DBConfig {
-	return &pc.fConf.DB
+	return pc.fConf.DB
 }
 
 func (pc *progConfig) NeedID() bool {

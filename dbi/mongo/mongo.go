@@ -44,7 +44,6 @@ func NewClient(dbCfg *dbms.DBConfig) (*MongoClient, error) {
 		CommonClient: dbms.NewCommonClient(dbCfg, dbCfg.CliHost),
 	}
 
-
 	// Check for credentials options
 	creds, err := parsePrivCfg(dbCfg.PrivCfg)
 	if err != nil {

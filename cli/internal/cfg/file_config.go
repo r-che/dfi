@@ -15,7 +15,7 @@ import (
 )
 
 type fileCfg struct {
-	DB	dbms.DBConfig
+	DB	*dbms.DBConfig
 }
 
 func (pc *progConfig) loadConf() error {
