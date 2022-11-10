@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/r-che/dfi/types"
 	"github.com/r-che/dfi/types/dbms"
@@ -198,7 +199,10 @@ func (pc *progConfig) prepareSearch() error {
 	}
 
 	if pc.hosts != anyVal {
-		if err := pc.QA.ParseHosts(pc.hosts); err != nil {
+		if err := pc.QA.ParseHosts(
+			// Convert hostname to lower case to avoid the need for a case-insensitive search in DB
+			strings.ToLower(pc.hosts),
+		); err != nil {
 			return err
 		}
 	}

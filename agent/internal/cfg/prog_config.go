@@ -52,6 +52,9 @@ func (pc *progConfig) prepare() error {
 		return err
 	}
 
+	// Convert hostname to lower case to avoid the need for a case-insensitive search in DB
+	pc.DBCfg.CliHost = strings.ToLower(pc.DBCfg.CliHost)
+
 	// Parsing completed successful
 	return nil
 }
