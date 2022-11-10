@@ -59,8 +59,8 @@ func main() {
 		rv = set.Do(dbc)
 	case c.Del:
 		rv = del.Do(dbc)
-	case c.Admin:
-		err = fmt.Errorf("not implemented") // TODO
+	// TODO case c.Admin:
+	// 	err = fmt.Errorf("not implemented")
 	default:
 		panic("Unexpected application state - no one operating mode are set")
 	}

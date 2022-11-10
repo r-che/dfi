@@ -37,7 +37,7 @@ func Init(name, nameLong, vers string) {
 	p.AddBool(`show`, `enable show mode`, &config.Show, false)
 	p.AddBool(`set`, `enable set mode`, &config.Set, false)
 	p.AddBool(`del`, `enable deletion mode`, &config.Del, false)
-	p.AddBool(`admin`, `enable admin mode`, &config.Admin, false)
+	// TODO p.AddBool(`admin`, `enable admin mode`, &config.Admin, false)
 
 	// Modes options
 
