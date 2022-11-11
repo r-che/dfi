@@ -7,9 +7,11 @@ import (
 	"time"
 	"sort"
 	"os"
+	"errors"
 
 	"github.com/r-che/dfi/types"
 	"github.com/r-che/dfi/types/dbms"
+	"github.com/r-che/dfi/common/tools"
 
 	"github.com/r-che/log"
 
@@ -187,6 +189,18 @@ func (p *Pool) watch(watcher *fsn.Watcher, watchPath string, events eventsMap, d
 	// On exit from function - close done channel to signal that this instance finished
 	defer close(done)
 
+	//
+	// Create a set of watched directories to be able to remove watchers from removed directories
+	//
+
+	// List of watched directories
+	wDirs := watcher.WatchList()
+	// Map with directories
+	dirs := make(map[string]bool, len(wDirs))
+	for _, dir := range wDirs {
+		dirs[dir] = true
+	}
+
 	// Timer to flush cache to database
 	timer := time.Tick(p.fDelay)
 
@@ -199,7 +213,7 @@ func (p *Pool) watch(watcher *fsn.Watcher, watchPath string, events eventsMap, d
 			}
 
 			// Handle event
-			p.handleEvent(watcher, &event, events)
+			p.handleEvent(watcher, &event, events, dirs)
 
 		// Need to flush cache
 		case <-timer:
@@ -358,12 +372,10 @@ func (p *Pool) scanDir(watcher *fsn.Watcher, dir string, events eventsMap, doInd
 	return nWatchers, nil
 }
 
-func (p *Pool) handleEvent(watcher *fsn.Watcher, event *fsn.Event, events eventsMap) {
+func (p *Pool) handleEvent(watcher *fsn.Watcher, event *fsn.Event, events eventsMap, dirs map[string]bool) {
 	switch {
 	// Filesystem object was created
 	case event.Op & fsn.Create != 0:
-
-		log.D("Created object %q", event.Name)
 
 		// Create new entry
 		events[event.Name] = &FSEvent{Type: EvCreate}
@@ -375,17 +387,24 @@ func (p *Pool) handleEvent(watcher *fsn.Watcher, event *fsn.Event, events events
 			return
 		}
 
-		if oi.IsDir() {
+		isDir := oi.IsDir()
+		log.D("Created %s %q", tools.Tern(isDir, "directory", "object"), event.Name)
+
+		if isDir {
 			// Need to add watcher for newly created directory
 			if err = watcher.Add(event.Name); err != nil {
 				log.E("Cannot add watcher to directory %q: %v", event.Name, err)
-			} else {
-				log.I("Added watcher for %q", event.Name)
-				// Do recursive scan and add watchers to all subdirectories
-				_, err := p.scanDir(watcher, event.Name, events, DoReindex)
-				if err != nil {
-					log.E("Cannot scan newly created directory %q: %v", event.Name, err)
-				}
+				return
+			}
+
+			// Register directory
+			dirs[event.Name] = true
+
+			log.I("Added watcher for %q", event.Name)
+			// Do recursive scan and add watchers to all subdirectories
+			_, err := p.scanDir(watcher, event.Name, events, DoReindex)
+			if err != nil {
+				log.E("Cannot scan newly created directory %q: %v", event.Name, err)
 			}
 		}
 
@@ -396,17 +415,29 @@ func (p *Pool) handleEvent(watcher *fsn.Watcher, event *fsn.Event, events events
 
 	// Filesystem object was removed o renamed
 	case event.Op & (fsn.Remove | fsn.Rename) != 0:
+		// Is event name empty?
+		if event.Name == "" {
+			// Event with empty name may be caused by renaming
+			return
+		}
 
-		log.D("Removed/renamed object %q", event.Name)
+		isDir := dirs[event.Name]
+
+		log.D("Removed/renamed %s %q", tools.Tern(isDir, "directory", "object"), event.Name)
 
 		// Remove existing entry
-		events[event.Name] = &types.FSEvent{Type: types.EvRemove}
+		events[event.Name] = &FSEvent{Type: EvRemove}
 
-		// XXX The code below is not needed, because the path removed from
-		// XXX the disc is automatically removed from the watch list
-		//if err := watcher.Remove(event.Name); err != nil {
-		//	log.E("Cannot remove watcher from %q: %v", event.Name, err)
-		//}
+		// Is it a directory?
+		if dirs[event.Name] {
+			// Need to remove watcher
+			if err := watcher.Remove(event.Name); err != nil && !errors.Is(err, fsn.ErrNonExistentWatch) {
+				log.E("Cannot remove watcher from %q: %v", event.Name, err)
+				return
+			}
+			// Then unregister directory
+			delete(dirs, event.Name)
+		}
 
 	// Object mode was changed
 	case event.Op & fsn.Chmod != 0:
@@ -416,6 +447,5 @@ func (p *Pool) handleEvent(watcher *fsn.Watcher, event *fsn.Event, events events
 	default:
 		// Unexpected event
 		log.W("Unknown event from fsnotify: %[1]v (%#[1]v)", event)
-		return
 	}
 }
