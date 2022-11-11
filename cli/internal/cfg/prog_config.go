@@ -117,6 +117,11 @@ func (pc *progConfig) prepare(CmdArgs []string) error {
 		return fmt.Errorf("only one mode option can be set")
 	}
 
+	// Check for incompatible options
+	if err := pc.checkIncompat(); err != nil {
+		return err
+	}
+
 	// Prepare required options
 	switch {
 		case pc.Search:
@@ -155,13 +160,31 @@ func (pc *progConfig) prepare(CmdArgs []string) error {
 		pc.Quiet = true
 	}
 
-	// Do DBMS specific preparations/checks
-	if err := pc.prepareDBMS(); err != nil {
-		return err
-	}
-
 	// Load configuration from file and return result
 	return pc.loadConf()
+}
+
+func (pc *progConfig) checkIncompat() error {
+	// Check for incompatible options
+	io := make([]string, 0, 3)	// Incompatible options
+	for k, v := range map[string]bool{
+		"deep": pc.QA.DeepSearch,
+		"dupes": pc.SearchDupes,
+		"only-name": pc.QA.OnlyName,
+		"only-tags": pc.QA.OnlyTags,
+		"only-descr": pc.QA.OnlyDescr,
+	} {
+		if v {
+			io = append(io, `--` + k)
+		}
+	}
+
+	if len(io) < 2 {
+		// OK
+		return nil
+	}
+
+	return fmt.Errorf("search options are incompatible: %s", strings.Join(io, " "))
 }
 
 func (pc *progConfig) prepareSearch() error {
