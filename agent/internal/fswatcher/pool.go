@@ -7,7 +7,6 @@ import (
 	"time"
 	"sort"
 	"os"
-	"errors"
 
 	"github.com/r-che/dfi/types"
 	"github.com/r-che/dfi/types/dbms"
@@ -423,20 +422,31 @@ func (p *Pool) handleEvent(watcher *fsn.Watcher, event *fsn.Event, events events
 
 		isDir := dirs[event.Name]
 
+		// XXX This message is duplicated when a directory is removed, because we
+		// receive an event from the removed one and from its parent directory as well.
+		// Currently, fsnotify (v1.6.0) does not distinguish these events:
+		// https://github.com/fsnotify/fsnotify/blob/5f8c606accbcc6913853fe7e083ee461d181d88d/backend_inotify.go#L446
 		log.D("Removed/renamed %s %q", tools.Tern(isDir, "directory", "object"), event.Name)
 
 		// Remove existing entry
 		events[event.Name] = &FSEvent{Type: EvRemove}
 
 		// Is it a directory?
-		if dirs[event.Name] {
-			// Need to remove watcher
-			if err := watcher.Remove(event.Name); err != nil && !errors.Is(err, fsn.ErrNonExistentWatch) {
-				log.E("Cannot remove watcher from %q: %v", event.Name, err)
-				return
-			}
-			// Then unregister directory
+		if isDir {
+			// Unregister removed/renamed directory
 			delete(dirs, event.Name)
+
+			// Is it a rename event?
+			if event.Has(fsn.Rename) {
+				// Need to remove watcher from value of the directory name
+				if err := watcher.Remove(event.Name); err != nil {
+					log.E("Cannot remove watcher from %q: %v", event.Name, err)
+					return
+				}
+			} else {
+				// Nothing to do in this case, because the path removed from
+				// the disk is automatically removed from the watch list
+			}
 		}
 
 	// Object mode was changed
