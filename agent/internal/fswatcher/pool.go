@@ -22,7 +22,7 @@ const (
 	NoReindex	=	false
 )
 
-type eventsMap map[string]*types.FSEvent
+type eventsMap map[string]*FSEvent
 type doneChan chan interface{}
 
 type Pool struct {
@@ -272,9 +272,9 @@ func (p *Pool) flushCached(watchPath string, events eventsMap) error {
 
 		switch event.Type {
 		// Object was created or updated, need to update database
-		case types.EvCreate:
+		case EvCreate:
 			fallthrough
-		case types.EvWrite:
+		case EvWrite:
 			oInfo, err := getObjectInfo(name)
 			if err != nil {
 				log.E("(watcher:%s) Skip object %q due to an error in obtaining information about it: %v",
@@ -292,7 +292,7 @@ func (p *Pool) flushCached(watchPath string, events eventsMap) error {
 			dbOps = append(dbOps, &dbms.DBOperation{Op: dbms.Update, ObjectInfo: oInfo})
 
 		// Object was removed from filesystem
-		case types.EvRemove:
+		case EvRemove:
 			// Append database removal operation
 			dbOps = append(dbOps, &dbms.DBOperation{Op: dbms.Delete, ObjectInfo: &types.FSObject{FPath: name}})
 		default:
@@ -341,7 +341,7 @@ func (p *Pool) scanDir(watcher *fsn.Watcher, dir string, events eventsMap, doInd
 		// Is indexing of objects required?
 		if doIndexing {
 			// Add each entry as newly created object to update data in DB
-			events[objName] = &types.FSEvent{Type: types.EvCreate}
+			events[objName] = &FSEvent{Type: EvCreate}
 		}
 
 		// Check that the the entry is a directory
@@ -366,7 +366,7 @@ func (p *Pool) handleEvent(watcher *fsn.Watcher, event *fsn.Event, events events
 		log.D("Created object %q", event.Name)
 
 		// Create new entry
-		events[event.Name] = &types.FSEvent{Type: types.EvCreate}
+		events[event.Name] = &FSEvent{Type: EvCreate}
 
 		// Check that the created object is a directory
 		oi, err := os.Lstat(event.Name)
@@ -392,7 +392,7 @@ func (p *Pool) handleEvent(watcher *fsn.Watcher, event *fsn.Event, events events
 	// Data in filesystem object was updated
 	case event.Op & fsn.Write != 0:
 		// Update existing entry
-		events[event.Name] = &types.FSEvent{Type: types.EvWrite}
+		events[event.Name] = &FSEvent{Type: EvWrite}
 
 	// Filesystem object was removed o renamed
 	case event.Op & (fsn.Remove | fsn.Rename) != 0:

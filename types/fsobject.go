@@ -1,7 +1,5 @@
 package types
 
-import "fmt"
-
 const (
 	// Stubs to fill checksum field on special cases
 	CsTooLarge = `<FILE TOO LARGE>`
@@ -23,29 +21,7 @@ type FSObject struct {
 }
 const FSObjectFieldsNum = 7
 
-//
-// Filesystem events
-//
-type eventType int
-const (
-	EvCreate	= eventType(iota)
-	EvWrite
-	EvRemove
-)
-func (et eventType) String() string {
-	switch et {
-	case EvCreate: return "Create"
-	case EvWrite: return "Write"
-	case EvRemove: return "Remove"
-	default:
-		panic(fmt.Sprintf("Unhandled filesystem event type %d", et))
-	}
-}
-type FSEvent struct {
-	Type		eventType
-}
-
-type objType string
+// Supported object types
 const (
 	ObjRegular		=	"reg"
 	ObjDirectory	=	"dir"
