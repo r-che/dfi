@@ -111,7 +111,7 @@ func mergeTags(args *dbms.AIIArgs, aii dbms.QRItem) ([]string, error) {
 	return tags.List(), nil
 }
 
-func mergeDescr(args *dbms.AIIArgs, aii map[string]any) (string, error) {
+func mergeDescr(args *dbms.AIIArgs, aii dbms.QRItem) (string, error) {
 	// Check for description specified
 	if args.Descr == "" {
 		// Nothing to do

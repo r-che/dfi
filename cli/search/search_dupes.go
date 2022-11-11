@@ -220,7 +220,7 @@ func loadDupesRefs(dbc dbms.Client, rv *types.CmdRV) (map[string]*types.FSObject
 	return objRefs, nil
 }
 
-func extrFieldStr(objKey types.ObjKey, fields map[string]any, fn string, rv *types.CmdRV) (string, bool) {
+func extrFieldStr(objKey types.ObjKey, fields dbms.QRItem, fn string, rv *types.CmdRV) (string, bool) {
 	fVal, err := extrFieldRaw(fields, fn)
 	if err != nil {
 		rv.AddWarn("Skip invalid object with key %s - %w", objKey, err)
@@ -236,7 +236,7 @@ func extrFieldStr(objKey types.ObjKey, fields map[string]any, fn string, rv *typ
 	return strVal, true
 }
 
-func extrFieldInt64(objKey types.ObjKey, fields map[string]any, fn string, rv *types.CmdRV) (int64, bool) {
+func extrFieldInt64(objKey types.ObjKey, fields dbms.QRItem, fn string, rv *types.CmdRV) (int64, bool) {
 	// Extract raw field value
 	fVal, err := extrFieldRaw(fields, fn)
 	if err != nil {

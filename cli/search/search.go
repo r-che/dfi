@@ -108,15 +108,15 @@ func printJSON(qr dbms.QueryResults) {
 		ind = ""
 	}
 
-	var printer func(types.ObjKey, map[string]any)
+	var printer func(types.ObjKey, dbms.QRItem)
 
 	switch {
 	case c.ShowOnlyIds:
-		printer = func(k types.ObjKey, r map[string]any) {
+		printer = func(k types.ObjKey, r dbms.QRItem) {
 			fmt.Printf(ind + `%q`, r[dbms.FieldID])
 		}
 	case c.ShowID:
-		printer = func(k types.ObjKey, r map[string]any) {
+		printer = func(k types.ObjKey, r dbms.QRItem) {
 			fmt.Printf(
 				ind + `{` + nl +
 				ind + ind + `"%s": %q,` + nl +
@@ -124,7 +124,7 @@ func printJSON(qr dbms.QueryResults) {
 				ind + `}`, dbms.FieldID, r[dbms.FieldID], k)
 		}
 	default:
-		printer = func(k types.ObjKey, r map[string]any) {
+		printer = func(k types.ObjKey, r dbms.QRItem) {
 			fmt.Printf(ind + `%q`, k)
 		}
 	}

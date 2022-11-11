@@ -156,7 +156,7 @@ func (mc *MongoClient) aggregateSearch(collName string, filter *Filter, retField
 
 	// Make a list of results
 	for cursor.Next(mc.Ctx) {
-		var item map[string]any
+		var item dbms.QRItem
 		// Try to decode next cursor value to the item
 		if err := cursor.Decode(&item); err != nil {
 			log.E("(MongoCli:aggregateSearch) cannot decode cursor item: %w", err)
