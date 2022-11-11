@@ -299,7 +299,7 @@ func rshQuery(qa *dbms.QueryArgs) string {
 	}
 
 	if qa.IsIds() {
-		chunks = append(chunks, `@` + dbms.FieldID + `:{` +  strings.Join(qa.Ids, `|`) + `}`)
+		chunks = append(chunks, `(@` + dbms.FieldID + `:{` +  strings.Join(qa.Ids, `|`) + `})`)
 	}
 
 	if len(chunks) == 0 {
@@ -322,10 +322,10 @@ func rshArgs(qa *dbms.QueryArgs) string {
 		chunks = append(chunks, makeSetRangeQuery(dbms.FieldSize, qa.SizeStart, qa.SizeEnd, qa.SizeSet))
 	}
 	if qa.IsType() {
-		chunks = append(chunks, `@` + dbms.FieldType + `:{` +  strings.Join(qa.Types, `|`) + `}`)
+		chunks = append(chunks, `(@` + dbms.FieldType + `:{` +  strings.Join(qa.Types, `|`) + `})`)
 	}
 	if qa.IsChecksum() {
-		chunks = append(chunks, `@` + dbms.FieldChecksum + `:{` +  strings.Join(qa.CSums, `|`) + `}`)
+		chunks = append(chunks, `(@` + dbms.FieldChecksum + `:{` +  strings.Join(qa.CSums, `|`) + `})`)
 	}
 	if qa.IsHost() {
 		// At least need to escape dashes ("-") inside of hostname to avoid split hostnames by RediSearch tokenizer
@@ -334,7 +334,7 @@ func rshArgs(qa *dbms.QueryArgs) string {
 			escapedHosts = append(escapedHosts, rsh.EscapeTextFileString(host))
 		}
 
-		chunks = append(chunks, `@` + dbms.FieldHost + `:{` + strings.Join(escapedHosts, `|`) + `}`)
+		chunks = append(chunks, `(@` + dbms.FieldHost + `:{` + strings.Join(escapedHosts, `|`) + `})`)
 	}
 
 	// Check that chunks is not empty
