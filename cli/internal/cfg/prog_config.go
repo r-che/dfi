@@ -20,7 +20,7 @@ type progConfig struct {
 	Show	bool
 	Set		bool
 	Del		bool
-	Admin	bool
+	// TODO Admin	bool
 
 	// Search mode options
 	strMtime	string
@@ -109,7 +109,7 @@ func (pc *progConfig) prepare(CmdArgs []string) error {
 	if pc.Show { mn++ }
 	if pc.Set { mn++ }
 	if pc.Del { mn++ }
-	if pc.Admin { mn++ }
+	// TODO if pc.Admin { mn++ }
 	if mn == 0 {
 		// Use search mode as default
 		pc.Search = true
@@ -140,8 +140,7 @@ func (pc *progConfig) prepare(CmdArgs []string) error {
 			if err := pc.prepareDel(); err != nil {
 				return err
 			}
-		case pc.Admin:
-			// TODO
+		// TODO case pc.Admin:
 	}
 
 	// Is program configuration was not set?
