@@ -16,12 +16,12 @@ func Do(dbc dbms.Client) *types.CmdRV {
 	setIDs := c.CmdArgs[1:]
 
 	switch {
-		case c.UseTags:
-			return setTags(dbc, setValue, setIDs)
-		case c.UseDescr:
-			return setDescr(dbc, setValue, setIDs)
-		default:
-			panic("unexpected set mode")
+	case c.UseTags:
+		return setTags(dbc, setValue, setIDs)
+	case c.UseDescr:
+		return setDescr(dbc, setValue, setIDs)
+	default:
+		panic("unexpected set mode")
 	}
 
 	// Unreachable

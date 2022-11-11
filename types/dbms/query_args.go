@@ -160,30 +160,30 @@ func (qa *QueryArgs) ParseMtimes(mtimeLine string) error {
 		var err error
 		// Need to select correct case of ranges
 		switch {
-			// Start and end both set
-			case tsRange[0] != "" && tsRange[1] != "":
-				if qa.MtimeStart, err = parseTime(tsRange[0]); err != nil {
-					return fmt.Errorf("invalid mtime range start in %q: %w", mtimeLine, err)
-				}
-				if qa.MtimeEnd, err = parseTime(tsRange[1]); err != nil {
-					return fmt.Errorf("invalid mtime range end in %q: %w", mtimeLine, err)
-				}
-				// Check that start < end
-				if qa.MtimeEnd <= qa.MtimeStart {
-					return fmt.Errorf("invalid mtime range %q - end of the range must be greater than start", mtimeLine)
-				}
-			// Only start is set
-			case tsRange[0] != "" && tsRange[1] == "":
-				if qa.MtimeStart, err = parseTime(tsRange[0]); err != nil {
-					return fmt.Errorf("invalid mtime range start in %q: %w", mtimeLine, err)
-				}
-			// Only end is set
-			case tsRange[0] == "" && tsRange[1] != "":
-				if qa.MtimeEnd, err = parseTime(tsRange[1]); err != nil {
-					return fmt.Errorf("invalid mtime range end in %q: %w", mtimeLine, err)
-				}
-			default:
-				return fmt.Errorf("invalid mtime range %q", mtimeLine)
+		// Start and end both set
+		case tsRange[0] != "" && tsRange[1] != "":
+			if qa.MtimeStart, err = parseTime(tsRange[0]); err != nil {
+				return fmt.Errorf("invalid mtime range start in %q: %w", mtimeLine, err)
+			}
+			if qa.MtimeEnd, err = parseTime(tsRange[1]); err != nil {
+				return fmt.Errorf("invalid mtime range end in %q: %w", mtimeLine, err)
+			}
+			// Check that start < end
+			if qa.MtimeEnd <= qa.MtimeStart {
+				return fmt.Errorf("invalid mtime range %q - end of the range must be greater than start", mtimeLine)
+			}
+		// Only start is set
+		case tsRange[0] != "" && tsRange[1] == "":
+			if qa.MtimeStart, err = parseTime(tsRange[0]); err != nil {
+				return fmt.Errorf("invalid mtime range start in %q: %w", mtimeLine, err)
+			}
+		// Only end is set
+		case tsRange[0] == "" && tsRange[1] != "":
+			if qa.MtimeEnd, err = parseTime(tsRange[1]); err != nil {
+				return fmt.Errorf("invalid mtime range end in %q: %w", mtimeLine, err)
+			}
+		default:
+			return fmt.Errorf("invalid mtime range %q", mtimeLine)
 		}
 
 		// OK, range parsed successfuly
@@ -300,30 +300,30 @@ func (qa *QueryArgs) ParseSizes(sizeLine string) error {
 		var err error
 		// Need to select correct case of ranges
 		switch {
-			// Start and end both set
-			case sizeRange[0] != "" && sizeRange[1] != "":
-				if qa.SizeStart, err = parseSize(sizeRange[0]); err != nil {
-					return fmt.Errorf("invalid size range start in %q: %w", sizeLine, err)
-				}
-				if qa.SizeEnd, err = parseSize(sizeRange[1]); err != nil {
-					return fmt.Errorf("invalid size range end in %q: %w", sizeLine, err)
-				}
-				// Check that start < end
-				if qa.SizeEnd <= qa.SizeStart {
-					return fmt.Errorf("invalid size range %q - end of the range must be greater than start", sizeLine)
-				}
-			// Only start is set
-			case sizeRange[0] != "" && sizeRange[1] == "":
-				if qa.SizeStart, err = parseSize(sizeRange[0]); err != nil {
-					return fmt.Errorf("invalid size range start in %q: %w", sizeLine, err)
-				}
-			// Only end is set
-			case sizeRange[0] == "" && sizeRange[1] != "":
-				if qa.SizeEnd, err = parseSize(sizeRange[1]); err != nil {
-					return fmt.Errorf("invalid size range end in %q: %w", sizeLine, err)
-				}
-			default:
-				return fmt.Errorf("invalid size range %q", sizeLine)
+		// Start and end both set
+		case sizeRange[0] != "" && sizeRange[1] != "":
+			if qa.SizeStart, err = parseSize(sizeRange[0]); err != nil {
+				return fmt.Errorf("invalid size range start in %q: %w", sizeLine, err)
+			}
+			if qa.SizeEnd, err = parseSize(sizeRange[1]); err != nil {
+				return fmt.Errorf("invalid size range end in %q: %w", sizeLine, err)
+			}
+			// Check that start < end
+			if qa.SizeEnd <= qa.SizeStart {
+				return fmt.Errorf("invalid size range %q - end of the range must be greater than start", sizeLine)
+			}
+		// Only start is set
+		case sizeRange[0] != "" && sizeRange[1] == "":
+			if qa.SizeStart, err = parseSize(sizeRange[0]); err != nil {
+				return fmt.Errorf("invalid size range start in %q: %w", sizeLine, err)
+			}
+		// Only end is set
+		case sizeRange[0] == "" && sizeRange[1] != "":
+			if qa.SizeEnd, err = parseSize(sizeRange[1]); err != nil {
+				return fmt.Errorf("invalid size range end in %q: %w", sizeLine, err)
+			}
+		default:
+			return fmt.Errorf("invalid size range %q", sizeLine)
 		}
 
 		// OK, range parsed successfuly

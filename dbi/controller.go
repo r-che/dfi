@@ -119,7 +119,7 @@ func (dbc *DBController) update(dbOps []*dbms.DBOperation) *types.CmdRV {
 			break
 		}
 
-        switch op.Op {
+		switch op.Op {
 		// Object need to be updated
 		case dbms.Update:
 			// Add/update data in DB
@@ -136,7 +136,7 @@ func (dbc *DBController) update(dbOps []*dbms.DBOperation) *types.CmdRV {
 				// Increase number of objects for deletion
 				toDelN++
 			}
-        }
+		}
     }
 
     // Commit operations

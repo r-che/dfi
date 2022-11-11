@@ -54,10 +54,10 @@ const (
 )
 func (dbo DBOperator) String() string {
 	switch dbo {
-		case Update: return "Update"
-		case Delete: return "Delete"
-		default:
-			panic(fmt.Sprintf("Unsupported database operation %d", dbo))
+	case Update: return "Update"
+	case Delete: return "Delete"
+	default:
+		panic(fmt.Sprintf("Unsupported database operation %d", dbo))
 	}
 }
 

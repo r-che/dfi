@@ -124,23 +124,23 @@ func (pc *progConfig) prepare(CmdArgs []string) error {
 
 	// Prepare required options
 	switch {
-		case pc.Search:
-			if err := pc.prepareSearch(); err != nil {
-				return err
-			}
-		case pc.Show:
-			if err := pc.prepareShow(); err != nil {
-				return err
-			}
-		case pc.Set:
-			if err := pc.prepareSet(); err != nil {
-				return err
-			}
-		case pc.Del:
-			if err := pc.prepareDel(); err != nil {
-				return err
-			}
-		// TODO case pc.Admin:
+	case pc.Search:
+		if err := pc.prepareSearch(); err != nil {
+			return err
+		}
+	case pc.Show:
+		if err := pc.prepareShow(); err != nil {
+			return err
+		}
+	case pc.Set:
+		if err := pc.prepareSet(); err != nil {
+			return err
+		}
+	case pc.Del:
+		if err := pc.prepareDel(); err != nil {
+			return err
+		}
+	// TODO case pc.Admin:
 	}
 
 	// Is program configuration was not set?

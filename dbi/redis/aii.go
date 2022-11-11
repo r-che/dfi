@@ -67,12 +67,12 @@ func (rc *RedisClient) ModifyAII(op dbms.DBOperator, args *dbms.AIIArgs, ids []s
 	// 2. Select modification operator
 
 	switch op {
-		case dbms.Update:
-			return rc.updateAII(args, fids, add)
-		case dbms.Delete:
-			return rc.deleteAII(args, fids)
-		default:
-			panic(fmt.Sprintf("Unsupported AAI modification operator %v", op))
+	case dbms.Update:
+		return rc.updateAII(args, fids, add)
+	case dbms.Delete:
+		return rc.deleteAII(args, fids)
+	default:
+		panic(fmt.Sprintf("Unsupported AAI modification operator %v", op))
 	}
 
 	// Unreachable

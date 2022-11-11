@@ -271,33 +271,33 @@ func (p *Pool) flushCached(watchPath string, events eventsMap) error {
 		event := events[name]
 
 		switch event.Type {
-			// Object was created or updated, need to update database
-			case types.EvCreate:
-				fallthrough
-			case types.EvWrite:
-				oInfo, err := getObjectInfo(name)
-				if err != nil {
-					log.E("(watcher:%s) Skip object %q due to an error in obtaining information about it: %v",
-						watchPath, name, err)
-					continue
-				}
-				// Check returned value for empty
-				if oInfo == nil {
-					// Unsupported object type, just skip it
-					log.D("(watcher:%s) Skip object %q due to unsupported type", watchPath, name)
-					continue
-				}
+		// Object was created or updated, need to update database
+		case types.EvCreate:
+			fallthrough
+		case types.EvWrite:
+			oInfo, err := getObjectInfo(name)
+			if err != nil {
+				log.E("(watcher:%s) Skip object %q due to an error in obtaining information about it: %v",
+					watchPath, name, err)
+				continue
+			}
+			// Check returned value for empty
+			if oInfo == nil {
+				// Unsupported object type, just skip it
+				log.D("(watcher:%s) Skip object %q due to unsupported type", watchPath, name)
+				continue
+			}
 
-				// Append a database operation
-				dbOps = append(dbOps, &dbms.DBOperation{Op: dbms.Update, ObjectInfo: oInfo})
+			// Append a database operation
+			dbOps = append(dbOps, &dbms.DBOperation{Op: dbms.Update, ObjectInfo: oInfo})
 
-			// Object was removed from filesystem
-			case types.EvRemove:
-				// Append database removal operation
-				dbOps = append(dbOps, &dbms.DBOperation{Op: dbms.Delete, ObjectInfo: &types.FSObject{FPath: name}})
-			default:
-				panic(fmt.Sprintf("(watcher:%s) Unhandled FSEvent type %v (%d) occurred on path %q",
-					watchPath, event.Type, event.Type, name))
+		// Object was removed from filesystem
+		case types.EvRemove:
+			// Append database removal operation
+			dbOps = append(dbOps, &dbms.DBOperation{Op: dbms.Delete, ObjectInfo: &types.FSObject{FPath: name}})
+		default:
+			panic(fmt.Sprintf("(watcher:%s) Unhandled FSEvent type %v (%d) occurred on path %q",
+				watchPath, event.Type, event.Type, name))
 		}
 	}
 

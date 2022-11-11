@@ -75,12 +75,12 @@ func TestPrivOwnershipStatFail(t *testing.T) {
 
 	// Call PrivOwnership
 	switch err := PrivOwnership(nxFile); err.(type) {
-		case nil:
-			t.Errorf("case successed, but must not - returned success for non-existing file %q", nxFile)
-		case *fs.PathError:
-			// Success, expected error
-		default:
-			t.Errorf("case returned unexpected error type %T (%v), want *fs.PathError", err, err)
+	case nil:
+		t.Errorf("case successed, but must not - returned success for non-existing file %q", nxFile)
+	case *fs.PathError:
+		// Success, expected error
+	default:
+		t.Errorf("case returned unexpected error type %T (%v), want *fs.PathError", err, err)
 	}
 }
 
@@ -132,12 +132,12 @@ func Test_sysStat_fail(t *testing.T) {
 
 	// Now, test ownership of this file
 	switch err := PrivOwnership(testFile); err.(type) {
-		case nil:
-			t.Errorf("PrivOwnership does not catch invalid file ownership")
-		case *ErrGetOwner:
-			// Success, expected error
-		default:
-			t.Errorf("want the incorrect ownership error, got - %T (%v)", err, err)
+	case nil:
+		t.Errorf("PrivOwnership does not catch invalid file ownership")
+	case *ErrGetOwner:
+		// Success, expected error
+	default:
+		t.Errorf("want the incorrect ownership error, got - %T (%v)", err, err)
 	}
 }
 

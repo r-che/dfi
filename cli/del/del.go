@@ -13,12 +13,12 @@ func Do(dbc dbms.Client) *types.CmdRV {
 	c := cfg.Config()
 
 	switch {
-		case c.UseTags:
-			return delTags(dbc, c.CmdArgs[0], c.CmdArgs[1:])
-		case c.UseDescr:
-			return delDescr(dbc, c.CmdArgs)
-		default:
-			panic("unexpected set mode")
+	case c.UseTags:
+		return delTags(dbc, c.CmdArgs[0], c.CmdArgs[1:])
+	case c.UseDescr:
+		return delDescr(dbc, c.CmdArgs)
+	default:
+		panic("unexpected set mode")
 	}
 
 	return types.NewCmdRV().AddErr("unreacable code reached")

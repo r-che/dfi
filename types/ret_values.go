@@ -74,16 +74,16 @@ func appendMsg(list *[]string, args ...any) {
 		*list = []string{}
 	}
 	switch len(args) {
-		case 0:
-			// Do nothing
-		case 1:
-			(*list) = append(*list, fmt.Sprintf("%v", args[0]))
-		default:
-			if format, ok := args[0].(string); ok {
-				(*list) = append(*list, fmt.Sprintf(format, args[1:]...))
-			} else {
-				// Invalid value provided as format
-				(*list) = append(*list, fmt.Sprintf("!s(%v) %v", args[0], args[1:]))
-			}
+	case 0:
+		// Do nothing
+	case 1:
+		(*list) = append(*list, fmt.Sprintf("%v", args[0]))
+	default:
+		if format, ok := args[0].(string); ok {
+			(*list) = append(*list, fmt.Sprintf(format, args[1:]...))
+		} else {
+			// Invalid value provided as format
+			(*list) = append(*list, fmt.Sprintf("!s(%v) %v", args[0], args[1:]))
+		}
 	}
 }

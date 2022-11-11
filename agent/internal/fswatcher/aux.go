@@ -32,42 +32,42 @@ func getObjectInfo(name string) (*types.FSObject, error) {
 	}
 
 	switch {
-		case oi.Mode() & fs.ModeSymlink != 0:
-			// Resolve symbolic link value
-			if fso.RPath, err = os.Readlink(name); err != nil {
-				log.W("Cannot resolve symbolic link object %q to real path: %v", name, err)
-			}
+	case oi.Mode() & fs.ModeSymlink != 0:
+		// Resolve symbolic link value
+		if fso.RPath, err = os.Readlink(name); err != nil {
+			log.W("Cannot resolve symbolic link object %q to real path: %v", name, err)
+		}
 
-			// Assign proper type
-			fso.Type = types.ObjSymlink
-			// Continue handling
-		case oi.IsDir():
-			// Assign proper type
-			fso.Type = types.ObjDirectory
-		case oi.Mode().IsRegular():
-			// Assign proper type
-			fso.Type = types.ObjRegular
+		// Assign proper type
+		fso.Type = types.ObjSymlink
+		// Continue handling
+	case oi.IsDir():
+		// Assign proper type
+		fso.Type = types.ObjDirectory
+	case oi.Mode().IsRegular():
+		// Assign proper type
+		fso.Type = types.ObjRegular
 
-			// Get checksum but only if enabled
-			if c.CalcSums {
-				if fso.Size <= c.MaxSumSize || c.MaxSumSize == 0 {
-					if fso.Checksum, err = calcSum(name); err != nil {
-						log.W("Checksum calculation problem: %v", err)
-						// Set stub to signal checksum calculation error
-						fso.Checksum = types.CsErrorStub
-					}
-				} else {
-					// Set stub because file is too large to calculate checksum
-					fso.Checksum = types.CsTooLarge
+		// Get checksum but only if enabled
+		if c.CalcSums {
+			if fso.Size <= c.MaxSumSize || c.MaxSumSize == 0 {
+				if fso.Checksum, err = calcSum(name); err != nil {
+					log.W("Checksum calculation problem: %v", err)
+					// Set stub to signal checksum calculation error
+					fso.Checksum = types.CsErrorStub
 				}
 			} else {
-				// Cleanup checksum field
-				fso.Checksum = ""
+				// Set stub because file is too large to calculate checksum
+				fso.Checksum = types.CsTooLarge
 			}
-			// Continue handling
-		default:
-			// Unsupported filesystem object type
-			return nil, nil
+		} else {
+			// Cleanup checksum field
+			fso.Checksum = ""
+		}
+		// Continue handling
+	default:
+		// Unsupported filesystem object type
+		return nil, nil
 	}
 
 	return &fso, nil
