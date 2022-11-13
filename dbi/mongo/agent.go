@@ -291,33 +291,63 @@ func (mc *MongoClient) Commit() (int64, int64, error) {
 }
 
 func (mc *MongoClient) LoadHostPaths(match dbms.MatchStrFunc) ([]string, error) {
-	// Output list of keys of paths belong to the host
+	// Output list of paths belong to the host
 	hostPaths := []string{}
 
 	log.D("(MongoCli:LoadHostPaths) Scanning %s.%s for objects belonging to the host %q ...",
 		mc.Cfg.ID, MongoObjsColl, mc.Cfg.CliHost)
 
+	filter := NewFilter().SetExpr(bson.D{{ dbms.FieldHost, mc.Cfg.CliHost }})
+
+	err := mc.loadFieldByFilter(dbms.FieldFPath, filter,
+	// Append found value of fpath field to the output list of paths belong to the host
+	func(value any) error {
+		path, ok := value.(string)
+		// Check for invalid data
+		if !ok {
+			return fmt.Errorf("(MongoCli:LoadHostPaths:appender) type of %q field is %T, want - string",
+				dbms.FieldFPath, value)
+		}
+
+		// Check path using match function
+		if match(path) {
+			// Append to the output list
+			hostPaths = append(hostPaths, path)
+		}
+
+		// OK
+		return nil
+	})
+
+	// Check for errors of loading fpath field
+	if err != nil {
+		return nil, fmt.Errorf("(MongoCli:LoadHostPaths) cannot load host paths: %w", err)
+	}
+
+	// OK
+	return hostPaths, nil
+}
+
+// loadFieldByPref append to caller output using value of the field from objects matched by filter
+func (mc *MongoClient) loadFieldByFilter(field string, filter *Filter, appendFunc func(any) error) error {
 	// Get collection handler
 	coll := mc.c.Database(mc.Cfg.ID).Collection(MongoObjsColl)
 
-	// Create filter by identifiers
-	filter := bson.D{{ dbms.FieldHost, mc.Cfg.CliHost }}
-
 	// Send request
-	cursor, err := coll.Find(mc.Ctx, filter, options.Find().
-		// Include only the identifier and found-path fields
+	cursor, err := coll.Find(mc.Ctx, filter.Expr(), options.Find().
+		// Include only the identifier and the required field
 		SetProjection(bson.D{
 			{MongoFieldID, 1},
-			{dbms.FieldFPath, 1},
+			{field, 1},
 		}))
 	if err != nil {
 		// Unexpected error
-		return nil, fmt.Errorf("(MongoCli:LoadHostPaths) cannot load object paths from %s.%s for host %q: %w",
-			coll.Database().Name(), coll.Name(), mc.Cfg.CliHost, err)
+		return fmt.Errorf("(MongoCli:loadFieldByFilter) cannot load object field %q from %s.%s for host %q: %w",
+			field, coll.Database().Name(), coll.Name(), mc.Cfg.CliHost, err)
 	}
 	defer func() {
 		if err := cursor.Close(mc.Ctx); err != nil {
-			log.E("(MongoCli:LoadHostPaths) cannot close cursor: %v", err)
+			log.E("(MongoCli:loadFieldByFilter) cannot close cursor: %v", err)
 		}
 	}()
 
@@ -328,36 +358,38 @@ func (mc *MongoClient) LoadHostPaths(match dbms.MatchStrFunc) ([]string, error) 
 	for cursor.Next(mc.Ctx) {
 		// If value of the termLong was updated - need to terminate long-term operation
 		if mc.TermLongVal != initTermLong {
-			return nil, fmt.Errorf("(MongoCli:LoadHostPaths) terminated")
+			return fmt.Errorf("(MongoCli:loadFieldByFilter) terminated")
 		}
 
-		// Item to get ID and found-path from the query result
+		// Item to get ID and requested field from the query result
 		var item map[string]string
 		// Try to decode next cursor value to the map
 		if err := cursor.Decode(&item); err != nil {
-			return nil, fmt.Errorf("(MongoCli:LoadHostPaths) cannot decode cursor item: %w", err)
+			return fmt.Errorf("(MongoCli:loadFieldByFilter) cannot decode cursor item: %w", err)
 		}
 
-		// Extract path value
-		if path, ok := item[dbms.FieldFPath]; !ok {
-			// Looks like incorrect data from DB - no path field was found,
-			// extract record identifier
+		// Extract value
+		value, ok := item[field]
+		if !ok {
+			// Looks like incorrect data from DB - requested field was found, extract record identifier
 			if id, ok := item[MongoFieldID]; !ok {
 				// Totally incorrect data, even mandatory identifier does not exist
-				log.E("(MongoCli:LoadHostPaths) incorrect data item loaded from DB - no %q and %q fields found: %#v",
-					dbms.FieldFPath, MongoFieldID, item)
+				log.E("(MongoCli:loadFieldByFilter) incorrect data item loaded from DB - no %q and %q fields found: %#v",
+					field, MongoFieldID, item)
 			} else {
-				// Print error about object without found-path field
-				log.E("(MongoCli:LoadHostPaths) item with id %q does not contain %q field", id, dbms.FieldFPath)
+				// Print error about object without requested field
+				log.E("(MongoCli:loadFieldByFilter) item with id %q does not contain %q field", id, field)
 			}
 			// Go to the next item
 			continue
-		} else
-		// Append only matched values
-		if match(path) {
-			hostPaths = append(hostPaths, path)
+		}
+
+		// Append requested field
+		if err := appendFunc(value); err != nil {
+			log.E("(MongoCli:loadFieldByFilter) cannot append data from item %#v - %v", item, err)
 		}
 	}
 
-	return hostPaths, nil
+	// OK
+	return nil
 }
