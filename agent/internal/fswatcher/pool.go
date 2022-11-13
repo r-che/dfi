@@ -7,6 +7,8 @@ import (
 	"time"
 	"sort"
 	"os"
+	"strings"
+	"errors"
 
 	"github.com/r-che/dfi/types"
 	"github.com/r-che/dfi/types/dbms"
@@ -21,6 +23,9 @@ const (
 	// Do or do not reindexing of path
 	DoReindex	=	true
 	NoReindex	=	false
+
+	// OS dependent path separator
+	pathSeparator	=	string(os.PathSeparator)
 )
 
 type eventsMap map[string]*FSEvent
@@ -426,7 +431,9 @@ func (p *Pool) handleEvent(watcher *fsn.Watcher, event *fsn.Event, events events
 		// receive an event from the removed one and from its parent directory as well.
 		// Currently, fsnotify (v1.6.0) does not distinguish these events:
 		// https://github.com/fsnotify/fsnotify/blob/5f8c606accbcc6913853fe7e083ee461d181d88d/backend_inotify.go#L446
-		log.D("Removed/renamed %s %q", tools.Tern(isDir, "directory", "object"), event.Name)
+		log.D("%s %s %q",
+			tools.Tern(event.Has(fsn.Remove), "Removed", "Renamed"),
+			tools.Tern(isDir, "directory", "object"), event.Name)
 
 		// Remove existing entry
 		events[event.Name] = &FSEvent{Type: EvRemove}
@@ -438,9 +445,9 @@ func (p *Pool) handleEvent(watcher *fsn.Watcher, event *fsn.Event, events events
 
 			// Is it a rename event?
 			if event.Has(fsn.Rename) {
-				// Need to remove watcher from value of the directory name
-				if err := watcher.Remove(event.Name); err != nil {
-					log.E("Cannot remove watcher from %q: %v", event.Name, err)
+				// Remove watcher from the directory itself and from all directories in the dir hierarchy
+				if err := unwatchDir(watcher, event.Name); err != nil {
+					log.E("Cannot remove watchers from directory %q with its subdirectories: %v", event.Name, err)
 					return
 				}
 			} else {
@@ -458,4 +465,59 @@ func (p *Pool) handleEvent(watcher *fsn.Watcher, event *fsn.Event, events events
 		// Unexpected event
 		log.W("Unknown event from fsnotify: %[1]v (%#[1]v)", event)
 	}
+}
+
+func unwatchDir(watcher *fsn.Watcher, dir string) error {
+	// Counter for successfuly removed watchers
+	removed := 0
+
+	log.D("(unwatchDir:%s) Removing watchers recursively...", dir)
+
+	// Need to remove watcher from the directory self
+	if err := watcher.Remove(dir); err != nil {
+		return fmt.Errorf("(unwatchDir:%s) unwatch faield: %v", dir, err)
+	}
+	// At least one watcher were removed
+	removed++
+
+	// Append OS-dependent path separator to end of the directory name
+	// to avoid remove watchers prefixed by dir but are not nested to the dir,
+	// e.g: if dir=/dir/to/rem, then [/dir/to/rem/1, /dir/to/rem/2] should be
+	// removed, but /dir/to/remove should NOT
+	dirPath := dir + pathSeparator
+
+	// Going through all watchers and remove that match the dirPath
+	for _, wPath := range watcher.WatchList() {
+		// Skip non-matching
+		if !strings.HasPrefix(wPath, dirPath) {
+			continue
+		}
+
+		// Remove watcher from this path
+		err := watcher.Remove(wPath)
+		if err == nil {
+			// Success, increase counter and continue
+			removed++
+			continue
+		}
+
+		//
+		// Some error occurred
+		//
+
+		// Check for non-existing error
+		if errors.Is(err, fsn.ErrNonExistentWatch) {
+			// It is strange, but not critical, print warning and continue
+			log.W("(unwatchDir:%s) Tried to remove watcher from a directory where watcher is already removed", dir)
+			continue
+		}
+
+		// Unexpected system error, break removal operation
+		return fmt.Errorf("(unwatchDir:%s) unwatch faield: %v", dir, err)
+	}
+
+	log.D("(unwatchDir:%s) Total %d watchers were removed", dir, removed)
+
+	// OK
+	return nil
 }
