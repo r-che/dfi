@@ -10,6 +10,7 @@ import (
 	"github.com/r-che/dfi/types"
 	"github.com/r-che/dfi/types/dbms"
 	"github.com/r-che/dfi/dbi/common"
+	"github.com/r-che/dfi/common/tools"
 
 	"github.com/r-che/log"
 
@@ -144,6 +145,45 @@ func (rc *RedisClient) DeleteObj(fso *types.FSObject) error {
 	return nil
 }
 
+func (rc *RedisClient) DeleteFPathPref(fso *types.FSObject) (int64, error) {
+	// Make prefix of objects keys
+	pref := RedisObjPrefix + rc.CliHost + ":" + fso.FPath + "*"
+
+	// Keys to delete using prefix
+	toDel := []string{}
+
+	// Load keys
+	err := rc.loadKeysByPrefix(pref,
+	// Append found key to the list of keys to delete
+	func(value any) error {
+		key, ok := value.(string)
+		// Check for invalid type of key
+		if !ok {
+			// That should never happen
+			panic(fmt.Sprintf("(RedisCli:DeleteFPathPref:appender) non-string key: %#v", value))
+		}
+
+		toDel = append(toDel, key)
+
+		// OK
+		return nil
+	})
+	if err != nil {
+		return 0, fmt.Errorf("(RedisCli:DeleteFPathPref) cannot load keys to delete with prefix %q: %w", pref, err)
+	}
+
+	log.D("(RedisCli:DeleteFPathPref) %d matched to delete with prefix %q %s", len(toDel), pref,
+		tools.Tern(rc.ReadOnly, "R/O mode IS SET, will not be performed", "(pending)"))
+
+	// Replace/append deletion queue
+	rc.toDelete = tools.Tern(len(rc.toDelete) == 0,
+		toDel,
+		append(rc.toDelete, toDel...))
+
+	// OK
+	return int64(len(toDel)), nil
+}
+
 func (rc *RedisClient) Commit() (int64, int64, error) {
 	// Reset state on return
 	defer func() {
@@ -234,6 +274,35 @@ func (rc *RedisClient) LoadHostPaths(match dbms.MatchStrFunc) ([]string, error) 
 	// Calculate path offset to append paths to the output list
 	pathOffset:= len(pref) - 1
 
+	// Load keys
+	err := rc.loadKeysByPrefix(pref,
+	// Append found key to the list of found paths
+	func(value any) error {
+		key, ok := value.(string)
+		// Check for invalid type of key
+		if !ok {
+			// That should never happen
+			panic(fmt.Sprintf("(RedisCli:LoadHostPaths:appender) non-string key: %#v", value))
+		}
+
+		// Append only matched values
+		if path := key[pathOffset:]; match(path) {
+			hostPaths = append(hostPaths, path)
+		}
+
+		// OK
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("(RedisCli:LoadHostPaths) cannot load host paths: %w", err)
+	}
+
+	log.D("(RedisCli:LoadHostPaths) %d paths matched the filter", len(hostPaths))
+
+	return hostPaths, nil
+}
+
+func (rc *RedisClient) loadKeysByPrefix(prefix string, appendFunc func(any) error) error {
 	// Keep current termLong value to have ability to compare during long-term operations
 	initTermLong := rc.TermLongVal
 
@@ -242,38 +311,41 @@ func (rc *RedisClient) LoadHostPaths(match dbms.MatchStrFunc) ([]string, error) 
 	var sKeys []string
 	var err error
 
-	log.D("(RedisCli:LoadHostPaths) Scanning DB for keys with prefix %q, using %d as COUNT value for SCAN operation", pref, RedisMaxScanKeys)
+	log.D("(RedisCli:loadKeysByPrefix) Scanning DB for keys with prefix %q, using %d as COUNT value for SCAN operation", prefix, RedisMaxScanKeys)
 	// Scan keys space prefixed by pref
 	for i := 0; ; i++ {
 		// If value of the termLong was updated - need to terminate long-term operation
 		if rc.TermLongVal != initTermLong {
-			return nil, fmt.Errorf("(RedisCli:LoadHostPaths) terminated")
+			return fmt.Errorf("(RedisCli:loadKeysByPrefix) terminated")
 		}
 
 		// Scan for RedisMaxScanKeys items (max)
-		sKeys, cursor, err = rc.c.Scan(rc.Ctx, cursor, pref, RedisMaxScanKeys).Result()
+		sKeys, cursor, err = rc.c.Scan(rc.Ctx, cursor, prefix, RedisMaxScanKeys).Result()
 		if err != nil {
-			return nil, err
+			return fmt.Errorf("(RedisCli:loadKeysByPrefix) SCAN for prefix %q (cursor: %d) failed: %w", prefix, cursor, err)
 		}
 
 		// Append scanned keys to the resulted list as set of paths without prefix
 		for _, k := range sKeys {
-			// Append only matched values
-			if path := k[pathOffset:]; match(path) {
-				hostPaths = append(hostPaths, path)
+			// Append prefix field
+			if err := appendFunc(k); err != nil {
+				log.E("(RedisCli:loadKeysByPrefix) cannot append key %q - %v", k, err)
 			}
 		}
 
 		// Is the end of keys space reached
 		if cursor == 0 {
 			// Return resulted data
-			log.D("(RedisCli:LoadHostPaths) Scan for keys prefixed by %q finished, scans number %d, %d keys matched", pref, i, len(hostPaths))
-			return hostPaths, nil
+			log.D("(RedisCli:loadKeysByPrefix) Scan for keys prefixed by %q finished, scans number %d", prefix, i)
+			// OK
+			return nil
 		}
 	}
 }
 
+//
 // Auxiliary functions
+//
 
 func prepareHSetValues(host string, fso *types.FSObject) []string {
 	// Output slice with values prepared to send to Redis
