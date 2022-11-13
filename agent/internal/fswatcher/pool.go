@@ -313,6 +313,11 @@ func (p *Pool) flushCached(watchPath string, events eventsMap) error {
 		case EvRemove:
 			// Append database removal operation
 			dbOps = append(dbOps, &dbms.DBOperation{Op: dbms.Delete, ObjectInfo: &types.FSObject{FPath: name}})
+
+		// Set of objects prefixed with name were removed from filesystem
+		case EvRemovePrefix:
+			dbOps = append(dbOps, &dbms.DBOperation{Op: dbms.DeletePrefix, ObjectInfo: &types.FSObject{FPath: name}})
+
 		default:
 			panic(fmt.Sprintf("(watcher:%s) Unhandled FSEvent type %v (%d) occurred on path %q",
 				watchPath, event.Type, event.Type, name))
@@ -446,7 +451,7 @@ func (p *Pool) handleEvent(watcher *fsn.Watcher, event *fsn.Event, events events
 			// Is it a rename event?
 			if event.Has(fsn.Rename) {
 				// Remove watcher from the directory itself and from all directories in the dir hierarchy
-				if err := unwatchDir(watcher, event.Name); err != nil {
+				if err := unwatchDir(watcher, event.Name, events); err != nil {
 					log.E("Cannot remove watchers from directory %q with its subdirectories: %v", event.Name, err)
 					return
 				}
@@ -467,7 +472,7 @@ func (p *Pool) handleEvent(watcher *fsn.Watcher, event *fsn.Event, events events
 	}
 }
 
-func unwatchDir(watcher *fsn.Watcher, dir string) error {
+func unwatchDir(watcher *fsn.Watcher, dir string, events eventsMap) error {
 	// Counter for successfuly removed watchers
 	removed := 0
 
@@ -481,15 +486,15 @@ func unwatchDir(watcher *fsn.Watcher, dir string) error {
 	removed++
 
 	// Append OS-dependent path separator to end of the directory name
-	// to avoid remove watchers prefixed by dir but are not nested to the dir,
+	// to avoid remove watchers prefixed with dir but are not nested to the dir,
 	// e.g: if dir=/dir/to/rem, then [/dir/to/rem/1, /dir/to/rem/2] should be
 	// removed, but /dir/to/remove should NOT
-	dirPath := dir + pathSeparator
+	dirPref := dir + pathSeparator
 
-	// Going through all watchers and remove that match the dirPath
+	// Going through all watchers and remove that match the dirPref
 	for _, wPath := range watcher.WatchList() {
 		// Skip non-matching
-		if !strings.HasPrefix(wPath, dirPath) {
+		if !strings.HasPrefix(wPath, dirPref) {
 			continue
 		}
 
@@ -517,6 +522,9 @@ func unwatchDir(watcher *fsn.Watcher, dir string) error {
 	}
 
 	log.D("(unwatchDir:%s) Total %d watchers were removed", dir, removed)
+
+	// Remove directory prefix from DB
+	events[dirPref] = &FSEvent{Type: EvRemovePrefix}
 
 	// OK
 	return nil

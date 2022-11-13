@@ -12,6 +12,7 @@ type ClientController interface {
 	LoadHostPaths(filter MatchStrFunc) (paths []string, err error)
 	UpdateObj(fso *types.FSObject) error
 	DeleteObj(fso *types.FSObject) error
+	DeleteFPathPref(fso *types.FSObject) (int64, error)
 	Commit() (updated, deleted int64, err error)
 
 	// Management methods
@@ -51,11 +52,13 @@ type DBOperator int
 const (
 	Update = DBOperator(iota)
 	Delete
+	DeletePrefix
 )
 func (dbo DBOperator) String() string {
 	switch dbo {
-	case Update: return "Update"
-	case Delete: return "Delete"
+	case Update:		return "Update"
+	case Delete:		return "Delete"
+	case DeletePrefix:	return "DeletePrefix"
 	default:
 		panic(fmt.Sprintf("Unsupported database operation %d", dbo))
 	}

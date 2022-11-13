@@ -3,6 +3,7 @@ package dbi
 import (
 	"context"
 	"sync"
+	"fmt"
 
 	"github.com/r-che/log"
 	"github.com/r-che/dfi/types"
@@ -136,6 +137,18 @@ func (dbc *DBController) update(dbOps []*dbms.DBOperation) *types.CmdRV {
 				// Increase number of objects for deletion
 				toDelN++
 			}
+
+		// Cleanup objects prefixed with name
+		case dbms.DeletePrefix:
+			if deleted, err := dbc.dbCli.DeleteFPathPref(op.ObjectInfo); err != nil {
+				rv.AddErr(err)
+			} else {
+				// Increase number of objects for deletion
+				toDelN += deleted
+			}
+		// Unexpected operation
+		default:
+			panic(fmt.Sprintf(`Unexpected database operation "%v" (%#v)`, op.Op, op))
 		}
     }
 

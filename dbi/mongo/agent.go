@@ -3,6 +3,7 @@ package mongo
 import (
 	"fmt"
 	"strings"
+	"regexp"
 
 	"github.com/r-che/dfi/types"
 	"github.com/r-che/dfi/types/dbms"
@@ -13,6 +14,7 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 // Duplicates of original fields found path and name with values transformed for tokenization
@@ -118,6 +120,46 @@ func (mc *MongoClient) DeleteObj(fso *types.FSObject) error {
 
 	// OK
 	return nil
+}
+
+func (mc *MongoClient) DeleteFPathPref(fso *types.FSObject) (int64, error) {
+	// Create a filter to load identifiers of documents belonging to this host, prefixed with fso.FPath
+	filter := NewFilter().Append(
+		bson.E{dbms.FieldHost, mc.Cfg.CliHost},
+		bson.E{dbms.FieldFPath, primitive.Regex{Pattern: regexp.QuoteMeta(fso.FPath)}},
+	)
+
+	// Load identifiers
+	qr, err := mc.aggregateSearch(MongoObjsColl, filter, []string{dbms.FieldID})
+	if err != nil {
+		return 0, fmt.Errorf("(MongoCli:DeleteFPathPref) cannot load identifiers of prefixes belong" +
+			" to the host %q prefixed with %q: %w", mc.Cfg.CliHost, fso.FPath, err)
+	}
+
+	// Collect identifiers that need to be deleted
+	delIds := make([]string, 0, len(qr))
+
+	for _, r := range qr {
+		id, ok := r[dbms.FieldID].(string)
+		if !ok {
+			// Skip invalid document
+			log.E("(MongoCli:DeleteFPathPref) Type of the %q field is %T, want - string," +
+				" document is: %#v", dbms.FieldID, r[dbms.FieldID], r)
+
+			continue
+		}
+
+		delIds = append(delIds, id)
+	}
+
+	log.D("(MongoCli:DeleteFPathPref) Objects with %q field prefixed with %q will be deleted: %v",
+		dbms.FieldFPath, fso.FPath, delIds)
+
+	// XXX Append key to delete regardless of R/O mode because it will be skipped in the Commit() operation
+	mc.toDelete = append(mc.toDelete, delIds...)
+
+	// OK
+	return int64(len(delIds)), nil
 }
 
 func (mc *MongoClient) Commit() (int64, int64, error) {

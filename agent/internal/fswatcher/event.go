@@ -10,6 +10,7 @@ const (
 	EvCreate	= eventType(iota)
 	EvWrite
 	EvRemove
+	EvRemovePrefix
 )
 func (et eventType) String() string {
 	switch et {
