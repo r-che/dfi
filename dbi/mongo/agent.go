@@ -129,31 +129,31 @@ func (mc *MongoClient) DeleteFPathPref(fso *types.FSObject) (int64, error) {
 		bson.E{dbms.FieldFPath, primitive.Regex{Pattern: regexp.QuoteMeta(fso.FPath)}},
 	)
 
-	// Load identifiers
-	qr, err := mc.aggregateSearch(MongoObjsColl, filter, []string{dbms.FieldID})
-	if err != nil {
-		return 0, fmt.Errorf("(MongoCli:DeleteFPathPref) cannot load identifiers of prefixes belong" +
-			" to the host %q prefixed with %q: %w", mc.Cfg.CliHost, fso.FPath, err)
-	}
-
 	// Collect identifiers that need to be deleted
-	delIds := make([]string, 0, len(qr))
+	delIds := []string{}
 
-	for _, r := range qr {
-		id, ok := r[dbms.FieldID].(string)
+	err := mc.loadFieldByFilter(MongoFieldID, filter,
+	// Append found value of identifiers to the list of identifiers that need to be deleted
+	func(value any) error {
+		id, ok := value.(string)
+		// Check for invalid type of value
 		if !ok {
-			// Skip invalid document
-			log.E("(MongoCli:DeleteFPathPref) Type of the %q field is %T, want - string," +
-				" document is: %#v", dbms.FieldID, r[dbms.FieldID], r)
-
-			continue
+			return fmt.Errorf("(MongoCli:DeleteFPathPref:appender) type of the %q field is %T, want - string," +
+				" value: %#v", MongoFieldID, value, value)
 		}
 
 		delIds = append(delIds, id)
+
+		// OK
+		return nil
+	})
+	if err != nil {
+		return 0, fmt.Errorf("(MongoCli:DeleteFPathPref) cannot load identifiers of objects belong" +
+			" to the host %q prefixed with %q: %w", mc.Cfg.CliHost, fso.FPath, err)
 	}
 
-	log.D("(MongoCli:DeleteFPathPref) Objects with %q field prefixed with %q will be deleted: %v",
-		dbms.FieldFPath, fso.FPath, delIds)
+	log.D("(MongoCli:DeleteFPathPref) %d objects with %q field prefixed with %q will be deleted",
+		len(delIds), dbms.FieldFPath, fso.FPath)
 
 	// XXX Append key to delete regardless of R/O mode because it will be skipped in the Commit() operation
 	mc.toDelete = append(mc.toDelete, delIds...)
@@ -333,13 +333,18 @@ func (mc *MongoClient) loadFieldByFilter(field string, filter *Filter, appendFun
 	// Get collection handler
 	coll := mc.c.Database(mc.Cfg.ID).Collection(MongoObjsColl)
 
+	// Make fields list
+	fields := bson.D{{MongoFieldID, 1}}
+	// Check for value of the requested field is not equal MongoFieldID,
+	if field != MongoFieldID {
+		// Append field to requested set
+		fields = append(fields, bson.E{field, 1})
+	}
+
 	// Send request
 	cursor, err := coll.Find(mc.Ctx, filter.Expr(), options.Find().
 		// Include only the identifier and the required field
-		SetProjection(bson.D{
-			{MongoFieldID, 1},
-			{field, 1},
-		}))
+		SetProjection(fields))
 	if err != nil {
 		// Unexpected error
 		return fmt.Errorf("(MongoCli:loadFieldByFilter) cannot load object field %q from %s.%s for host %q: %w",
