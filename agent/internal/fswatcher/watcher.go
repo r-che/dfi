@@ -215,7 +215,7 @@ func (w *Watcher) flushCached() error {
 	for ePath, event := range w.eMap {
 		// If value of the termLongVal was updated - need to stop long-term operation
 		if w.termLongVal != initTermLong {
-			return fmt.Errorf("terminated")
+			return fmt.Errorf("(Watcher:%s) terminated", w.path)
 		}
 
 		switch event.Type {
@@ -288,7 +288,7 @@ func (w *Watcher) scanDir(dir string, doIndexing bool) (int, error) {
 	for _, entry := range entries {
 		// If value of the termLongVal was updated - need to stop long-term operation
 		if w.termLongVal != initTermLong {
-			return total, fmt.Errorf("terminated")
+			return total, fmt.Errorf("(Watcher:%s) terminated", w.path)
 		}
 
 		// Create object name as path concatenation of the top level directory and the entry name
