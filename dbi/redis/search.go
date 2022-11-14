@@ -41,7 +41,7 @@ func (rc *RedisClient) Query(qa *dbms.QueryArgs, retFields []string) (dbms.Query
 	if qa.DeepSearch {
 		// Do additional standard SCAN search
 		log.D("(RedisCli:Query) Running deep search using SCAN operation...")
-		n, err := rc.scanSearch(rsc, qa, retFields, &qr)
+		n, err := rc.scanSearch(rsc, qa, retFields, qr)
 		if err != nil {
 			return qr, fmt.Errorf("(RedisCli:Query) SCAN search failed: %w", err)
 		}
@@ -391,7 +391,7 @@ func makeSetRangeQuery(field string, min, max int64, set []int64) string {
  * Additional "deep" search mechanism
  */
 
-func (rc *RedisClient) scanSearch(rsc *rsh.Client, qa *dbms.QueryArgs, retFields []string, qrTop *dbms.QueryResults) (int, error) {
+func (rc *RedisClient) scanSearch(rsc *rsh.Client, qa *dbms.QueryArgs, retFields []string, qrTop dbms.QueryResults) (int, error) {
 	// Check for empty search phrases
 	if len(qa.SP) == 0 {
 		// Nothing to search using SCAN
@@ -431,7 +431,7 @@ func (rc *RedisClient) scanSearch(rsc *rsh.Client, qa *dbms.QueryArgs, retFields
 			}
 
 			// Check for key does not exist in the query results
-			if _, ok := (*qrTop)[types.ObjKey{Host: host, Path: path}]; !ok {
+			if _, ok := qrTop[types.ObjKey{Host: host, Path: path}]; !ok {
 				// Then - need to append it
 				return true
 			}
@@ -478,7 +478,7 @@ func (rc *RedisClient) scanSearch(rsc *rsh.Client, qa *dbms.QueryArgs, retFields
 	qr, err := rshSearch(rsc, q, retFields)
 	// Merge selected results with the previous results
 	for k, v := range qr {
-		(*qrTop)[k] = v
+		qrTop[k] = v
 	}
 
 	return len(qr), err
