@@ -41,7 +41,7 @@ var ping = &sync.Once{}
 func NewClient(dbCfg *dbms.DBConfig) (*MongoClient, error) {
 	// Initialize Mongo client
 	mc := &MongoClient{
-		CommonClient: dbms.NewCommonClient(dbCfg, dbCfg.CliHost),
+		CommonClient: dbms.NewCommonClient(dbCfg),
 	}
 
 	// Check for credentials options

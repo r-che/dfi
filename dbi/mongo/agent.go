@@ -32,24 +32,24 @@ func (mc *MongoClient) UpdateObj(fso *types.FSObject) error {
 
 	if mc.ReadOnly {
 		log.W("(MongoCli:UpdateObj) R/O mode IS SET, Insert/Update of %q collection" +
-				" will NOT be performed => %s\n", MongoObjsColl, mc.CliHost + ":" + fso.FPath)
+				" will NOT be performed => %s\n", MongoObjsColl, mc.Cfg.CliHost + ":" + fso.FPath)
 		// Increase the update counter and return no errors
 		mc.updated++
 		// OK
 		return nil
 	}
-	log.D("(MongoCli:UpdateObj) Insert/Update of collection %q => %s\n", MongoObjsColl, mc.CliHost + ":" + fso.FPath)
+	log.D("(MongoCli:UpdateObj) Insert/Update of collection %q => %s\n", MongoObjsColl, mc.Cfg.CliHost + ":" + fso.FPath)
 
 	// Get collection handler
 	coll := mc.c.Database(mc.Cfg.ID).Collection(MongoObjsColl)
 
 	// Update/Insert object
-	id := common.MakeID(mc.CliHost, fso)
+	id := common.MakeID(mc.Cfg.CliHost, fso)
 	fields := bson.D{
 		// Using mongo-specific identifier field name instead of standard dbms.FieldID
 		{MongoFieldID,			id},
 		// Standard fields set
-		{dbms.FieldHost,		mc.CliHost},
+		{dbms.FieldHost,		mc.Cfg.CliHost},
 		{dbms.FieldName,		fso.Name},
 		{dbms.FieldFPath,		fso.FPath},
 		{dbms.FieldRPath,		fso.RPath},
@@ -105,14 +105,14 @@ func (mc *MongoClient) UpdateObj(fso *types.FSObject) error {
 }
 
 func (mc *MongoClient) DeleteObj(fso *types.FSObject) error {
-	mongoID := common.MakeID(mc.CliHost, fso)
+	mongoID := common.MakeID(mc.Cfg.CliHost, fso)
 
 	if mc.ReadOnly {
 		log.W("(MongoCli:DeleteObj) R/O mode IS SET, will not be performed: Delete => %s:%s (%s)\n",
-			mc.CliHost, fso.FPath, mongoID)
+			mc.Cfg.CliHost, fso.FPath, mongoID)
 	} else {
 		log.D("(MongoCli:DeleteObj) Delete (pending) => %s:%s (%s)\n",
-			mc.CliHost, fso.FPath, mongoID)
+			mc.Cfg.CliHost, fso.FPath, mongoID)
 	}
 
 	// XXX Append key to delete regardless of R/O mode because it will be skipped in the Commit() operation

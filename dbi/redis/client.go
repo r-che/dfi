@@ -60,7 +60,7 @@ func NewClient(dbCfg *dbms.DBConfig) (*RedisClient, error) {
 
 	// Initialize Redis client
 	rc := &RedisClient{
-		CommonClient: dbms.NewCommonClient(dbCfg, dbCfg.CliHost),
+		CommonClient: dbms.NewCommonClient(dbCfg),
 		c: redis.NewClient(&redis.Options{
 			Addr:		dbCfg.HostPort,
 			Username:	user,
@@ -108,7 +108,7 @@ func userPasswd(pcf map[string]any) (string, string, error) {
 
 func (rc *RedisClient) UpdateObj(fso *types.FSObject) error {
 	// Make a key
-	key := RedisObjPrefix + rc.CliHost + ":" + fso.FPath
+	key := RedisObjPrefix + rc.Cfg.CliHost + ":" + fso.FPath
 
 	if rc.ReadOnly {
 		// Read-only datbase mode, do nothing
@@ -116,7 +116,7 @@ func (rc *RedisClient) UpdateObj(fso *types.FSObject) error {
 	} else {
 		log.D("(RedisCli:UpdateObj) HSET => %s\n", key)
 		// Do real update
-		res := rc.c.HSet(rc.Ctx, key, prepareHSetValues(rc.CliHost, fso))
+		res := rc.c.HSet(rc.Ctx, key, prepareHSetValues(rc.Cfg.CliHost, fso))
 		if err := res.Err(); err != nil {
 			return fmt.Errorf("(RedisCli:UpdateObj) HSET of key %q returned error: %w", key, err)
 		}
@@ -130,7 +130,7 @@ func (rc *RedisClient) UpdateObj(fso *types.FSObject) error {
 
 func (rc *RedisClient) DeleteObj(fso *types.FSObject) error {
 	// Make a key
-	key := RedisObjPrefix + rc.CliHost + ":" + fso.FPath
+	key := RedisObjPrefix + rc.Cfg.CliHost + ":" + fso.FPath
 
 	if rc.ReadOnly {
 		log.W("(RedisCli:DeleteObj) R/O mode IS SET, will not be performed: DEL => %s\n", key)
@@ -147,7 +147,7 @@ func (rc *RedisClient) DeleteObj(fso *types.FSObject) error {
 
 func (rc *RedisClient) DeleteFPathPref(fso *types.FSObject) (int64, error) {
 	// Make prefix of objects keys
-	pref := RedisObjPrefix + rc.CliHost + ":" + fso.FPath + "*"
+	pref := RedisObjPrefix + rc.Cfg.CliHost + ":" + fso.FPath + "*"
 
 	// Keys to delete using prefix
 	toDel := []string{}
@@ -267,7 +267,7 @@ func (rc *RedisClient) Commit() (int64, int64, error) {
 
 func (rc *RedisClient) LoadHostPaths(match dbms.MatchStrFunc) ([]string, error) {
 	// Make prefix of objects keys
-	pref := RedisObjPrefix + rc.CliHost + ":*"
+	pref := RedisObjPrefix + rc.Cfg.CliHost + ":*"
 
 	// Output list of keys of paths belong to the host
 	hostPaths := []string{}

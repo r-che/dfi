@@ -16,8 +16,7 @@ type CommonClient struct {
 	stop		context.CancelFunc
 
 	// Values configured on startup
-	Cfg			*DBConfig	// database configuration (auth, connection, etc...)
-	CliHost		string		// host where client runs
+	Cfg			*DBConfig	// database configuration (auth, client host, connection, etc...)
 
 	// Runtime configured values
 	ReadOnly	bool
@@ -25,10 +24,9 @@ type CommonClient struct {
 	TermLongVal int		// should be incremented when need to terminate long-term operation
 }
 
-func NewCommonClient(dbCfg *DBConfig, cliHost string) *CommonClient {
+func NewCommonClient(dbCfg *DBConfig) *CommonClient {
 	cc := &CommonClient{
 		Cfg:		dbCfg,
-		CliHost:	cliHost,
 	}
 
 	// Separate context for DB client
