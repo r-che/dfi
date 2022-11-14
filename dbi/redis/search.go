@@ -493,7 +493,7 @@ func (rc *RedisClient) scanKeyMatch(match string, filter dbms.MatchStrFunc) ([]s
 	var sKeys []string
 	var err error
 
-	// Scan keys space prefixed by pref
+	// Scan keys space prefixed with pref
 	for i := 0; ; i++ {
 		// Scan for RedisMaxScanKeys items (max)
 		sKeys, cursor, err = rc.c.Scan(rc.Ctx, cursor, match, RedisMaxScanKeys).Result()

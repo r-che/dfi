@@ -28,7 +28,7 @@ const (
 
 	// Private configuration fields
 	userField	=	"user"
-	uassField	=	"password"
+	passField	=	"password"
 
 	// Error value of redis.Get* function when requested data is not found
 	RedisNotFound	=	redis.Nil
@@ -98,7 +98,7 @@ func userPasswd(pcf map[string]any) (string, string, error) {
 		return "", "", err
 	}
 
-	passwd, err := loadField(uassField)
+	passwd, err := loadField(passField)
 	if err != nil {
 		return "", "", err
 	}
@@ -312,7 +312,7 @@ func (rc *RedisClient) loadKeysByPrefix(prefix string, appendFunc func(any) erro
 	var err error
 
 	log.D("(RedisCli:loadKeysByPrefix) Scanning DB for keys with prefix %q, using %d as COUNT value for SCAN operation", prefix, RedisMaxScanKeys)
-	// Scan keys space prefixed by pref
+	// Scan keys space prefixed with pref
 	for i := 0; ; i++ {
 		// If value of the termLong was updated - need to terminate long-term operation
 		if rc.TermLongVal != initTermLong {
@@ -336,7 +336,7 @@ func (rc *RedisClient) loadKeysByPrefix(prefix string, appendFunc func(any) erro
 		// Is the end of keys space reached
 		if cursor == 0 {
 			// Return resulted data
-			log.D("(RedisCli:loadKeysByPrefix) Scan for keys prefixed by %q finished, scans number %d", prefix, i)
+			log.D("(RedisCli:loadKeysByPrefix) Scan for keys prefixed with %q finished, scans number %d", prefix, i)
 			// OK
 			return nil
 		}
