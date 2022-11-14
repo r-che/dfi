@@ -23,9 +23,6 @@ func Do(dbc dbms.Client) *types.CmdRV {
 	default:
 		panic("unexpected set mode")
 	}
-
-	// Unreachable
-	return types.NewCmdRV().AddErr("Unreachable code")
 }
 
 func setTags(dbc dbms.Client, tagsStr string, ids []string) *types.CmdRV {

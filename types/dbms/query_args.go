@@ -145,7 +145,7 @@ func (qa *QueryArgs) ParseMtimes(mtimeLine string) error {
 	// * ..ts2
 
 	// Need to determine format - set or range?
-	if strings.Index(mtimeLine, dataRangeSep) != -1 {
+	if strings.Contains(mtimeLine, dataRangeSep) {
 		//
 		// Range provided
 		//
@@ -289,7 +289,7 @@ func (qa *QueryArgs) ParseSizes(sizeLine string) error {
 	// * ..size2
 
 	// Need to determine format - set or range?
-	if strings.Index(sizeLine, dataRangeSep) != -1 {
+	if strings.Contains(sizeLine, dataRangeSep) {
 		// It should be a range, split to check
 		sizeRange := strings.Split(sizeLine, dataRangeSep)
 		// Check for range length - it always should be == 2

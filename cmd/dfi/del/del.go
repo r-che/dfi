@@ -20,8 +20,6 @@ func Do(dbc dbms.Client) *types.CmdRV {
 	default:
 		panic("unexpected set mode")
 	}
-
-	return types.NewCmdRV().AddErr("unreacable code reached")
 }
 
 func delTags(dbc dbms.Client, tagsStr string, ids []string) *types.CmdRV {

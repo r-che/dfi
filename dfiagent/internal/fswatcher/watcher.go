@@ -132,7 +132,8 @@ func (w *Watcher) watch() {
 	}
 
 	// Timer to flush cache to database
-	timer := time.Tick(w.flushInterval)
+	timer := time.NewTicker(w.flushInterval)
+	defer timer.Stop()
 
 	//
 	// Run events loop
@@ -149,7 +150,7 @@ func (w *Watcher) watch() {
 			w.handleEvent(&event)
 
 		// Need to flush cache
-		case <-timer:
+		case <-timer.C:
 			if len(w.eMap) == 0 {
 				log.D("(Watcher:%s) No new events", w.path)
 				// No new events
@@ -400,10 +401,9 @@ func (w *Watcher) handleEvent(event *fsn.Event) {
 						w.path, event.Name, err)
 					return
 				}
-			} else {
+			} // else:
 				// Nothing to do in this case, because the path removed from
 				// the disk is automatically removed from the watch list
-			}
 		}
 
 		return

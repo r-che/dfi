@@ -74,9 +74,6 @@ func (rc *RedisClient) ModifyAII(op dbms.DBOperator, args *dbms.AIIArgs, ids []s
 	default:
 		panic(fmt.Sprintf("Unsupported AAI modification operator %v", op))
 	}
-
-	// Unreachable
-	return -1, -1, nil
 }
 
 func (rc *RedisClient) GetAIIIds(withFields []string) ([]string, error) {

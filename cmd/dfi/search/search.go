@@ -183,11 +183,11 @@ func printResHG(qr dbms.QueryResults) {
 		switch {
 		case c.ShowOnlyIds:
 			for _, path := range paths {
-				fmt.Printf("  %v\n", qr[types.ObjKey{host, path}][dbms.FieldID])
+				fmt.Printf("  %v\n", qr[types.ObjKey{Host: host, Path: path}][dbms.FieldID])
 			}
 		case c.ShowID:
 			for _, path := range paths {
-				fmt.Printf("  %v %s\n", qr[types.ObjKey{host, path}][dbms.FieldID], path)
+				fmt.Printf("  %v %s\n", qr[types.ObjKey{Host: host, Path: path}][dbms.FieldID], path)
 			}
 		default:
 			for _, path := range paths {

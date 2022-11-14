@@ -21,10 +21,10 @@ func pipelineConfVariadic(filter *Filter, pipeline mongo.Pipeline, configs []any
 	// Try to interpret each additional configuration parameter
 	for _, conf := range configs {
 		// Choose type of configuration
-		switch conf.(type) {
+		switch conf := conf.(type) {
 		case *dbms.QueryArgs:
 			// Check for OnlyName is not set
-			if !conf.(*dbms.QueryArgs).OnlyName {
+			if !conf.OnlyName {
 				// Currently, nothing to do
 				continue
 			}
@@ -92,7 +92,7 @@ func mergeTags(args *dbms.AIIArgs, aii dbms.QRItem) ([]string, error) {
 		tag, ok := tagVal.(string)
 		if !ok {
 			// Skip this item
-			return nil, fmt.Errorf("(MongoCli:mergeTags) AII item contains field %q with non-string item value: %#v" +
+			return nil, fmt.Errorf("(MongoCli:mergeTags) AII item contains field %q with non-string item value: %#v",
 				dbms.AIIFieldTags, aii)
 		}
 

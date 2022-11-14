@@ -82,10 +82,10 @@ func (mc *MongoClient) GetAIIs(ids, retFields []string) (dbms.QueryResultsAII, e
 			}
 
 			// Choose correct type
-			switch v.(type) {
+			switch v := v.(type) {
 			// Simple string value
 			case string:
-				if err := aii.SetFieldStr(field, v.(string)); err != nil {
+				if err := aii.SetFieldStr(field, v); err != nil {
 					return result, fmt.Errorf("(MongoCli:GetAIIs) cannot set field from result: %w", err)
 				}
 			// List (slice) of string values
@@ -175,7 +175,7 @@ func (mc *MongoClient) updateAII(args *dbms.AIIArgs, idkm types.IdKeyMap, add bo
 	// If need to add information to existing items
 	if add {
 		// Need to load existing values of the fields
-		rqFields := make([]string, 0, 2)
+		rqFields = make([]string, 0, 2)
 
 		// Check for tags field should be updated by adding new tags set to the existing set
 		if args.Tags != nil && add {

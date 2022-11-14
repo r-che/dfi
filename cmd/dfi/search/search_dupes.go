@@ -77,7 +77,7 @@ func searchDupes(dbc dbms.Client, qa *dbms.QueryArgs) *types.CmdRV {
 
 		// Extract size
 		size, ok := extrFieldInt64(objKey, fields, dbms.FieldSize, rv)
-		if err != nil {
+		if !ok {
 			continue
 		}
 
@@ -245,16 +245,16 @@ func extrFieldInt64(objKey types.ObjKey, fields dbms.QRItem, fn string, rv *type
 	}
 
 	// Check for value type
-	switch fVal.(type) {
+	switch fVal := fVal.(type) {
 	// int64 value
 	case int64:
 		// Ok, return as is
-		return fVal.(int64), true
+		return fVal, true
 
 	// string value
 	case string:
 		// Convert string to integer
-		intVal, err := strconv.ParseInt(fVal.(string), 10, 64)
+		intVal, err := strconv.ParseInt(fVal, 10, 64)
 		if err != nil {
 			// Skip incorrect object
 			rv.AddWarn("Skip invalid object %q with incorrect value of field %q: %v", objKey, dbms.FieldSize, fVal)

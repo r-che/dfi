@@ -27,7 +27,11 @@ func main() {
 	if !c.NoLogTS {
 		logFlags = stdLog.Ldate | stdLog.Ltime
 	}
-	log.Open(c.LogFile, ProgName, logFlags)
+
+	// Open log
+	if err := log.Open(c.LogFile, ProgName, logFlags); err != nil {
+		panic(`Cannot open log file "` + c.LogFile + `": ` + err.Error())
+	}
 	log.SetDebug(c.Debug)
 
 	// Starting agent

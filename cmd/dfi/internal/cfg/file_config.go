@@ -5,7 +5,6 @@ import (
 	"os"
 	"errors"
 	"io/fs"
-	"io/ioutil"
 	"encoding/json"
 
 	"github.com/r-che/dfi/common/fschecks"
@@ -40,7 +39,7 @@ func (pc *progConfig) loadConf() error {
 	}
 
 	// Read configuration file
-	data, err := ioutil.ReadFile(pc.confPath)
+	data, err := os.ReadFile(pc.confPath)
 	if err != nil {
 		return fmt.Errorf("cannot read private database configuration: %w", err)
 	}

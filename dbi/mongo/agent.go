@@ -72,10 +72,10 @@ func (mc *MongoClient) UpdateObj(fso *types.FSObject) error {
 	// original FPath and Name values by replacing underscores with spaces
 	//
 
-	if strings.Index(fso.FPath, "_") != -1 {
+	if strings.Contains(fso.FPath, "_") {
 		fields = append(fields, bson.E{MongoFieldTFPath, strings.ReplaceAll(fso.FPath, "_", " ")})
 	}
-	if strings.Index(fso.Name, "_") != -1 {
+	if strings.Contains(fso.Name, "_") {
 		fields = append(fields, bson.E{MongoFieldTName, strings.ReplaceAll(fso.Name, "_", " ")})
 	}
 
@@ -193,9 +193,6 @@ func (mc *MongoClient) Commit() (int64, int64, error) {
 				// Unexpected error
 				log.E("(MongoCli:Commit) Find (used instead of Delete on R/O mode) on %s.%s for identifiers %v failed: %v",
 					coll.Database().Name(), coll.Name(), mc.toDelete, err)
-
-				// All identifers will NOT be deleted
-				nd = append(nd, mc.toDelete...)
 			} else {
 				// Make a list of results
 				defer func() {

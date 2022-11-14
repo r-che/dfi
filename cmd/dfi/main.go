@@ -25,7 +25,10 @@ const (
 
 func main() {
 	// Init logger to print to stderr
-	log.Open("", ProgName, log.NoFlags)
+	if err := log.Open(log.DefaultLog, ProgName, log.NoFlags); err != nil {
+		// Try to print error message as warning to stdout
+		fmt.Printf("WARN: Cannot open default log: %v\n", err)
+	}
 
 	// Initiate configuration
 	cfg.Init(ProgName, ProgNameLong, ProgVers)

@@ -358,13 +358,13 @@ func showObj(objKey types.ObjKey, fields dbms.QRItem, aii *dbms.AIIArgs) {
 		var err error
 
 		// Type of mtime field is DBMS dependent
-		switch mtime.(type) {
+		switch mtime := mtime.(type) {
 		case int64:
 			// Assign value to mtimeTs as is - it is already Unix timestamp
-			mtimeTs = mtime.(int64)
+			mtimeTs = mtime
 		case string:
 			// Convert string Unix timestamp to integer value
-			mtimeTs, err = strconv.ParseInt(mtime.(string), 10, 64)
+			mtimeTs, err = strconv.ParseInt(mtime, 10, 64)
 		default:
 			err = fmt.Errorf("unexpected mtime type %T", mtime)
 		}

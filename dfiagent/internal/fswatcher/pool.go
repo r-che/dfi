@@ -72,7 +72,7 @@ func (p *Pool) StartWatchers(doReindex bool) error {
 	}
 
 	// Wait for all watchers started
-	for _ = range p.paths {
+	for range p.paths {
 		if errPath := <-started; errPath != "" {
 			// Remove problematic watcher from watchers map
 			delete(p.watchers, errPath)

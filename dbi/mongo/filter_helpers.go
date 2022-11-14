@@ -146,7 +146,7 @@ func filterMakeFullTextSearch(qa *dbms.QueryArgs) *Filter {
 	for _, sp := range qa.SP {
 		// Escape backslash with double quote
 		sp = strings.ReplaceAll(sp, `\"`, `"`)
-		if strings.IndexAny(sp, " \t\n") != -1 {
+		if strings.ContainsAny(sp, " \t\n") {
 			// sp contains whitespaces, need to wrap
 			sp = `\"` + sp + `\"`
 		}

@@ -159,7 +159,9 @@ func Init(name, nameLong, vers string) {
 
 	// Configure logger
 	if !config.NoLogTS {
-		log.SetFlags(log.Flags() | stdLog.Ldate | stdLog.Ltime)
+		if err := log.SetFlags(log.Flags() | stdLog.Ldate | stdLog.Ltime); err != nil {
+			panic("Cannot set logger flags: " + err.Error())
+		}
 	}
 	log.SetDebug(config.Debug)
 

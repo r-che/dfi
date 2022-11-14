@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
-	"io/ioutil"
+	"os"
 	"encoding/json"
 
 	"github.com/r-che/dfi/types/dbms"
@@ -72,7 +72,7 @@ func (pc *progConfig) loadPriv() error {
 	}
 
 	// Read configuration file
-	data, err := ioutil.ReadFile(pc.DBPrivCfg)
+	data, err := os.ReadFile(pc.DBPrivCfg)
 	if err != nil {
 		return fmt.Errorf("cannot read private database configuration: %w", err)
 	}
