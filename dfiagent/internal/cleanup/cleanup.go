@@ -10,7 +10,7 @@ import (
 	"github.com/r-che/log"
 	"github.com/r-che/dfi/types"
 	"github.com/r-che/dfi/dbi"
-	"github.com/r-che/dfi/agent/internal/cfg"
+	"github.com/r-che/dfi/dfiagent/internal/cfg"
 )
 
 func Run() error {

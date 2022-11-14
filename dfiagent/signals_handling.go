@@ -5,8 +5,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/r-che/dfi/agent/internal/cleanup"
-	"github.com/r-che/dfi/agent/internal/fswatcher"
+	"github.com/r-che/dfi/dfiagent/internal/cleanup"
+	"github.com/r-che/dfi/dfiagent/internal/fswatcher"
 	"github.com/r-che/dfi/dbi"
 
 	"github.com/r-che/log"

@@ -8,7 +8,7 @@ import (
 	"io"
 
 	"github.com/r-che/dfi/types"
-	"github.com/r-che/dfi/agent/internal/cfg"
+	"github.com/r-che/dfi/dfiagent/internal/cfg"
 
 	"github.com/r-che/log"
 )
