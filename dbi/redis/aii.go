@@ -189,15 +189,14 @@ func (rc *RedisClient) addTags(tags []string, ids types.IdKeyMap) (int64, error)
 		// AII key
 		key := RedisAIIPrefix + id
 
-		// Make a list to make a set of new tags + existing tags
-		allTags := make([]string, len(tags))
-		copy(allTags, tags)
+		// Make a set of tags that should be set to the id
+		allTags := tools.NewStrSet(tags...)
 
 		// Load existing values of tags field
 		tagsStr, err := rc.c.HGet(rc.Ctx, key, dbms.AIIFieldTags).Result()
 		if err == nil {
 			// Tags field extracted, make union between extracted existing tags and new tags
-			allTags = append(allTags, strings.Split(tagsStr, ",")...)
+			allTags.Add(strings.Split(tagsStr, ",")...)
 		} else if errors.Is(err, RedisNotFound) {
 			// Ok, currently no tags for this object, nothing to do
 		} else {
@@ -205,18 +204,15 @@ func (rc *RedisClient) addTags(tags []string, ids types.IdKeyMap) (int64, error)
 			return tu, fmt.Errorf("(RedisCli:addTags) cannot get tags field %q for key %q: %w", dbms.AIIFieldTags, key, err)
 		}
 
-		// Make unique sorted list of tags
-		allTags = tools.NewStrSet(allTags...).List()
-
 		// Compare existing tags and new set
-		if tagsStr == strings.Join(allTags, ",") {
+		if tagsStr == strings.Join(allTags.List(), ",") {
 			// Skip update
 			log.D("(RedisCli:addTags) No tags update required for %s", id)
 			continue
 		}
 
 		// Set tags for the current identifier
-		if _, err := rc.setTags(allTags, types.IdKeyMap{id: objKey}); err != nil {
+		if _, err := rc.setTags(allTags.List(), types.IdKeyMap{id: objKey}); err != nil {
 			return tu, err
 		}
 
@@ -379,10 +375,7 @@ func (rc *RedisClient) deleteAII(args *dbms.AIIArgs, ids types.IdKeyMap) (int64,
 
 func (rc *RedisClient) delTags(tags []string, ids types.IdKeyMap) (int64, error) {
 	// Convert list of tags to map to check existing tags for need to be deleted
-	toDelTags := make(map[string]bool, len(tags))
-	for _, tag := range tags {
-		toDelTags[tag] = true
-	}
+	toDelTags := tools.NewStrSet(tags...)
 
 	tu := int64(0) // Total changed values of tags fields
 
@@ -405,19 +398,15 @@ func (rc *RedisClient) delTags(tags []string, ids types.IdKeyMap) (int64, error)
 			return tu, fmt.Errorf("(RedisCli:delTags) cannot get value %q field of %q: %w", dbms.AIIFieldTags, key, err)
 		}
 
-		// Split string by set of tags
-		aiiTags := strings.Split(aiiTagsStr, ",")
-
-		// Select tags to keep
-		keepTags := make([]string, 0, len(aiiTags))
-		for _, tag := range aiiTags {
-			if !toDelTags[tag] {
-				keepTags = append(keepTags, tag)
-			}
-		}
+		// Create set of tags which need to keep
+		keepTags := tools.NewStrSet(
+			// Split string by comma to create a list of tags
+			strings.Split(aiiTagsStr, ",")...).
+			// Remove toDelTags from full set of tags belonging to id
+			Del(toDelTags.List()...)
 
 		// Check for nothing to keep
-		if len(keepTags) == 0 {
+		if keepTags.Empty() {
 			// All tags should be removed from this item, add to queue to deletion
 			clearTags.Add(id)
 			// Now continue with the next id
@@ -425,14 +414,14 @@ func (rc *RedisClient) delTags(tags []string, ids types.IdKeyMap) (int64, error)
 		}
 
 		// Compare value of keepTags and existing tags
-		if strings.Join(keepTags, ",") == aiiTagsStr {
+		if strings.Join(keepTags.List(), ",") == aiiTagsStr {
 			// No tags should be removed from this item, skip
 			log.D("(RedisCli:delTags) No tags update required for %s", id)
 			continue
 		}
 
-		// Need to set new value of tags field value without removed tags
-		n, err := rc.setTags(keepTags, types.IdKeyMap{id: objKey})
+		// Need to set new value of the tags field without removed tags
+		n, err := rc.setTags(keepTags.List(), types.IdKeyMap{id: objKey})
 		if err != nil {
 			return tu, fmt.Errorf("(RedisCli:delTags) cannot remove tags %v from %q: %w", tags, id, err)
 		}
