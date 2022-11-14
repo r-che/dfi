@@ -35,7 +35,7 @@ func (pc *progConfig) loadConf() error {
 
 	// Configuration should not be public-readable - check correctness of ownership/permissions
 	if err := fschecks.PrivOwnership(pc.confPath); err != nil {
-		return fmt.Errorf("failed to check ownership/mode of program configuraton: %w", err)
+		return fmt.Errorf("failed to check ownership/mode of program configuration: %w", err)
 	}
 
 	// Read configuration file

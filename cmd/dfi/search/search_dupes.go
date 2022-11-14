@@ -98,7 +98,7 @@ func searchDupes(dbc dbms.Client, qa *dbms.QueryArgs) *types.CmdRV {
 	}
 
 	//
-	// Create resulted map with refered object<=>duplicates list pairs
+	// Create resulted map with referred object<=>duplicates list pairs
 	//
 	objDupes := make(map[string][]dupeInfo)
 	// Dupes counter

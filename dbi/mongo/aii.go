@@ -354,7 +354,7 @@ func (mc *MongoClient) setAII(args *dbms.AIIArgs, idkm types.IdKeyMap, qr dbms.Q
 		}
 	}
 
-	log.D("(MongoCli:setAII) %d AII record(s) were successfuly set", len(idkm) - len(*needInsert))
+	log.D("(MongoCli:setAII) %d AII record(s) were successfully set", len(idkm) - len(*needInsert))
 
 	// Check for nothing to insert
 	if len(*needInsert) == 0 {
@@ -402,7 +402,7 @@ func (mc *MongoClient) setAII(args *dbms.AIIArgs, idkm types.IdKeyMap, qr dbms.Q
 		tdu += tools.Tern(args.Descr != "", int64(1), 0)
 	}
 
-	log.D("(MongoCli:setAII) %d AII record(s) were successfuly inserted", len(*needInsert))
+	log.D("(MongoCli:setAII) %d AII record(s) were successfully inserted", len(*needInsert))
 
 	// OK
 	return ttu, tdu, nil

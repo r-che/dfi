@@ -66,7 +66,7 @@ func NewClient(dbCfg *dbms.DBConfig) (*MongoClient, error) {
 			log.E("(MongoCli:NewClient) Ping returned error: %v", err)
 			return
 		}
-		log.I("(MongoCli:NewClient) Pinging %s was successfull", dbCfg.HostPort)
+		log.I("(MongoCli:NewClient) Pinging %s was successful", dbCfg.HostPort)
 	})
 
 	return mc, nil

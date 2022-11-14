@@ -186,7 +186,7 @@ func (qa *QueryArgs) ParseMtimes(mtimeLine string) error {
 			return fmt.Errorf("invalid mtime range %q", mtimeLine)
 		}
 
-		// OK, range parsed successfuly
+		// OK, range parsed successfully
 		return nil
 	}
 
@@ -326,7 +326,7 @@ func (qa *QueryArgs) ParseSizes(sizeLine string) error {
 			return fmt.Errorf("invalid size range %q", sizeLine)
 		}
 
-		// OK, range parsed successfuly
+		// OK, range parsed successfully
 		return nil
 	}
 
@@ -344,7 +344,7 @@ func (qa *QueryArgs) ParseSizes(sizeLine string) error {
 		qa.SizeSet = append(qa.SizeSet, ts)
 	}
 
-	// OK, set parsed successfuly
+	// OK, set parsed successfully
 	return nil
 }
 

@@ -57,7 +57,7 @@ func NewWatcher(path string, flushInterval time.Duration,
 		absPath, err := filepath.Abs(path)
 		if err != nil {
 			return nil, fmt.Errorf(
-				"(NewWatcher) cannot convert non-absolue path %q to the absolute form: %w", path, err)
+				"(NewWatcher) cannot convert non-absolute path %q to the absolute form: %w", path, err)
 		}
 
 		// Replace value
@@ -424,7 +424,7 @@ func (w *Watcher) handleEvent(event *fsn.Event) {
 }
 
 func (w *Watcher) unwatchDir(dir string) error {
-	// Counter for successfuly removed watchers
+	// Counter for successfully removed watchers
 	removed := 0
 
 	log.D("(Watcher:%s) Removing watchers recursively from %q ...", w.path, dir)

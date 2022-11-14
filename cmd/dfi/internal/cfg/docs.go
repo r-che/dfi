@@ -188,7 +188,7 @@ It can delete values from the same fields that are supported by the --set mode
 >>> Deleting tags <<<
 
 With the --tags argument %[1]s tries to remove a set of tags specified by the first argument
-from the list of objects with identifiers specified by other agruments. The value of tags argument
+from the list of objects with identifiers specified by other arguments. The value of tags argument
 must be a comma-separated list of tags. If some or all tags do not exist in the tag field, the
 deletion will not be performed.
 

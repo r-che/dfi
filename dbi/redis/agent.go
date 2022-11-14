@@ -18,7 +18,7 @@ func (rc *RedisClient) UpdateObj(fso *types.FSObject) error {
 	key := RedisObjPrefix + rc.Cfg.CliHost + ":" + fso.FPath
 
 	if rc.ReadOnly {
-		// Read-only datbase mode, do nothing
+		// Read-only database mode, do nothing
 		log.W("(RedisCli:UpdateObj) R/O mode IS SET, will not be performed: HSET => %s\n", key)
 	} else {
 		log.D("(RedisCli:UpdateObj) HSET => %s\n", key)
@@ -108,7 +108,7 @@ func (rc *RedisClient) Commit() (int64, int64, error) {
 		log.D("(RedisCli:Commit) Need to delete %d keys", nDel)
 
 		if rc.ReadOnly {
-			// Read-only datbase mode, count numbers of keys that would have been deleted on normal mode
+			// Read-only database mode, count numbers of keys that would have been deleted on normal mode
 			wd := []string{}	// would be deleted
 			nd := []string{}	// will not be deleted
 

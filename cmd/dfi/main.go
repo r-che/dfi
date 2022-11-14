@@ -8,7 +8,6 @@ import (
 	"github.com/r-che/dfi/cmd/dfi/internal/cfg"
 	"github.com/r-che/dfi/dbi"
 
-	// Command Line Interace packages
 	"github.com/r-che/dfi/cmd/dfi/del"
 	"github.com/r-che/dfi/cmd/dfi/search"
 	"github.com/r-che/dfi/cmd/dfi/set"
