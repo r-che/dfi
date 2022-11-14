@@ -194,6 +194,8 @@ func (rc *RedisClient) Commit() (int64, int64, error) {
 		rc.toDelete = nil
 	}()
 
+	var err error
+
 	// Check for keys to delete
 	if nDel := len(rc.toDelete); nDel != 0 {
 		log.D("(RedisCli:Commit) Need to delete %d keys", nDel)
@@ -247,22 +249,28 @@ func (rc *RedisClient) Commit() (int64, int64, error) {
 			}
 
 		} else {
+			// Delete all keys from rc.toDelete slice
 			res := rc.c.Del(rc.Ctx, rc.toDelete...)
-			if err := res.Err(); err != nil {
-				return rc.updated, res.Val(), fmt.Errorf("(RedisCli:Commit) DEL operation failed: %w", err)
+
+			// Check for deletion error
+			// XXX Need to use external err variable here to pass error to the function return values
+			if err = res.Err(); err != nil {
+				// Save error value
+				err = fmt.Errorf("(RedisCli:Commit) DEL operation failed: %w", err)
 			}
 
+			// Update deleted value
 			rc.deleted = res.Val()
 		}
 
-
-		log.D("(RedisCli:Commit) Done deletion operation")
+		log.D("(RedisCli:Commit) Done deletion operation with results: %v",
+			tools.Tern[any](err == nil, "no errors", err))
 	}
 
 	// XXX Use intermediate variables to avoid resetting return values by deferred function
 	ru, rd := rc.updated, rc.deleted
 
-	return ru, rd, nil
+	return ru, rd, err
 }
 
 func (rc *RedisClient) LoadHostPaths(match dbms.MatchStrFunc) ([]string, error) {
