@@ -5,14 +5,14 @@ import (
 	"os"
 
 	"github.com/r-che/dfi/types"
-	"github.com/r-che/dfi/cli/internal/cfg"
+	"github.com/r-che/dfi/cmd/dfi/internal/cfg"
 	"github.com/r-che/dfi/dbi"
 
 	// Command Line Interace packages
-	"github.com/r-che/dfi/cli/del"
-	"github.com/r-che/dfi/cli/search"
-	"github.com/r-che/dfi/cli/set"
-	"github.com/r-che/dfi/cli/show"
+	"github.com/r-che/dfi/cmd/dfi/del"
+	"github.com/r-che/dfi/cmd/dfi/search"
+	"github.com/r-che/dfi/cmd/dfi/set"
+	"github.com/r-che/dfi/cmd/dfi/show"
 
 	"github.com/r-che/log"
 )

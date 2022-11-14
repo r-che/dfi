@@ -3,7 +3,7 @@ package del
 import (
 	"github.com/r-che/dfi/types"
 	"github.com/r-che/dfi/types/dbms"
-	"github.com/r-che/dfi/cli/internal/cfg"
+	"github.com/r-che/dfi/cmd/dfi/internal/cfg"
 
 	"github.com/r-che/log"
 )
