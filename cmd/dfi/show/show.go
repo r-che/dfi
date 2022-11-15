@@ -5,10 +5,8 @@ import (
 	"strings"
 	"time"
 	"strconv"
-	"sort"
 
 	"github.com/r-che/dfi/types"
-	"github.com/r-che/dfi/common/tools"
 	"github.com/r-che/dfi/types/dbms"
 	"github.com/r-che/dfi/cmd/dfi/internal/cfg"
 
@@ -46,43 +44,10 @@ func Do(dbc dbms.Client) *types.CmdRV {
 	rv.AddFound(int64(len(objs)))
 
 	// Check loaded object for correctness
-	for objKey, fields := range objs {
-		id, ok := fields[dbms.FieldID]
-		if !ok {
-			rv.AddWarn("Skip loaded object %q without identifier field %q", objKey, dbms.FieldID)
-			// Delete the invalid entry
-			delete(objs, objKey)
+	removeInvalids(objs, rv)
 
-			continue
-		}
-
-		// Check that ID has a correct type
-		if _, ok := id.(string); !ok {
-			rv.AddWarn("Skip loaded object %q due to identifier field %q is not a string: %v", objKey, dbms.FieldID, id)
-			// Delete the invalid entry
-			delete(objs, objKey)
-		}
-	}
-
-	// Check for not-found objects
-	if len(objs) != len(ids) {
-		// Some objects were not found
-		checkId:
-		for i := 0; i < len(ids); {
-			for _, fields := range objs {
-				// Check that extracted identifier is equal requested identifier
-				if fields[dbms.FieldID] == ids[i] {
-					// Ok, requested identifier found, check next
-					i++
-					continue checkId
-				}
-			}
-			// rqId was not found in loaded identifiers
-			rv.AddWarn("Object with ID %q was not found or is incorrect", ids[i])
-			// Remove not-found ID from ids slice
-			ids = append(ids[:i], ids[i+1:]...)
-		}
-	}
+	// Remove not-found objects, keep order of identifiers in ids
+	ids = removeNotFound(objs, ids, rv)
 
 	// Get AII for objects
 	aiis, err := dbc.GetAIIs(ids, dbms.UVAIIFields())
@@ -96,95 +61,6 @@ func Do(dbc dbms.Client) *types.CmdRV {
 
 	// Return results
 	return rv
-}
-
-func showTags(dbc dbms.Client) *types.CmdRV {
-	// Get configuration
-	c := cfg.Config()
-	// Get tags list specified from command line
-	tags := tools.NewStrSet(c.CmdArgs...)
-
-	// Function's return value
-	rv := types.NewCmdRV()
-
-	// Get list of objects with tags
-	ids, err := dbc.GetAIIIds([]string{dbms.AIIFieldTags})
-	if err != nil {
-		return rv.AddErr("cannot get list of objects with tags: %w", err)
-	}
-
-	// Get tags by identifiers
-	qr, err := dbc.GetAIIs(ids, []string{dbms.AIIFieldTags})
-	if err != nil {
-		return rv.AddErr("cannot get objects with tags: %w", err)
-	}
-
-	//
-	// Collect all tags from selected objects
-	//
-
-	// Map with tag<=>times
-	tt := map[string]int{}
-
-	// Check that tags were not provided by command line
-	if tags.Empty() {
-		// Add all tags
-		for _, aii := range qr {
-			for _, tag := range aii.Tags {
-				tt[tag]++
-			}
-		}
-	} else {
-		// Add only specified tags
-		for _, aii := range qr {
-			for _, tag := range aii.Tags {
-				if (*tags)[tag] {
-					tt[tag]++
-				}
-			}
-		}
-		// If not quiet mode - need to add any not found but requested tags with zero values
-		if !c.Quiet {
-			for _, tag := range tags.List() {
-				if _, ok := tt[tag]; !ok {
-					tt[tag] = 0
-				}
-			}
-		}
-	}
-
-	// Make a list tags, sorted by number of occurrences
-	keys := make([]string, 0, len(tt))
-	for k := range tt {
-		keys = append(keys, k)
-	}
-	// Sort in REVERSE order - the higher values should be the first
-	sort.Slice(keys, func(i, j int) bool {
-		// Compare by number of occurrences
-		if cond := tt[keys[i]] > tt[keys[j]]; cond {
-			return true
-		} else if tt[keys[i]] == tt[keys[j]] {
-			// Need to compare by keys in alphabetical order
-			return keys[i] < keys[j]
-		}
-
-		return false
-	})
-
-	// Produce output
-	if c.Quiet {
-		// Quiet mode - only tags with non-zero number of occurrences
-		for _, k := range keys {
-			fmt.Println(k)
-		}
-	} else {
-		// Normal mode - print: number_occurrences\ttag\n
-		for _, k := range keys {
-			fmt.Printf("%d\t%s\n", tt[k], k)
-		}
-	}
-
-	return rv.AddFound(int64(len(tt)))
 }
 
 func showObjs(ids []string, objs dbms.QueryResults, aiis dbms.QueryResultsAII) {
@@ -352,35 +228,8 @@ func showObj(objKey types.ObjKey, fields dbms.QRItem, aii *dbms.AIIArgs) {
 	fmt.Printf("Type:      %s\n", fields[dbms.FieldType])
 	fmt.Printf("Size:      %v\n", fields[dbms.FieldSize])
 
-	// Check for mtime field found
-	if mtime, ok := fields[dbms.FieldMTime]; ok {
-		var mtimeTs int64
-		var err error
-
-		// Type of mtime field is DBMS dependent
-		switch mtime := mtime.(type) {
-		case int64:
-			// Assign value to mtimeTs as is - it is already Unix timestamp
-			mtimeTs = mtime
-		case string:
-			// Convert string Unix timestamp to integer value
-			mtimeTs, err = strconv.ParseInt(mtime, 10, 64)
-		default:
-			err = fmt.Errorf("unexpected mtime type %T", mtime)
-		}
-
-
-		var mtimeStr string	// human-readable representation
-		if err == nil {
-			mtimeStr = time.Unix(mtimeTs, 0).Format("2006-01-02 15:04:05 MST")
-		} else {
-			mtimeStr = fmt.Sprintf(invalidMtimeValueFmt, mtime, err)
-			mtimeTs = -1
-		}
-
-		// Produce output
-		fmt.Printf("MTime:     %s (Unix: %d)\n", mtimeStr, mtimeTs)
-	}
+	// Print object modification time
+	showObjMtime(fields)
 
 	// Is checksum was set
 	if csum := fields[dbms.FieldChecksum]; csum != "" {
@@ -399,4 +248,40 @@ func showObj(objKey types.ObjKey, fields dbms.QRItem, aii *dbms.AIIArgs) {
 	}
 
 	fmt.Println()
+}
+
+func showObjMtime(fields dbms.QRItem) {
+	// Check for mtime field is not found
+	mtime, ok := fields[dbms.FieldMTime]
+	if !ok {
+		// Nothing to print
+		return
+	}
+
+	var mtimeTs int64
+	var err error
+
+	// Type of mtime field is DBMS dependent
+	switch mtime := mtime.(type) {
+	case int64:
+		// Assign value to mtimeTs as is - it is already Unix timestamp
+		mtimeTs = mtime
+	case string:
+		// Convert string Unix timestamp to integer value
+		mtimeTs, err = strconv.ParseInt(mtime, 10, 64)
+	default:
+		err = fmt.Errorf("unexpected mtime type %T", mtime)
+	}
+
+
+	var mtimeStr string	// human-readable representation
+	if err == nil {
+		mtimeStr = time.Unix(mtimeTs, 0).Format("2006-01-02 15:04:05 MST")
+	} else {
+		mtimeStr = fmt.Sprintf(invalidMtimeValueFmt, mtime, err)
+		mtimeTs = -1
+	}
+
+	// Produce output
+	fmt.Printf("MTime:     %s (Unix: %d)\n", mtimeStr, mtimeTs)
 }
