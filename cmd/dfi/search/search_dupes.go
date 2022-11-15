@@ -116,20 +116,8 @@ func loadDupesRefs(dbc dbms.Client, rv *types.CmdRV) (map[string]*types.FSObject
 		}
 
 		// Extract checksum
-		csum, ok := extrFieldStr(objKey, fields, dbms.FieldChecksum, rv)
-		if !ok {
-			continue
-		}
-		// Check the value of checksum
-		switch csum {
-		case "":
-			rv.AddWarn("Skip object %s (%s) with empty checksum field", id, objKey)
-			continue
-		case types.CsTooLarge:
-			rv.AddWarn("Skip object %s (%s) - checksum is not set because the file is too large", id, objKey)
-			continue
-		case types.CsErrorStub:
-			rv.AddWarn("Skip object %s (%s) - checksum is not set because an error occurred during calculation", id, objKey)
+		csum := extrCSum(objKey, fields, rv)
+		if csum == "" {
 			continue
 		}
 
@@ -148,6 +136,13 @@ func loadDupesRefs(dbc dbms.Client, rv *types.CmdRV) (map[string]*types.FSObject
 	}
 
 	// Check for idenfifiers without checksum value
+	removeInvalids(objRefs, rv)
+
+	return objRefs, nil
+}
+
+func removeInvalids(objRefs map[string]*types.FSObject, rv *types.CmdRV) {
+	// Check for idenfifiers without checksum value
 	nxIds := make([]string, 0, len(objRefs))
 	for id, v := range objRefs {
 		if v == nil {
@@ -159,8 +154,29 @@ func loadDupesRefs(dbc dbms.Client, rv *types.CmdRV) (map[string]*types.FSObject
 	if len(nxIds) != 0 {
 		rv.AddWarn("Requested object(s) do not exist or invalid: %s", strings.Join(nxIds, ", "))
 	}
+}
 
-	return objRefs, nil
+func extrCSum(objKey types.ObjKey, fields dbms.QRItem, rv *types.CmdRV) string {
+	// Extract checksum
+	csum, ok := extrFieldStr(objKey, fields, dbms.FieldChecksum, rv)
+	if !ok {
+		return ""
+	}
+
+	// Check the value of checksum
+	switch csum {
+	case "":
+		rv.AddWarn("Skip object %s with empty checksum field", objKey)
+		return ""
+	case types.CsTooLarge:
+		rv.AddWarn("Skip object %s - checksum is not set because the file is too large", objKey)
+		return ""
+	case types.CsErrorStub:
+		rv.AddWarn("Skip object %s - checksum is not set because an error occurred during calculation", objKey)
+		return ""
+	}
+
+	return csum
 }
 
 func dupesMapByCSum(refsCSums map[string]csData, qr dbms.QueryResults, rv *types.CmdRV) map[string][]dupeInfo {
