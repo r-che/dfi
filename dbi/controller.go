@@ -70,14 +70,20 @@ func (dbc *DBController) Run() {
 			select {
 				// Wait for set of values from watchers
 				case dbOps := <-dbc.dbChan:
-					// Process database operations
-					rv := dbc.update(dbOps)
+					// Update database
+					rv, delExpected := dbc.update(dbOps)
 					if !rv.OK() {
 						log.E("(DBC) Update operations returned %d errors: {ERROR: %s}",
 							len(rv.Errs()), rv.ErrsJoin("}, {ERROR: "))
 					}
 
-					log.I("(DBC) Completed %d operations", rv.Changed())
+					// Commit changes
+					changed, err := dbc.commit(delExpected)
+					if err != nil {
+						log.E("(DBC) Commit operation returned error: %v", err)
+					}
+
+					log.I("(DBC) Completed %d operations", changed)
 				// Wait for finish signal from context
 				case <-dbc.ctx.Done():
 					// Stop DB client
@@ -103,7 +109,7 @@ func (dbc *DBController) SetReadOnly(v bool) {
 	dbc.dbCli.SetReadOnly(v)
 }
 
-func (dbc *DBController) update(dbOps []*dbms.DBOperation) *types.CmdRV {
+func (dbc *DBController) update(dbOps []*dbms.DBOperation) (*types.CmdRV, int64) {
 	// Summary return value
 	rv := types.NewCmdRV()
 
@@ -152,25 +158,26 @@ func (dbc *DBController) update(dbOps []*dbms.DBOperation) *types.CmdRV {
 		}
     }
 
+	return rv, toDelN
+}
+
+func (dbc *DBController) commit(delExpected int64) (int64, error) {
     // Commit operations
     updated, deleted, err := dbc.dbCli.Commit()
 	if err != nil {
-		return rv.AddErr(err)
+		return updated + deleted, err
 	}
 
 	// Check for not frequent, but probably situation
-	if deleted != toDelN {
+	if deleted != delExpected {
 		// Print explanation message
-		log.W("(DBC) %d objects were expected to be removed, but removed %d. This may be because" +
+		log.W("(DBC:commit) %d objects were expected to be removed, but removed %d. This may be because" +
 			" when some objects were added and deleted before they were added to DB",
-			toDelN, deleted)
+			delExpected, deleted)
 	}
 
-	log.I("(DBC) %d records updated, %d records deleted", updated, deleted)
+	log.I("(DBC:commit) %d records updated, %d records deleted", updated, deleted)
 
-	// Set number of changed objects
-	rv.AddChanged(updated + deleted)
-
-	// Done
-	return rv
+	// Return number of changed objects and no error
+	return updated + deleted, nil
 }
