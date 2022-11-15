@@ -185,83 +185,12 @@ func (mc *MongoClient) Commit() (int64, int64, error) {
 		log.D("(MongoCli:Commit) Need to delete %d keys", nDel)
 
 		if mc.ReadOnly {
-			// Only load identifiers for all object that queued to deletion
-			nd := []string{}	// will not be deleted
-			wd := []string{}	// would be deleted
+			// Simulate deletion by filter
+			toDel, err := mc.deleteDryRun(filter)
 
-			if cursor, err := coll.Find(mc.Ctx, filter, options.Find().SetReturnKey(true)); err != nil {
-				// Unexpected error
-				log.E("(MongoCli:Commit) Find (used instead of Delete on R/O mode) on %s.%s for identifiers %v failed: %v",
-					coll.Database().Name(), coll.Name(), mc.toDelete, err)
-			} else {
-				// Make a list of results
-				defer func() {
-					if err := cursor.Close(mc.Ctx); err != nil {
-						log.E("(MongoCli:Commit) cannot close cursor: %v", err)
-					}
-				}()
-
-				// Make a set from keys that should be deleted
-				dset := tools.NewStrSet(mc.toDelete...)
-
-				// Keep current termLong value to have ability to compare during long-term operations
-				initTermLong := mc.TermLongVal
-				// Make a list of results
-				for cursor.Next(mc.Ctx) {
-					// If value of the termLong was updated - need to terminate long-term operation
-					if mc.TermLongVal != initTermLong {
-						return 0, int64(len(wd)), fmt.Errorf("(MongoCli:Commit) terminated")
-					}
-
-					// Item to get ID and found-path from the query result
-					var item map[string]string
-					// Try to decode next cursor value to the item
-					if err := cursor.Decode(&item); err != nil {
-						log.E("(MongoCli:Commit) R/O mode, loading suitable to deletion object - cannot decode cursor item: %w", err)
-						// All identifers will NOT be deleted
-						nd = append(nd, mc.toDelete...)
-						// Break cursor loop
-						break
-					}
-
-					// Extract ID field
-					id, ok := item[MongoFieldID]
-					if !ok {
-						log.E("(MongoCli:Commit) Cannot convert object identifier to string, skip: %#v", item)
-						continue
-					}
-
-					// Check for membership
-					if dset.Includes(id) {
-						// Ok, this item will be deleted as expected
-						wd = append(wd, id)
-						dset.Del(id)
-					} else {
-						// Something strange - unexpected ID would be deleted
-						log.E("(MongoCli:Commit) Delete (R/O mode) unexpected object would be deleted - id: %s, expected list: %v",
-							id, dset.List())
-					}
-				}
-
-				// All identifiers from dset - would NOT be deleted
-				nd = append(nd, dset.List()...)
-
-				// Update deleted counter by number of selected keys that would be deleted
-				mc.deleted = int64(len(wd))
-
-				// Check for keys that would be deleted
-				if len(wd) != 0 {
-					// Print warning message about these keys
-					log.W("(MongoCli:Commit) %d key(s) should be deleted but would NOT because R/O mode: %v",
-						len(wd), strings.Join(wd, ", "))
-				}
-
-				// Check for keys that would not be deleted
-				if len(nd) != 0 {
-					// Print warning
-					log.W("(MongoCli:Commit) R/O mode - DEL could NOT delete %d keys" +
-						" because not exist or other errors: %v", len(nd), strings.Join(nd, ", "))
-				}
+			// Check for error
+			if err != nil {
+				return 0, toDel, fmt.Errorf("(MongoCli:Commit) deletion simulation (R/O mode) failed: %w", err)
 			}
 		} else {
 			// Perform deletion
@@ -285,6 +214,95 @@ func (mc *MongoClient) Commit() (int64, int64, error) {
 	ru, rd := mc.updated, mc.deleted
 
 	return ru, rd, nil
+}
+
+func (mc *MongoClient) deleteDryRun(filter bson.D) (int64, error) {
+	// Only load identifiers for all object that queued to deletion
+	nd := []string{}	// will not be deleted
+	wd := []string{}	// would be deleted
+
+	// Get collection handler
+	coll := mc.c.Database(mc.Cfg.ID).Collection(MongoObjsColl)
+
+	cursor, err := coll.Find(mc.Ctx, filter, options.Find().SetReturnKey(true))
+	if err != nil {
+		// Unexpected error
+		return 0, fmt.Errorf("(MongoCli:Commit:deleteDryRun) find on %s.%s for identifiers %v failed: %v",
+			coll.Database().Name(), coll.Name(), mc.toDelete, err)
+	}
+
+	//
+	// Make a list of results
+	//
+	defer func() {
+		if err := cursor.Close(mc.Ctx); err != nil {
+			log.E("(MongoCli:Commit) cannot close cursor: %v", err)
+		}
+	}()
+
+	// Make a set from keys that should be deleted
+	dset := tools.NewStrSet(mc.toDelete...)
+
+	// Keep current termLong value to have ability to compare during long-term operations
+	initTermLong := mc.TermLongVal
+	// Make a list of results
+	for cursor.Next(mc.Ctx) {
+		// If value of the termLong was updated - need to terminate long-term operation
+		if mc.TermLongVal != initTermLong {
+			return int64(len(wd)), fmt.Errorf("(MongoCli:Commit:deleteDryRun) terminated")
+		}
+
+		// Item to get ID and found-path from the query result
+		var item map[string]string
+		// Try to decode next cursor value to the item
+		if err := cursor.Decode(&item); err != nil {
+			log.E("(MongoCli:Commit) R/O mode, loading suitable to deletion object - cannot decode cursor item: %w", err)
+			// All identifers will NOT be deleted
+			nd = append(nd, mc.toDelete...)
+			// Break cursor loop
+			break
+		}
+
+		// Extract ID field
+		id, ok := item[MongoFieldID]
+		if !ok {
+			log.E("(MongoCli:Commit) Cannot convert object identifier to string, skip: %#v", item)
+			continue
+		}
+
+		// Check for membership
+		if dset.Includes(id) {
+			// Ok, this item will be deleted as expected
+			wd = append(wd, id)
+			dset.Del(id)
+		} else {
+			// Something strange - unexpected ID would be deleted
+			log.E("(MongoCli:Commit) Delete (R/O mode) unexpected object would be deleted - id: %s, expected list: %v",
+				id, dset.List())
+		}
+	}
+
+	// All identifiers from dset - would NOT be deleted
+	nd = append(nd, dset.List()...)
+
+	// Update deleted counter by number of selected keys that would be deleted
+	mc.deleted += int64(len(wd))
+
+	// Check for keys that would be deleted
+	if len(wd) != 0 {
+		// Print warning message about these keys
+		log.W("(MongoCli:Commit) %d key(s) should be deleted but would NOT because R/O mode: %v",
+			len(wd), strings.Join(wd, ", "))
+	}
+
+	// Check for keys that would not be deleted
+	if len(nd) != 0 {
+		// Print warning
+		log.W("(MongoCli:Commit) R/O mode - DEL could NOT delete %d keys" +
+			" because not exist or other errors: %v", len(nd), strings.Join(nd, ", "))
+	}
+
+	return int64(len(wd)), nil
 }
 
 func (mc *MongoClient) LoadHostPaths(match dbms.MatchStrFunc) ([]string, error) {
