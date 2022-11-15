@@ -9,6 +9,7 @@ import (
 	"github.com/r-che/dfi/cmd/dfi/internal/cfg"
 )
 
+//nolint:cyclop // Here simplification of the code does not make it clear
 func Do(dbc dbms.Client) *types.CmdRV {
 	// Get configuration
 	c := cfg.Config()
@@ -60,19 +61,23 @@ func Do(dbc dbms.Client) *types.CmdRV {
 
 	qr, err := dbc.Query(c.QA, rqFields)
 	if err != nil {
-		rv.AddErr("cannot execute search query: %v", err)
+		return rv.AddErr("cannot execute search query: %v", err)
 	}
 
+	//
 	// Print results
-	switch {
-	// JSON results
-	case c.JSONOut:
+	//
+
+	// Select output format
+	if c.JSONOut {
+		// JSON results
 		printJSON(qr)
-	// Results grouped by hosts
-	case c.HostGroups:
+	} else
+	if c.HostGroups {
+		// Results grouped by host
 		printResHG(qr)
-	// Print single-line sorted output
-	default:
+	} else {
+		// Single-line sorted output
 		printResSingle(qr)
 	}
 
@@ -180,16 +185,16 @@ func printResHG(qr dbms.QueryResults) {
 
 		fmt.Printf("%s(%d):\n", host, len(paths))
 
-		switch {
-		case c.ShowOnlyIds:
+		if c.ShowOnlyIds {
 			for _, path := range paths {
 				fmt.Printf("  %v\n", qr[types.ObjKey{Host: host, Path: path}][dbms.FieldID])
 			}
-		case c.ShowID:
+		} else
+		if c.ShowID {
 			for _, path := range paths {
 				fmt.Printf("  %v %s\n", qr[types.ObjKey{Host: host, Path: path}][dbms.FieldID], path)
 			}
-		default:
+		} else {
 			for _, path := range paths {
 				fmt.Printf("  %s\n", path)
 			}
