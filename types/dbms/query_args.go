@@ -137,7 +137,10 @@ func (qa *QueryArgs) UseAII() bool {
 	return qa.UseTags || qa.UseDescr
 }
 
-func (qa *QueryArgs) ParseMtimes(mtimeLine string) error {
+func (qa *QueryArgs) ParseMtimes(notSet, mtimeLine string) error {
+	if mtimeLine == notSet {
+		return nil
+	}
 	// Possible variants:
 	// * ts1[,ts2,ts3...]
 	// * ts1..ts2
@@ -281,7 +284,10 @@ func parseTime(timeStr string) (int64, error) {
 	return -1, fmt.Errorf("cannot parse time %q", timeStr)
 }
 
-func (qa *QueryArgs) ParseSizes(sizeLine string) error {
+func (qa *QueryArgs) ParseSizes(notSet, sizeLine string) error {
+	if sizeLine == notSet {
+		return nil
+	}
 	// Possible variants:
 	// * size1[,size2,size3...]
 	// * size1..size2
@@ -391,20 +397,36 @@ func parseSize(sizeStr string) (int64, error) {
 	return size * multiplier, nil
 }
 
-func (qa *QueryArgs) ParseTypes(typesLine string, allowed []string) error {
-	return parse.StringsSet(&qa.Types, "type", typesLine, allowed...)
+func (qa *QueryArgs) ParseTypes(notSet, val string, allowed []string) error {
+	if val == notSet {
+		return nil
+	}
+
+	return parse.StringsSet(&qa.Types, "type", val, allowed...)
 }
 
-func (qa *QueryArgs) ParseSums(csums string) error {
-	return parse.StringsSet(&qa.CSums, "checksum", csums)
+func (qa *QueryArgs) ParseSums(notSet, val string) error {
+	if val == notSet {
+		return nil
+	}
+
+	return parse.StringsSet(&qa.CSums, "checksum", val)
 }
 
-func (qa *QueryArgs) ParseHosts(hostsLine string) error {
-	return parse.StringsSet(&qa.Hosts, "host", hostsLine)
+func (qa *QueryArgs) ParseHosts(notSet, val string) error {
+	if val == notSet {
+		return nil
+	}
+
+	return parse.StringsSet(&qa.Hosts, "host", val)
 }
 
-func (qa *QueryArgs) ParseAIIFields(fieldsStr string, allowed []string) error {
-	return parse.StringsSet(&qa.AIIFields, "field name", fieldsStr, allowed...)
+func (qa *QueryArgs) ParseAIIFields(notSet, val string, allowed []string) error {
+	if val == notSet {
+		return nil
+	}
+
+	return parse.StringsSet(&qa.AIIFields, "field name", val, allowed...)
 }
 
 func (qa *QueryArgs) AddIds(ids ...string) *QueryArgs {

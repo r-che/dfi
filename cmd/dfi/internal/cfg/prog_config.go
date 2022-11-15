@@ -103,44 +103,14 @@ func (pc *progConfig) prepare(CmdArgs []string) error {
 	// Keep search phrases
 	pc.CmdArgs = CmdArgs
 
-	// Check mode
-	mn := 0
-	if pc.Search { mn++ }
-	if pc.Show { mn++ }
-	if pc.Set { mn++ }
-	if pc.Del { mn++ }
-	// TODO if pc.Admin { mn++ }
-	if mn == 0 {
-		// Use search mode as default
-		pc.Search = true
-	} else if mn > 1 {
-		return fmt.Errorf("only one mode option can be set")
-	}
-
-	// Check for incompatible options
-	if err := pc.checkIncompat(); err != nil {
+	// Check and prepare mode options
+	if err := pc.prepareMode(); err != nil {
 		return err
 	}
 
-	// Prepare required options
-	switch {
-	case pc.Search:
-		if err := pc.prepareSearch(); err != nil {
-			return err
-		}
-	case pc.Show:
-		if err := pc.prepareShow(); err != nil {
-			return err
-		}
-	case pc.Set:
-		if err := pc.prepareSet(); err != nil {
-			return err
-		}
-	case pc.Del:
-		if err := pc.prepareDel(); err != nil {
-			return err
-		}
-	// TODO case pc.Admin:
+	// Check for incompatible options
+	if err := pc.prepareCheckIncompat(); err != nil {
+		return err
 	}
 
 	// Is program configuration was not set?
@@ -163,7 +133,43 @@ func (pc *progConfig) prepare(CmdArgs []string) error {
 	return pc.loadConf()
 }
 
-func (pc *progConfig) checkIncompat() error {
+func (pc *progConfig) prepareMode() error {
+	var prepFunc func() error
+	// Check mode
+	mn := 0
+	if pc.Search {
+		mn++
+		prepFunc = pc.prepareSearch
+	}
+	if pc.Show {
+		mn++
+		prepFunc = pc.prepareShow
+	}
+	if pc.Set {
+		mn++
+		prepFunc = pc.prepareSet
+	}
+	if pc.Del {
+		mn++
+		prepFunc = pc.prepareDel
+	}
+	// TODO if pc.Admin { mn++ }
+
+	if mn > 1 {
+		return fmt.Errorf("only one mode option can be set")
+	}
+
+	if mn == 0 {
+		// Use search mode as default
+		pc.Search = true
+		prepFunc = pc.prepareSearch
+	}
+
+	// Prepare required options
+	return prepFunc()
+}
+
+func (pc *progConfig) prepareCheckIncompat() error {
 	// Check for incompatible options
 	io := make([]string, 0, 3)	// Incompatible options
 	for k, v := range map[string]bool{
@@ -187,53 +193,20 @@ func (pc *progConfig) checkIncompat() error {
 }
 
 func (pc *progConfig) prepareSearch() error {
-	// Check for required command line arguments
-	if (pc.QA.DeepSearch || pc.QA.UseTags || pc.QA.OnlyTags ||
-		pc.QA.UseDescr || pc.QA.OnlyDescr || pc.QA.OnlyName || pc.SearchDupes) &&
-		len(pc.CmdArgs) == 0 {
-		return fmt.Errorf("one of command line options requires at least one command line argument")
+	// Prepare command line arguments to use in the query to DB
+	if err := pc.prepareSearchCmdArgs(); err != nil {
+		return err
 	}
 
-	pc.QA.SetSearchPhrases(pc.CmdArgs)
 
-	if pc.strMtime != anyVal {
-		if err := pc.QA.ParseMtimes(pc.strMtime); err != nil {
-			return err
-		}
+	// Prepare options with arguments
+	if err := pc.prepareSearchOptsArgs(); err != nil {
+		return err
 	}
 
-	if pc.strSize != anyVal {
-		if err := pc.QA.ParseSizes(pc.strSize); err != nil {
-			return err
-		}
-	}
-
-	if pc.oTypes != anyVal {
-		if err := pc.QA.ParseTypes(pc.oTypes, knownTypes); err != nil {
-			return err
-		}
-	}
-
-	if pc.csums != anyVal {
-		if err := pc.QA.ParseSums(pc.csums); err != nil {
-			return err
-		}
-	}
-
-	if pc.hosts != anyVal {
-		if err := pc.QA.ParseHosts(
-			// Convert hostname to lower case to avoid the need for a case-insensitive search in DB
-			strings.ToLower(pc.hosts),
-		); err != nil {
-			return err
-		}
-	}
-
-	if pc.aiiFields != anyVal {
-		if err := pc.QA.ParseAIIFields(pc.aiiFields, dbms.UVAIIFields()); err != nil {
-			return err
-		}
-	}
+	//
+	// Prepare boolean flags
+	//
 
 	// Update values of flags that depend on other flags
 	if pc.QA.OnlyDescr {
@@ -243,12 +216,62 @@ func (pc *progConfig) prepareSearch() error {
 		pc.CommonFlags.UseTags = true
 	}
 
+	//
 	// Pass common flags from command line to query arguments
+	//
 	pc.QA.CommonFlags = pc.CommonFlags
 
+	//
 	// Check for sufficient conditions for search
+	//
 	if !pc.QA.CanSearch(pc.CmdArgs) {
 		return fmt.Errorf("insufficient arguments to make search")
+	}
+
+	// OK
+	return nil
+}
+
+func (pc *progConfig) prepareSearchCmdArgs() error {
+	// Check for required command line arguments
+	if (pc.QA.DeepSearch || pc.QA.UseTags || pc.QA.OnlyTags ||
+		pc.QA.UseDescr || pc.QA.OnlyDescr || pc.QA.OnlyName || pc.SearchDupes) &&
+		len(pc.CmdArgs) == 0 {
+		return fmt.Errorf("one of command line options requires at least one command line argument")
+	}
+
+	pc.QA.SetSearchPhrases(pc.CmdArgs)
+
+	// OK
+	return nil
+}
+
+func (pc *progConfig) prepareSearchOptsArgs() error {
+	if err := pc.QA.ParseMtimes(anyVal, pc.strMtime); err != nil {
+		return err
+	}
+
+	if err := pc.QA.ParseSizes(anyVal, pc.strSize); err != nil {
+		return err
+	}
+
+	if err := pc.QA.ParseTypes(anyVal, pc.oTypes, knownTypes); err != nil {
+		return err
+	}
+
+	if err := pc.QA.ParseSums(anyVal, pc.csums); err != nil {
+		return err
+	}
+
+	if err := pc.QA.ParseHosts(anyVal,
+		// Convert hostname to lower case to avoid the need for a case-insensitive search in DB
+		strings.ToLower(pc.hosts),
+	); err != nil {
+		return err
+	}
+
+	if err := pc.QA.ParseAIIFields(anyVal, pc.aiiFields, dbms.UVAIIFields()); err != nil {
+		return err
 	}
 
 	// OK
