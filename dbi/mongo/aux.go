@@ -180,3 +180,42 @@ func validateUtf8Values(doc bson.D) error {
 	// OK
 	return nil
 }
+
+func fillAII(retFields []string, fields dbms.QRItem) (*dbms.AIIArgs, error) {
+	// Create new AII structure
+	aii := dbms.AIIArgs{}
+
+	for _, field := range retFields {
+		// Get field value
+		v, ok := fields[field]
+		if !ok {
+			// Field was not found
+			continue
+		}
+
+		// Choose correct type
+		switch v := v.(type) {
+		// Simple string value
+		case string:
+			if err := aii.SetFieldStr(field, v); err != nil {
+				return nil, fmt.Errorf("cannot set field from result: %w", err)
+			}
+		// List (slice) of string values
+		case primitive.A:
+			// Convert to string list
+			strList, err := primArrToStrList(v)
+			if err != nil {
+				return nil, fmt.Errorf("problem to handle field %q: %w",
+					field, err)
+			}
+			if err := aii.SetFieldList(field, strList); err != nil {
+				return nil, fmt.Errorf("cannot set field from result: %w", err)
+			}
+		// Unsupported type
+		default:
+			return nil, fmt.Errorf("field %q contains unsupported type %T of value %#v", field, v, v)
+		}
+	}
+
+	return &aii, nil
+}

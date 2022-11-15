@@ -70,40 +70,10 @@ func (mc *MongoClient) GetAIIs(ids, retFields []string) (dbms.QueryResultsAII, e
 		// of dbms.FieldID field already checked for string type in mc.aggregateSearch()
 		id := res[dbms.FieldID].(string)
 
-		// Allocate new AII structure
-		aii := &dbms.AIIArgs{}
-		// Try to get all requested fields from the result
-		for _, field := range retFields {
-			// Get field value
-			v, ok := res[field]
-			if !ok {
-				// Field was not found
-				continue
-			}
-
-			// Choose correct type
-			switch v := v.(type) {
-			// Simple string value
-			case string:
-				if err := aii.SetFieldStr(field, v); err != nil {
-					return result, fmt.Errorf("(MongoCli:GetAIIs) cannot set field from result: %w", err)
-				}
-			// List (slice) of string values
-			case primitive.A:
-				// Convert to string list
-				strList, err := primArrToStrList(v)
-				if err != nil {
-					return result, fmt.Errorf("(MongoCli:GetAIIs) problem to handle field %q of object %s: %w",
-						field, id, err)
-				}
-				if err := aii.SetFieldList(field, strList); err != nil {
-					return result, fmt.Errorf("(MongoCli:GetAIIs) cannot set field from result: %w", err)
-				}
-			// Unsupported type
-			default:
-				return result, fmt.Errorf("(MongoCli:GetAIIs) the field %q of object %s contains" +
-					" unsupported type %T of value %#v", field, id, v, v)
-			}
+		// Try create AII from requested fields from the result
+		aii, err := fillAII(retFields, res)
+		if err != nil {
+			return result, fmt.Errorf("(MongoCli:GetAIIs) problem with object %v: %w", id, err)
 		}
 
 		result[id] = aii
