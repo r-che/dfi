@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/r-che/dfi/types"
+	"github.com/r-che/dfi/common/tools"
 	"github.com/r-che/dfi/cmd/dfi/internal/cfg"
 	"github.com/r-che/dfi/dbi"
 
@@ -20,7 +21,17 @@ const (
 	ProgName		=	`dfi`
 	ProgNameLong	=	`Distributed File Indexer client`
 	ProgVers		=	`0.1`
+
 )
+
+// Exit codes
+const (
+	ExitOK			=	0
+	// RetUsage		=	1	// used by Usage() function
+	ExitWarn		=	2
+	ExitErr			=	3
+)
+
 
 func main() {
 	// Init logger to print to stderr
@@ -84,10 +95,7 @@ func printStatus(rv *types.CmdRV) int {
 	}
 
 	if !c.Quiet {
-		pref := ""
-		if rv.OK() {
-			pref = "OK - "
-		}
+		pref := tools.Tern(rv.OK(), "OK - ", "")
 
 		if c.Show || c.Search {
 			// Skip status output in show mode with --one-line or --tags keys
@@ -105,15 +113,11 @@ func printStatus(rv *types.CmdRV) int {
 	log.Close()
 
 	if rv.OK() {
-		// OK
-		return 0
+		return ExitOK	// return OK to OS
 	}
 
 	// Something went wrong
-	if len(rv.Errs()) != 0 {
-		return 3
-	}
-
-	// Only warnings otherwise
-	return 2
+	return tools.Tern(len(rv.Errs()) != 0,
+		ExitErr,	// errors occurred
+		ExitWarn)	// only warnings
 }
