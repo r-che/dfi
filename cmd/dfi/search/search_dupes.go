@@ -37,13 +37,13 @@ func searchDupes(dbc dbms.Client, qa *dbms.QueryArgs) *types.CmdRV {
 	}
 
 	// Map contains the correspondence between checksum<=>reference object
-	cr := make(map[string]csData, len(refObjs))
+	refsCSums := make(map[string]csData, len(refObjs))
 
 	for id, fso := range refObjs {
 		// Append checksums to query arguments
 		qa.AddChecksums(fso.Checksum)
 		// Make checksum<=>csData pair
-		cr[fso.Checksum] = csData{id: id, size: fso.Size}
+		refsCSums[fso.Checksum] = csData{id: id, size: fso.Size}
 	}
 
 	// Clear search phrases due to them contain identifiers that should not be used in search
@@ -56,65 +56,11 @@ func searchDupes(dbc dbms.Client, qa *dbms.QueryArgs) *types.CmdRV {
 		rv.AddErr("cannot execute search query to find duplicates: %v", err)
 	}
 
-	// Create a map of duplicates
-	dm := map[string][]dupeInfo{}
+	// Create checksum-based object map - checksum is key, dupeInfo is value
+	cdm := dupesMapByCSum(refsCSums, qr, rv)
 
-	for objKey, fields := range qr {
-		// Extract identifier
-		id, ok := extrFieldStr(objKey, fields, dbms.FieldID, rv)
-		if !ok {
-			continue
-		}
-
-		// Extract checksum
-		csum, ok := extrFieldStr(objKey, fields, dbms.FieldChecksum, rv)
-		if !ok {
-			continue
-		}
-
-		// Extract size
-		size, ok := extrFieldInt64(objKey, fields, dbms.FieldSize, rv)
-		if !ok {
-			continue
-		}
-
-		// Check for extracted size differ than size of the referenced object
-		if cr[csum].size != size {
-			// Such strange situation, it looks like
-			// we found checksum collision, add warning and skip it
-			rv.AddWarn("An object %s (%s) was found that has the same checksum as reference object %s, " +
-						"but size of this object (%d) is different that the referenced object (%d) - " +
-						"looks like a hash function collision! So, we skip this object",
-						id, objKey, cr[csum].id, size, cr[csum].size)
-			// Skip it
-			continue
-		}
-
-		// Push identifier to duplicates map
-		dm[csum] = append(dm[csum], dupeInfo{id: id, objKey: objKey})
-	}
-
-	//
 	// Create resulted map with referred object<=>duplicates list pairs
-	//
-	objDupes := make(map[string][]dupeInfo)
-	// Dupes counter
-	var nd int64
-
-	for id, fso := range refObjs {
-		// Go over all duplicates with checksum of the fso
-		for _, di := range dm[fso.Checksum] {
-			// Skip self
-			if id == di.id {
-				continue
-			}
-
-			// Append this object to list of dupes of object with id
-			objDupes[id] = append(objDupes[id], di)
-			// Increment dupes counter
-			nd++
-		}
-	}
+	objDupes, nd := dupesMapById(refObjs, cdm)
 
 	// Make an output
 	printDupes(refObjs, objDupes)
@@ -215,4 +161,69 @@ func loadDupesRefs(dbc dbms.Client, rv *types.CmdRV) (map[string]*types.FSObject
 	}
 
 	return objRefs, nil
+}
+
+func dupesMapByCSum(refsCSums map[string]csData, qr dbms.QueryResults, rv *types.CmdRV) map[string][]dupeInfo {
+	dm := make(map[string][]dupeInfo, len(qr))
+
+	for objKey, fields := range qr {
+		// Extract identifier
+		id, ok := extrFieldStr(objKey, fields, dbms.FieldID, rv)
+		if !ok {
+			continue
+		}
+
+		// Extract checksum
+		csum, ok := extrFieldStr(objKey, fields, dbms.FieldChecksum, rv)
+		if !ok {
+			continue
+		}
+
+		// Extract size
+		size, ok := extrFieldInt64(objKey, fields, dbms.FieldSize, rv)
+		if !ok {
+			continue
+		}
+
+		// Check for extracted size differ than size of the referenced object
+		if refsCSums[csum].size != size {
+			// Such strange situation, it looks like
+			// we found checksum collision, add warning and skip it
+			rv.AddWarn("An object %s (%s) was found that has the same checksum as reference object %s, " +
+						"but size of this object (%d) is different that the referenced object (%d) - " +
+						"looks like a hash function collision! So, we skip this object",
+						id, objKey, refsCSums[csum].id, size, refsCSums[csum].size)
+			// Skip it
+			continue
+		}
+
+		// Push identifier to duplicates map
+		dm[csum] = append(dm[csum], dupeInfo{id: id, objKey: objKey})
+	}
+
+	return dm
+}
+
+// dupesMapById creates resulted map with referred object<=>duplicates list pairs
+func dupesMapById(refObjs map[string]*types.FSObject, dm map[string][]dupeInfo) (map[string][]dupeInfo, int64) {
+	objDupes := make(map[string][]dupeInfo)
+	// Dupes counter
+	var nd int64
+
+	for id, fso := range refObjs {
+		// Go over all duplicates with checksum of the fso
+		for _, di := range dm[fso.Checksum] {
+			// Skip self
+			if id == di.id {
+				continue
+			}
+
+			// Append this object to list of dupes of object with id
+			objDupes[id] = append(objDupes[id], di)
+			// Increment dupes counter
+			nd++
+		}
+	}
+
+	return objDupes, nd
 }
