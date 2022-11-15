@@ -209,28 +209,10 @@ func (mc *MongoClient) appendAII(args *dbms.AIIArgs, idkm types.IdKeyMap, qr dbm
 		}
 
 		// Tags/description updated counters for the current item
-		var tu, du int64
-
-		// Get list of tags which have to be set
-		if tags, err := mergeTags(args, aii); err != nil {
-			log.E("(MongoCli:appendAII) cannot add/set tags: %v", err)
+		tu, du, err := mergeAII(args, aii, &doc)
+		if err != nil {
+			log.E("(MongoCli:appendAII) %v", err)
 			continue
-		} else if tags != nil {
-			// Append tags field
-			doc = append(doc, bson.E{`$set`, bson.D{{dbms.AIIFieldTags, tags}}})
-			// Increase counter of tags updates
-			tu++
-		}
-
-		// Add/set description
-		if descr, err := mergeDescr(args, aii); err != nil {
-			log.E("(MongoCli:appendAII) cannot add/set description: %v", err)
-			continue
-		} else if descr != "" {
-			// Append description
-			doc = append(doc, bson.E{`$set`, bson.D{{dbms.AIIFieldDescr, descr}}})
-			// Increase counter of description updates
-			du++
 		}
 
 		// Check for no fields in the document
@@ -301,26 +283,10 @@ func (mc *MongoClient) setAII(args *dbms.AIIArgs, idkm types.IdKeyMap, qr dbms.Q
 		tdu = int64(len(idkm) - len(*needInsert))
 	}
 
-	// Get collection handler
-	coll := mc.c.Database(mc.Cfg.ID).Collection(MongoAIIColl)
-
 	// Check that NOT all AII have to be inserted - some need to be updated
 	if len(*needInsert) != len(idkm) {
-		// Ok, we some objects in AII collection, update them
-		res, err := coll.UpdateMany(
-			mc.Ctx,
-			filterMakeIDs(idkm.Keys()).Expr(),
-			fields,
-		)
-
-		if err != nil {
-			return 0, 0, fmt.Errorf("(MongoCli:setAII) updateMany (ids: %s) on %s.%s failed: %w",
-					idkm.Keys(), coll.Database().Name(), coll.Name(), err)
-		}
-
-		if res.MatchedCount == 0 && res.UpsertedCount == 0 {
-			return 0, 0, fmt.Errorf("(MongoCli:setAII) updateMany (ids: %s) on %s.%s returned success," +
-				" but no documents were changed", idkm.Keys(), coll.Database().Name(), coll.Name())
+		if err := mc.setAIIsVals(idkm, fields); err != nil {
+			return 0, 0, fmt.Errorf("(MongoCli:setAII) %w", err)
 		}
 	}
 
@@ -340,32 +306,11 @@ func (mc *MongoClient) setAII(args *dbms.AIIArgs, idkm types.IdKeyMap, qr dbms.Q
 
 	// Update/Insert AII, do this one by one because UpdateMany() does not support SetUpsert(true) option
 	for _, id := range needInsert.List() {
-		// Create a new document
-		doc := bson.D{{`$set`, bson.D{
-			{MongoFieldID,			id},
-			{dbms.AIIFieldHost,		idkm[id].Host},
-			{dbms.AIIFieldFPath,	idkm[id].Path},
-		}}}
-
-		// Add fields that have to beset
-		doc = append(doc, fields...)
-
-		// Do update/insert
-		res, err := coll.UpdateOne(mc.Ctx,
-			bson.D{{MongoFieldID, id}},			// Update exactly this ID
-			doc,
-			options.Update().SetUpsert(true),	// do insert if no object with this ID was found
-		)
-
-		if err != nil {
-			return ttu, tdu, fmt.Errorf("(MongoCli:setAII) updateOne (id: %s) on %s.%s failed: %w",
-					id, coll.Database().Name(), coll.Name(), err)
+		// Insert one document
+		if err := mc.insertAII(id, idkm, fields); err != nil {
+			return ttu, tdu, fmt.Errorf("(MongoCli:setAII) %w", err)
 		}
 
-		if res.MatchedCount == 0 && res.UpsertedCount == 0 {
-			return ttu, tdu, fmt.Errorf("(MongoCli:setAII) updateOne (id: %s) on %s.%s returned success," +
-				" but no documents were changed", id, coll.Database().Name(), coll.Name())
-		}
 
 		// Update counters
 		ttu += tools.Tern(args.Tags != nil, int64(1), 0)
@@ -376,6 +321,65 @@ func (mc *MongoClient) setAII(args *dbms.AIIArgs, idkm types.IdKeyMap, qr dbms.Q
 
 	// OK
 	return ttu, tdu, nil
+}
+
+func (mc *MongoClient) setAIIsVals(idkm types.IdKeyMap, fields bson.D) error {
+	// Get collection handler
+	coll := mc.c.Database(mc.Cfg.ID).Collection(MongoAIIColl)
+
+	// Ok, some objects already in the AII collection, update them
+	res, err := coll.UpdateMany(
+		mc.Ctx,
+		filterMakeIDs(idkm.Keys()).Expr(),
+		fields,
+	)
+
+	if err != nil {
+		return fmt.Errorf("updateMany (ids: %s) on %s.%s failed: %w",
+				idkm.Keys(), coll.Database().Name(), coll.Name(), err)
+	}
+
+	if res.MatchedCount == 0 && res.UpsertedCount == 0 {
+		return fmt.Errorf("updateMany (ids: %s) on %s.%s returned success," +
+			" but no documents were changed", idkm.Keys(), coll.Database().Name(), coll.Name())
+	}
+
+	// OK
+	return nil
+}
+func (mc *MongoClient) insertAII(id string, idkm types.IdKeyMap, fields bson.D) error {
+	// Create a new document
+	doc := bson.D{{`$set`, bson.D{
+		{MongoFieldID,			id},
+		{dbms.AIIFieldHost,		idkm[id].Host},
+		{dbms.AIIFieldFPath,	idkm[id].Path},
+	}}}
+
+	// Add fields that have to beset
+	doc = append(doc, fields...)
+
+	// Get collection handler
+	coll := mc.c.Database(mc.Cfg.ID).Collection(MongoAIIColl)
+
+	// Do update/insert
+	res, err := coll.UpdateOne(mc.Ctx,
+		bson.D{{MongoFieldID, id}},			// Update exactly this ID
+		doc,
+		options.Update().SetUpsert(true),	// do insert if no object with this ID was found
+	)
+
+	if err != nil {
+		return fmt.Errorf("(MongoCli:insertAII) updateOne (id: %s) on %s.%s failed: %w",
+				id, coll.Database().Name(), coll.Name(), err)
+	}
+
+	if res.MatchedCount == 0 && res.UpsertedCount == 0 {
+		return fmt.Errorf("(MongoCli:insertAII) updateOne (id: %s) on %s.%s returned success," +
+			" but no documents were changed", id, coll.Database().Name(), coll.Name())
+	}
+
+	// OK
+	return nil
 }
 
 func (mc *MongoClient) deleteAII(args *dbms.AIIArgs, idkm types.IdKeyMap) (int64, int64, error) {

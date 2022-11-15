@@ -60,6 +60,39 @@ func pipelineConfVariadic(filter *Filter, pipeline mongo.Pipeline, configs []any
 	return pipeline
 }
 
+func mergeAII(args *dbms.AIIArgs, aii dbms.QRItem, doc *bson.D) (int64, int64, error) {
+	// Tags/description updated counters for the current item
+	var tu, du int64
+
+	// Get list of tags which have to be set
+	tags, err := mergeTags(args, aii)
+	if err != nil {
+		return 0, 0, fmt.Errorf("cannot add/set tags: %w", err)
+	}
+
+	if tags != nil {
+		// Append tags field
+		*doc = append(*doc, bson.E{`$set`, bson.D{{dbms.AIIFieldTags, tags}}})
+		// Increase counter of tags updates
+		tu++
+	}
+
+	// Add/set description
+	descr, err := mergeDescr(args, aii)
+	if err != nil {
+		return 0, 0, fmt.Errorf("cannot add/set description: %w", err)
+	}
+
+	if descr != "" {
+		// Append description
+		*doc = append(*doc, bson.E{`$set`, bson.D{{dbms.AIIFieldDescr, descr}}})
+		// Increase counter of description updates
+		du++
+	}
+
+	return tu, du, nil
+}
+
 func mergeTags(args *dbms.AIIArgs, aii dbms.QRItem) ([]string, error) {
 	// Check for any tags specified
 	if args.Tags == nil {
