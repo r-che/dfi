@@ -22,107 +22,137 @@ const (
 	sigQuit	=	syscall.SIGQUIT
 )
 
-func waitSignals(dbc *dbi.DBController, wp *fswatcher.Pool) {
-	// Create channels for each handled signal
+type signalsHandler struct {
+	// Channels to receive signals from OS
+	chStopApp	chan os.Signal
+	chReLogs	chan os.Signal
+	chReInd		chan os.Signal
+	chClean		chan os.Signal
+	chStopOps	chan os.Signal
 
-	chStopApp := make(chan os.Signal, 1)	// Stop application
-	signal.Notify(chStopApp, sigTerm, sigInt)
+	// Pointers to controlled objects
+	dbc	*dbi.DBController
+	wp	*fswatcher.Pool
 
-	chReLogs := make(chan os.Signal, 1)		// Reopen logs
-	signal.Notify(chReLogs, sigHup)
+	// Flags
+	reindexRun	bool
+	cleanupRun	bool
+}
 
-	chReInd := make(chan os.Signal, 1)		// Run reindexing
-	signal.Notify(chReInd, sigUsr1)
+func newSignalsHandler(dbc *dbi.DBController, wp *fswatcher.Pool) *signalsHandler {
+	sh := signalsHandler{
+		dbc:	dbc,
+		wp:		wp,
+	}
 
-	chClean := make(chan os.Signal, 1)		// Run cleanup
-	signal.Notify(chClean, sigUsr2)
+	sh.chStopApp = make(chan os.Signal, 1)		// Stop application
+	signal.Notify(sh.chStopApp, sigTerm, sigInt)
 
-	// FIXME chStat := make(chan os.Signal, 1)		// Dump statistic to logs
+	sh.chReLogs = make(chan os.Signal, 1)		// Reopen logs
+	signal.Notify(sh.chReLogs, sigHup)
+
+	sh.chReInd = make(chan os.Signal, 1)		// Run reindexing
+	signal.Notify(sh.chReInd, sigUsr1)
+
+	sh.chClean = make(chan os.Signal, 1)		// Run cleanup
+	signal.Notify(sh.chClean, sigUsr2)
+
+	sh.chStopOps = make(chan os.Signal, 1)		// Stop long-term operations (reindexing/cleanup)
+	signal.Notify(sh.chStopOps, sigQuit)
+
+	// FIXME sh.chStat := make(chan os.Signal, 1)	// Dump statistic to logs
 	// FIXME signal.Notify(chStat, sigCont)
 
-	chStopOps := make(chan os.Signal, 1)	// Stop long-term operations (reindexing/cleanup)
-	signal.Notify(chStopOps, sigQuit)
 
-	// Run handling
-	var err error
-	// Concurency flags
-	reindexRun := false
-	cleanupRun := false
+	return &sh
+}
 
+func (sh *signalsHandler) wait() {
+	// Wait signals from OS
 	for {
 		select {
-			case s := <-chStopApp:
-				// Stop application
-				log.W("Received %q - graceful stopping application... To abort immediately repeat the termination signal", s)
+		case s := <-sh.chStopApp:
+			// Stop application
+			log.W("Received %q - graceful stopping application... To abort immediately repeat the termination signal", s)
 
-				go func() {
-					<-chStopApp
-					log.F("Aborted because of the second termination signal")
-				}()
+			go func() {
+				<-sh.chStopApp
+				log.F("Aborted because of the second termination signal")
+			}()
 
-				// Stop all watchers
-				wp.StopWatchers()
+			// Stop all watchers
+			sh.wp.StopWatchers()
 
-				// Stop database controller
-				dbc.Stop()
+			// Stop database controller
+			sh.dbc.Stop()
 
-				return
+			return
 
-			case s := <-chReLogs:
-				log.I("Received %q - reopening log file...", s)
-				if err := log.Reopen(); err != nil {
-					log.E("Cannot reopen logs: %v", err)
-				} else {
-					log.I("Log file reopened")
-				}
+		case s := <-sh.chReLogs:
+			log.I("Received %q - reopening log file...", s)
+			if err := log.Reopen(); err != nil {
+				log.E("Cannot reopen logs: %v", err)
+			} else {
+				log.I("Log file reopened")
+			}
 
-			case s := <-chReInd:
-				log.W("Received %q, starting re-indexing operation...", s)
-				// Need to restart watching on configured directories
+		// Need to restart watching on configured directories
+		case s := <-sh.chReInd:
+			log.W("Received %q, starting re-indexing operation...", s)
 
-				if reindexRun {
-					log.E("Reindexing has already begun")
-					break
-				}
-				reindexRun = true
+			sh.startReindex()
 
-				go func() {
-					// Stop all watchers
-					log.I("Stopping watchers to restart indexing...")
-					wp.StopWatchers()
+		case s := <-sh.chClean:
+			log.I("Received %q signal - starting cleaning up...", s)
 
-					log.I("Restarting indexing")
-					if err = wp.StartWatchers(fswatcher.DoReindex); err != nil {
-						log.E("Reindexing failed: %v", err)
-					}
+			sh.startCleanup()
 
-					reindexRun = false
-				}()
+		// FIXME Will be implemented later
+		// FIXME case <-sh.chStat:
+		// FIXME 	log.W("STUB: dump stat")
 
-			case s := <-chClean:
-				log.I("Received %q signal - starting cleaning up...", s)
-
-				if cleanupRun {
-					log.E("Cleanup has already begun")
-					break
-				}
-				cleanupRun = true
-
-				go func() {
-					if err := cleanup.Run(); err != nil {
-						log.E("Cannot start cleanup operation: %v", err)
-					}
-
-					cleanupRun = false
-				}()
-
-			// FIXME Will be implemented later
-			// FIXME case <-chStat:
-			// FIXME 	log.W("STUB: dump stat")
-
-			case <-chStopOps:
-				wp.TermLong()
-				dbc.TermLong()
+		case <-sh.chStopOps:
+			sh.wp.TermLong()
+			sh.dbc.TermLong()
 		}
 	}
+}
+
+func (sh *signalsHandler) startReindex() {
+	// Need to restart watching on configured directories
+
+	if sh.reindexRun {
+		log.E("Reindexing has already begun")
+		return
+	}
+	sh.reindexRun = true
+
+	go func() {
+		// Stop all watchers
+		log.I("Stopping watchers to restart indexing...")
+		sh.wp.StopWatchers()
+
+		log.I("Restarting indexing")
+		if err := sh.wp.StartWatchers(fswatcher.DoReindex); err != nil {
+			log.E("Reindexing failed: %v", err)
+		}
+
+		sh.reindexRun = false
+	}()
+}
+
+func (sh *signalsHandler) startCleanup() {
+	if sh.cleanupRun {
+		log.E("Cleanup has already begun")
+		return
+	}
+	sh.cleanupRun = true
+
+	go func() {
+		if err := cleanup.Run(); err != nil {
+			log.E("Cannot start cleanup operation: %v", err)
+		}
+
+		sh.cleanupRun = false
+	}()
 }

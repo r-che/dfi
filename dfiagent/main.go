@@ -74,7 +74,7 @@ func main() {
 	}
 
 	// Wait for external events (signals)
-	waitSignals(dbc, wp)
+	newSignalsHandler(dbc, wp).wait()
 
 	// Finish, cleanup operations
 	log.I("%s %s finished normally", ProgNameLong, ProgVers)
