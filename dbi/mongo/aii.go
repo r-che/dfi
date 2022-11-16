@@ -547,22 +547,13 @@ func (mc *MongoClient) clearAIIField(field string, ids []string) (int64, error) 
 	// Is AII documents should be deleted?
 	if len(toDelAII) != 0 {
 		// Delete them
-		log.D("(MongoClient:clearAIIField) Removing AIIs: %v", toDelAII)
-
-		coll := mc.c.Database(mc.Cfg.ID).Collection(MongoAIIColl)
-
-		res, err := coll.DeleteMany(mc.Ctx, filterMakeIDs(toDelAII).Expr())
+		dn, err := mc.deleteAIIs(toDelAII)
 		if err != nil {
-			return tc, fmt.Errorf("(MongoClient:clearAIIField) cannot remove AIIs with ids %v: %w", toDelAII, err)
-		}
-
-		if res.DeletedCount == 0 {
-			return 0, fmt.Errorf("(MongoCli:clearAIIField) deleteMany (ids: %v) on %s.%s returned success," +
-				" but no documents were changed", toDelAII, coll.Database().Name(), coll.Name())
+			return tc, fmt.Errorf("(MongoCli:clearAIIField) %w", err)
 		}
 
 		// Increase cleared counter
-		tc += res.DeletedCount
+		tc += dn
 	}
 
 	if tc == 0 {
@@ -571,6 +562,26 @@ func (mc *MongoClient) clearAIIField(field string, ids []string) (int64, error) 
 
 	// OK
 	return tc, nil
+}
+
+func (mc *MongoClient) deleteAIIs(ids []string) (int64, error) {
+	// Delete them
+	log.D("(MongoClient:deleteAIIs) Removing AIIs: %v", ids)
+
+	coll := mc.c.Database(mc.Cfg.ID).Collection(MongoAIIColl)
+
+	res, err := coll.DeleteMany(mc.Ctx, filterMakeIDs(ids).Expr())
+	if err != nil {
+		return 0, fmt.Errorf("(MongoClient:deleteAIIs) cannot remove AIIs with ids %v: %w", ids, err)
+	}
+
+	if res.DeletedCount == 0 {
+		return 0, fmt.Errorf("(MongoCli:deleteAIIs) deleteMany (ids: %v) on %s.%s returned success," +
+			" but no documents were changed", ids, coll.Database().Name(), coll.Name())
+	}
+
+	// OK
+	return res.DeletedCount, nil
 }
 
 func (mc *MongoClient) QueryAIIIds(qa *dbms.QueryArgs) ([]string, error) {

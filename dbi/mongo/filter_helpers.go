@@ -17,30 +17,8 @@ import (
 
 // filterMakeByArgs makes filter expression to use search arguments like mtime, type of object and so on
 func filterMakeByArgs(qa *dbms.QueryArgs) *Filter {
-	//
-	// Build search arguments filter
-	//
-	filter := NewFilter()
-
-	if qa.IsMtime() {
-		filter.Append(filterMakeSetRangeExpr(dbms.FieldMTime, qa.MtimeStart, qa.MtimeEnd, qa.MtimeSet))
-	}
-
-	if qa.IsSize() {
-		filter.Append(filterMakeSetRangeExpr(dbms.FieldSize, qa.SizeStart, qa.SizeEnd, qa.SizeSet))
-	}
-
-	if qa.IsType() {
-		filter.Append(bson.E{dbms.FieldType, bson.D{bson.E{`$in`, qa.Types}}})
-	}
-
-	if qa.IsChecksum() {
-		filter.Append(bson.E{dbms.FieldChecksum, bson.D{bson.E{`$in`, qa.CSums}}})
-	}
-
-	if qa.IsHost() {
-		filter.Append(bson.E{dbms.FieldHost, bson.D{ bson.E{`$in`, qa.Hosts}}})
-	}
+	// Make filter based on object properties (mtime, size, etc...)
+	filter := filterAddArgs(qa)
 
 	//
 	// XXX Processing logical flags --not (NOT) and --or (OR)
@@ -96,6 +74,35 @@ func filterMakeByArgs(qa *dbms.QueryArgs) *Filter {
 	default:
 		return filter
 	}
+}
+
+func filterAddArgs(qa *dbms.QueryArgs) *Filter {
+	//
+	// Build search arguments filter
+	//
+	filter := NewFilter()
+
+	if qa.IsMtime() {
+		filter.Append(filterMakeSetRangeExpr(dbms.FieldMTime, qa.MtimeStart, qa.MtimeEnd, qa.MtimeSet))
+	}
+
+	if qa.IsSize() {
+		filter.Append(filterMakeSetRangeExpr(dbms.FieldSize, qa.SizeStart, qa.SizeEnd, qa.SizeSet))
+	}
+
+	if qa.IsType() {
+		filter.Append(bson.E{dbms.FieldType, bson.D{bson.E{`$in`, qa.Types}}})
+	}
+
+	if qa.IsChecksum() {
+		filter.Append(bson.E{dbms.FieldChecksum, bson.D{bson.E{`$in`, qa.CSums}}})
+	}
+
+	if qa.IsHost() {
+		filter.Append(bson.E{dbms.FieldHost, bson.D{ bson.E{`$in`, qa.Hosts}}})
+	}
+
+	return filter
 }
 
 // filterMakeRegexSP makes filter to search by fpath and rpath fields using regular expression

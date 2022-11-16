@@ -98,45 +98,14 @@ func (mc *MongoClient) runSearch(collName string, qa *dbms.QueryArgs, spFilter *
 
 func (mc *MongoClient) aggregateSearch(collName string, filter *Filter, retFields []string,
 										variadic ...any) (dbms.QueryResults, error) {
-	// Filter-replace pipeline
-	filRepPipeline := mongo.Pipeline{
-		bson.D{{ `$match`, filter.Expr() }},	// apply filter
-	}
-
-	// Create list of requested fields
-	fields := bson.D{}
-	for _, field := range retFields {
-		fields = append(fields, bson.E{Key: field, Value: 1})
-	}
-
-	// Is requested fields not empty?
-	if len(fields) != 0 {
-		// Check for some field required to creation of object key was not added
-		if kfSet := tools.NewStrSet(objMandatoryFields...).Del(retFields...); !kfSet.Empty() {
-			// Add these fields to request
-			for _, field := range kfSet.List() {
-				fields = append(fields, bson.E{Key: field, Value: 1})
-			}
-		}
-
-		// Add $project stage to pipeline to to set the requested fields set
-		filRepPipeline = append(filRepPipeline, bson.D{{ `$project`, fields }})
-	}
-
-	// Add $addFields stage to replace field name _id by id
-	filRepPipeline = append(filRepPipeline, bson.D{{`$addFields`, bson.D{
-		{MongoFieldID, `$REMOVE`},
-		{dbms.FieldID, `$` + MongoFieldID},
-	}}})
-
-	// Process variadic arguments
-	filRepPipeline = pipelineConfVariadic(filter, filRepPipeline, variadic)
+	// Make pipline for aggregate operation
+	aggrPipeline := mc.makeAggrPipeline(filter, retFields, variadic)
 
 	// Get collection handler
 	coll := mc.c.Database(mc.Cfg.ID).Collection(collName)
 
 	// Run aggregated query
-	cursor, err := coll.Aggregate(mc.Ctx, filRepPipeline)
+	cursor, err := coll.Aggregate(mc.Ctx, aggrPipeline)
 	if err != nil {
 		// Unexpected error
 		return nil, fmt.Errorf("(MongoCli:aggregateSearch) aggregate on %s.%s with filter %v failed: %v",
@@ -191,6 +160,42 @@ func (mc *MongoClient) aggregateSearch(collName string, filter *Filter, retField
 	}
 
 	return qr, nil
+}
+
+func (mc *MongoClient) makeAggrPipeline(filter *Filter, retFields []string, variadic []any) mongo.Pipeline {
+	// Filter-replace pipeline
+	aggrPipeline := mongo.Pipeline{
+		bson.D{{ `$match`, filter.Expr() }},	// apply filter
+	}
+
+	// Create list of requested fields
+	fields := bson.D{}
+	for _, field := range retFields {
+		fields = append(fields, bson.E{Key: field, Value: 1})
+	}
+
+	// Is requested fields not empty?
+	if len(fields) != 0 {
+		// Check for some field required to creation of object key was not added
+		if kfSet := tools.NewStrSet(objMandatoryFields...).Del(retFields...); !kfSet.Empty() {
+			// Add these fields to request
+			for _, field := range kfSet.List() {
+				fields = append(fields, bson.E{Key: field, Value: 1})
+			}
+		}
+
+		// Add $project stage to pipeline to to set the requested fields set
+		aggrPipeline = append(aggrPipeline, bson.D{{ `$project`, fields }})
+	}
+
+	// Add $addFields stage to replace field name _id by id
+	aggrPipeline = append(aggrPipeline, bson.D{{`$addFields`, bson.D{
+		{MongoFieldID, `$REMOVE`},
+		{dbms.FieldID, `$` + MongoFieldID},
+	}}})
+
+	// Process variadic arguments and return created pipeline
+	return pipelineConfVariadic(filter, aggrPipeline, variadic)
 }
 
 func (mc *MongoClient) delFieldById(collName, field string, ids []string) (int64, error) {
