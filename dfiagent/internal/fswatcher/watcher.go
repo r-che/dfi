@@ -113,7 +113,15 @@ func (w *Watcher) Watch(doReindex bool) error {
 		}
 	}
 
-	// Run watcher for path
+	// Create a set of watched directories to watcher can remove watchers from removed directories
+	wDirs := w.w.WatchList()
+	// Map with directories
+	w.watchDirs = make(map[string]bool, len(wDirs))
+	for _, dir := range wDirs {
+		w.watchDirs[dir] = true
+	}
+
+	// Run watcher events loop
 	go w.watch()
 
 	log.I("(Watcher:%s) Started, %d watchers were set", w.path, total)
@@ -123,14 +131,6 @@ func (w *Watcher) Watch(doReindex bool) error {
 }
 
 func (w *Watcher) watch() {
-	// Create a set of watched directories to be able to remove watchers from removed directories
-	wDirs := w.w.WatchList()
-	// Map with directories
-	w.watchDirs = make(map[string]bool, len(wDirs))
-	for _, dir := range wDirs {
-		w.watchDirs[dir] = true
-	}
-
 	// Timer to flush cache to database
 	timer := time.NewTicker(w.flushInterval)
 	defer timer.Stop()
@@ -157,15 +157,10 @@ func (w *Watcher) watch() {
 				continue
 			}
 
-			log.D("(Watcher:%s) Flushing %d event(s)", w.path, len(w.eMap))
-
 			// Flush collected events
 			if err := w.flushCached(); err != nil {
 				log.E("(Watcher:%s) Cannot flush cached items: %v", w.path, err)
 			}
-
-			// Replace cache by new empty map
-			w.eMap = eventsMap{}
 
 		// Some error
 		case err, ok := <-w.w.Errors:
@@ -176,36 +171,51 @@ func (w *Watcher) watch() {
 
 		// Control event - need to stop watching
 		case <-w.ctrlCh:
-			// Stop watching filesystem
-			if err := w.w.Close(); err != nil {
-				log.E("(Watcher:%s) Cannot close fsnotify watcher: %v", w.path, err)
-			} else {
-				log.D("(Watcher:%s) fsnotify watcher closed", w.path)
-			}
+			// Stop watching
+			w.stopWatch()
 
-			// Flush collected events
-			if len(w.eMap) != 0 {
-				log.I("(Watcher:%s) Flushing %d event(s) before termination", w.path, len(w.eMap))
-
-				// Flush collected events
-				if err := w.flushCached(); err != nil {
-					log.E("(Watcher:%s) Cannot flush cached items: %v", w.path, err)
-				}
-			}
-
-			log.I("(Watcher:%s) Stopped due to user request", w.path)
-
-			// Notify pool
-			go func() {
-				w.ctrlCh <-true
-			}()
-
+			// Terminate events loop
 			return
 		}
 	}
 }
 
+// stopWatch stops watching filesystem
+func (w *Watcher) stopWatch() {
+	// Stop watching filesystem
+	if err := w.w.Close(); err != nil {
+		log.E("(Watcher:%s) Cannot close fsnotify watcher: %v", w.path, err)
+	} else {
+		log.D("(Watcher:%s) fsnotify watcher closed", w.path)
+	}
+
+	// Flush collected events
+	if len(w.eMap) != 0 {
+		log.I("(Watcher:%s) Need to flush %d event(s) before termination", w.path, len(w.eMap))
+
+		// Flush collected events
+		if err := w.flushCached(); err != nil {
+			log.E("(Watcher:%s) Cannot flush cached items: %v", w.path, err)
+		}
+	}
+
+	log.I("(Watcher:%s) Stopped due to user request", w.path)
+
+	// Notify pool
+	go func() {
+		w.ctrlCh <-true
+	}()
+}
+
 func (w *Watcher) flushCached() error {
+	log.D("(Watcher:%s) Flushing %d event(s)", w.path, len(w.eMap))
+
+	// Defer cleaning events map
+	defer func() {
+		// Replace cache by new empty map
+		w.eMap = eventsMap{}
+	}()
+
 	// Prepare database operations list
 	dbOps := make([]*dbms.DBOperation, 0, len(w.eMap))
 
@@ -316,111 +326,116 @@ func (w *Watcher) scanDir(dir string, doIndexing bool) (int, error) {
 }
 
 func (w *Watcher) handleEvent(event *fsn.Event) {
-	//
+	switch {
 	// Filesystem object was created
-	//
-	if event.Has(fsn.Create) {
-
-		// Create new entry
-		w.eMap[event.Name] = &FSEvent{Type: EvCreate}
-
-		// Check that the created object is a directory
-		oi, err := os.Lstat(event.Name)
-		if err != nil {
-			log.W("(Watcher:%s) Cannot stat() for created object %q: %v", w.path, event.Name, err)
-			return
+	case event.Has(fsn.Create):
+		// Need to create new DB entry
+		if err := w.eventCreate(event); err != nil {
+			log.W("(Watcher:%s) New entry creation problem:: %v", w.path, err)
 		}
 
-		isDir := oi.IsDir()
-		log.D("(Watcher:%s) Created %s %q", tools.Tern(isDir, "directory", "object"), w.path, event.Name)
-
-		if isDir {
-			// Need to add watcher for newly created directory
-			if err = w.w.Add(event.Name); err != nil {
-				log.E("(Watcher:%s) Cannot add watcher to directory %q: %v", w.path, event.Name, err)
-				return
-			}
-
-			// Register directory
-			w.watchDirs[event.Name] = true
-
-			log.I("(Watcher:%s) Added watcher for %q", w.path, event.Name)
-			// Do recursive scan and add watchers to all subdirectories
-			_, err := w.scanDir(event.Name, DoReindex)
-			if err != nil {
-				log.E("(Watcher:%s) Cannot scan newly created directory %q: %v", w.path, event.Name, err)
-			}
-		}
-
-		return
-	}
-
-	//
 	// Data in filesystem object was updated
-	//
-	if event.Has(fsn.Write) {
+	case event.Has(fsn.Write):
 		// Update existing entry
 		w.eMap[event.Name] = &FSEvent{Type: EvWrite}
 
-		return
-	}
-
-	//
 	// Filesystem object was removed o renamed
-	//
-	if event.Op & (fsn.Remove | fsn.Rename) != 0 {
-		// Is event name empty?
-		if event.Name == "" {
-			// Event with empty name may be caused by renaming
-			return
+	case event.Op & (fsn.Remove | fsn.Rename) != 0:
+		if err := w.eventRemoveRename(event); err != nil {
+			log.E("(Watcher:%s) Cannot handle %s event: %v",
+				w.path, tools.Tern(event.Has(fsn.Remove), "Remove", "Rename"), err)
 		}
 
-		isDir := w.watchDirs[event.Name]
-
-		// XXX This message is duplicated when a directory is removed, because we
-		// receive an event from the removed one and from its parent directory as well.
-		// Currently, fsnotify (v1.6.0) does not distinguish these events:
-		// https://github.com/fsnotify/fsnotify/blob/5f8c606accbcc6913853fe7e083ee461d181d88d/backend_inotify.go#L446
-		log.D("(Watcher:%s) %s %s %q", w.path,
-			tools.Tern(event.Has(fsn.Remove), "Removed", "Renamed"),
-			tools.Tern(isDir, "directory", "object"), event.Name)
-
-		// Remove existing entry in DB
-		w.eMap[event.Name] = &FSEvent{Type: EvRemove}
-
-		// Is it a directory?
-		if isDir {
-			// Unregister removed/renamed directory
-			delete(w.watchDirs, event.Name)
-
-			// Is it a rename event?
-			if event.Op & fsn.Rename != 0 {
-				// Remove watcher from the directory itself and from all directories in the dir hierarchy
-				if err := w.unwatchDir(event.Name); err != nil {
-					log.E("(Watcher:%s) Cannot remove watchers from directory %q with its subdirectories: %v",
-						w.path, event.Name, err)
-					return
-				}
-			} // else:
-				// Nothing to do in this case, because the path removed from
-				// the disk is automatically removed from the watch list
-		}
-
-		return
-	}
-
-	//
 	// Object mode was changed
-	//
-	if event.Has(fsn.Chmod) {
+	case event.Has(fsn.Chmod):
 		// Currently, do nothing
 		return
+
+	// Unexpected event
+	default:
+		log.W("(Watcher:%s) Unknown event from fsnotify: %[2]v (%#[2]v)", w.path, event)
+	}
+}
+
+func (w *Watcher) eventRemoveRename(event *fsn.Event) error {
+	// Is event name empty?
+	if event.Name == "" {
+		// Event with empty name may be caused by renaming
+		return nil
 	}
 
-	//
-	// Unexpected event
-	//
-	log.W("(Watcher:%s) Unknown event from fsnotify: %[2]v (%#[2]v)", w.path, event)
+	isDir := w.watchDirs[event.Name]
+
+	// XXX This message is duplicated when a directory is removed, because we
+	// receive an event from the removed one and from its parent directory as well.
+	// Currently, fsnotify (v1.6.0) does not distinguish these events:
+	// https://github.com/fsnotify/fsnotify/blob/5f8c606accbcc6913853fe7e083ee461d181d88d/backend_inotify.go#L446
+	log.D("(Watcher:%s) %s %s %q", w.path,
+		tools.Tern(event.Has(fsn.Remove), "Removed", "Renamed"),
+		tools.Tern(isDir, "directory", "object"), event.Name)
+
+	// Remove existing entry in DB
+	w.eMap[event.Name] = &FSEvent{Type: EvRemove}
+
+	// Is object not a directory?
+	if !isDir {
+		// No additional actions required, return no errors
+		return nil
+	}
+
+	// Unregister removed/renamed directory
+	delete(w.watchDirs, event.Name)
+
+	// Is it a rename event?
+	if event.Op & fsn.Rename != 0 {
+		// Remove watcher from the directory itself and from all directories in the dir hierarchy
+		if err := w.unwatchDir(event.Name); err != nil {
+			return fmt.Errorf("cannot remove watchers from directory %q with its subdirectories: %v", event.Name, err)
+		}
+	} // else:
+		// Nothing to do in this case, because the path removed from
+		// the disk is automatically removed from the watch list
+
+	// OK
+	return nil
+}
+
+func (w *Watcher) eventCreate(event *fsn.Event) error {
+	// Create new entry
+	w.eMap[event.Name] = &FSEvent{Type: EvCreate}
+
+	// Check that the created object is a directory
+	oi, err := os.Lstat(event.Name)
+	if err != nil {
+		return fmt.Errorf("cannot stat() for created object %q: %v", event.Name, err)
+	}
+
+	isDir := oi.IsDir()
+	log.D("(Watcher:%s) Created %s %q", tools.Tern(isDir, "directory", "object"), w.path, event.Name)
+
+	// Is object not a directory?
+	if !isDir {
+		// No additional actions required, return no errors
+		return nil
+	}
+
+	// Need to add watcher for newly created directory
+	if err = w.w.Add(event.Name); err != nil {
+		return fmt.Errorf("cannot add watcher to directory %q: %v", event.Name, err)
+	}
+
+	// Register directory
+	w.watchDirs[event.Name] = true
+
+	log.I("(Watcher:%s) Added watcher for %q", w.path, event.Name)
+
+	// Do recursive scan and add watchers to all subdirectories
+	_, err = w.scanDir(event.Name, DoReindex)
+	if err != nil {
+		return fmt.Errorf("cannot scan newly created directory %q: %v", event.Name, err)
+	}
+
+	return nil
 }
 
 func (w *Watcher) unwatchDir(dir string) error {

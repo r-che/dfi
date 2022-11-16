@@ -25,10 +25,11 @@ func getObjectInfo(name string) (*types.FSObject, error) {
 
 	// Fill filesystem object
 	fso := types.FSObject {
-		Name:	oi.Name(),
-		FPath:	name,
-		Size:	oi.Size(),
-		MTime:	oi.ModTime().Unix(),
+		Name:		oi.Name(),
+		FPath:		name,
+		Size:		oi.Size(),
+		MTime:		oi.ModTime().Unix(),
+		Checksum:	"",
 	}
 
 	switch {
@@ -50,46 +51,52 @@ func getObjectInfo(name string) (*types.FSObject, error) {
 
 		// Get checksum but only if enabled
 		if c.CalcSums {
-			if fso.Size <= c.MaxSumSize || c.MaxSumSize == 0 {
-				if fso.Checksum, err = calcSum(name); err != nil {
-					log.W("Checksum calculation problem: %v", err)
-					// Set stub to signal checksum calculation error
-					fso.Checksum = types.CsErrorStub
-				}
-			} else {
-				// Set stub because file is too large to calculate checksum
-				fso.Checksum = types.CsTooLarge
+			if err = calcSum(&fso, c.MaxSumSize); err != nil {
+				log.W("Checksum calculation problem: %v", err)
+				// Set stub to signal checksum calculation error
+				fso.Checksum = types.CsErrorStub
 			}
-		} else {
-			// Cleanup checksum field
-			fso.Checksum = ""
 		}
-		// Continue handling
+
+	// Unsupported filesystem object type
 	default:
-		// Unsupported filesystem object type
+		// Skip it without notifications/errors
 		return nil, nil
 	}
 
 	return &fso, nil
 }
 
-func calcSum(name string) (string, error) {
-	log.D("Checksum of %q - calculating...", name)
+func calcSum(fso *types.FSObject, maxSize int64) error {
+	if maxSize != 0 && fso.Size > maxSize {
+		// Set stub because file is too large to calculate checksum
+		fso.Checksum = types.CsTooLarge
+
+		return nil
+	}
+
+	log.D("Checksum of %q - calculating...", fso.FPath)
+
 	// Open file to calculate checksum of its content
-	f, err := os.Open(name)
+	f, err := os.Open(fso.FPath)
 	if err != nil {
-		return "", err
+		// Set stub to signal checksum calculation error
+		fso.Checksum = types.CsErrorStub
+
+		return err
 	}
 	defer f.Close()
 
 	// Hash object to calculate sum
 	hash := sha1.New()
 	if _, err := io.Copy(hash, f); err != nil {
-		return "", err
+		return err
 	}
 
-	log.D("Checksum of %q - done", name)
+	log.D("Checksum of %q - done", fso.FPath)
+
+	fso.Checksum = fmt.Sprintf("%x", hash.Sum(nil))
 
 	// OK
-	return fmt.Sprintf("%x", hash.Sum(nil)), nil
+	return nil
 }
