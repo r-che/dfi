@@ -158,7 +158,7 @@ func (qa *QueryArgs) ParseMtimes(mtimeLine string) error {
 func (qa *QueryArgs) parseMtimesRange(mtimeRange string) error {
 	// Split to check correctness
 	tsRange := strings.Split(mtimeRange, dataRangeSep)
-	// Check for range length - it always should be == 2
+	//nolint:gomnd	// Check for range length - it always should be == 2
 	if len(tsRange) != 2 {
 		return fmt.Errorf("invalid mtime range %q", mtimeRange)
 	}
@@ -326,7 +326,7 @@ func (qa *QueryArgs) ParseSizes(sizeLine string) error {
 func (qa *QueryArgs) parseSizesRange(sizeLine string) error {
 	// It should be a range, split to check
 	sizeRange := strings.Split(sizeLine, dataRangeSep)
-	// Check for range length - it always should be == 2
+	//nolint:gomnd	// Check for range length - it always should be == 2
 	if len(sizeRange) != 2 {
 		return fmt.Errorf("invalid mtime range %q", sizeLine)
 	}

@@ -170,8 +170,9 @@ func (pc *progConfig) prepareMode() error {
 }
 
 func (pc *progConfig) prepareCheckIncompat() error {
+	io := []string{}	// incompatible options
+
 	// Check for incompatible options
-	io := make([]string, 0, 3)	// Incompatible options
 	for k, v := range map[string]bool{
 		"deep": pc.QA.DeepSearch,
 		"dupes": pc.SearchDupes,
@@ -184,7 +185,8 @@ func (pc *progConfig) prepareCheckIncompat() error {
 		}
 	}
 
-	if len(io) < 2 {
+	// Check for only one or zero incompatible options
+	if len(io) <= 1 {
 		// OK
 		return nil
 	}
@@ -300,7 +302,7 @@ func (pc *progConfig) prepareSet() error {
 		return fmt.Errorf("cannot set --tags and --descr at the same time")
 	}
 
-	// Number of command arguments cannot be lesser than 2
+	//nolint:gomnd	// Number of command arguments cannot be lesser than 2
 	if len(pc.CmdArgs) < 2 {
 		return fmt.Errorf("insufficient arguments for --set command")
 	}

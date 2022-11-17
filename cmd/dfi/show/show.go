@@ -118,7 +118,7 @@ func showJSONOutput(ids []string, ikm map[string]types.ObjKey, objs dbms.QueryRe
 		objKey := ikm[id]
 
 		// Buffer to collect values before output
-		res := make([]string, 0, len(dbms.UVObjFields()) + len(dbms.UVAIIFields()) + 2 /* host + path */)
+		res := make([]string, 0, len(dbms.UVObjFields()) + len(dbms.UVAIIFields()) + 1 /* host */ + 1 /* path */)
 
 		res = append(res,
 			fmt.Sprintf(`"host":%q`, objKey.Host),
@@ -173,7 +173,7 @@ func showJSONOutput(ids []string, ikm map[string]types.ObjKey, objs dbms.QueryRe
 }
 
 func showObjOL(objKey types.ObjKey, fields dbms.QRItem, aii *dbms.AIIArgs) {
-	res := make([]string, 0, len(dbms.UVObjFields()) + len(dbms.UVAIIFields()) + 2 /* host + path */)
+	res := make([]string, 0, len(dbms.UVObjFields()) + len(dbms.UVAIIFields()) + 1 /* host */ + 1 /* path */)
 	res = append(res,
 		fmt.Sprintf("host:%q", objKey.Host),
 		fmt.Sprintf("path:%q", objKey.Path),

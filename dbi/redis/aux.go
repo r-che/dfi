@@ -56,7 +56,7 @@ func (rc *RedisClient) loadKeysByPrefix(prefix string, appendFunc func(any) erro
 
 func prepareHSetValues(host string, fso *types.FSObject) []string {
 	// Output slice with values prepared to send to Redis
-	values := make([]string, 0, types.FSObjectFieldsNum + 2)	// + 2 - id field + host field
+	values := make([]string, 0, types.FSObjectFieldsNum + 1 /* id field */ + 1 /* host field */)
 
 	/*
 	 * Prepare FPath value

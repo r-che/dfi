@@ -94,8 +94,8 @@ func (f *Filter) JoinByNor() *Filter {
 }
 
 func (f *Filter) JoinByOr() *Filter {
-	if f.Len() < 2 {
-		// Nothing to join, return clone
+	if f.Len() <= 1 {
+		// Cannot join one or zero field, just return clone
 		return f.Clone()
 	}
 

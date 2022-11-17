@@ -19,6 +19,9 @@ const (
 	metaRschIdx		=	"obj-meta-idx"
 	aiiRschIdx		=	"aii-idx"
 	objsPerQuery	=	1000
+
+	// Estimated maximum number of search results, empiric value
+	estResultsCount	=	32
 )
 
 func rshSearchAII(cli *rsh.Client, q *rsh.Query) ([]string, error) {
@@ -31,7 +34,7 @@ func rshSearchAII(cli *rsh.Client, q *rsh.Query) ([]string, error) {
 	// log.D("(RedisCli:rshSearchAII) Prepared RediSearch query string: %v", q.Raw)	// XXX Raw query may be too long
 
 	// Output result
-	ids := make([]string, 0, 32)	// 32 - should probably be enough for most cases on average
+	ids := make([]string, 0, estResultsCount)
 
 	// Total selected docs
 	totDocs := 0
@@ -197,7 +200,7 @@ func rshQuery(qa *dbms.QueryArgs) string {
 		return rshArgs(qa)
 	}
 
-	chunks := make([]string, 0, 2)
+	chunks := make([]string, 0, 1)	// At least we need 1 chunk for search
 
 	if len(qa.SP) != 0 {
 		// XXX Convert of search phrase values to lowercase because RediSearch

@@ -13,7 +13,10 @@ import (
 
 const authors = "Roman Chebotarev"
 
-const fallbackHostname = `FALLBACK-HOSTNAME`
+const (
+	fallbackHostname	=	`FALLBACK-HOSTNAME`
+	defaultFlushPeriod	=	5 * time.Second
+)
 
 var config progConfig
 
@@ -63,7 +66,7 @@ func Init(name, nameLong, vers string) {
 		&config.Cleanup, false)
 	p.AddDuration(`flush-period|F`,
 		`period between flushing the collected filesystem events to database`,
-		&config.FlushPeriod, 5 * time.Second)
+		&config.FlushPeriod, defaultFlushPeriod)
 	p.AddBool(`checksums|C`,
 		`calculate SHA1 sums for regular files, required for duplicates search support.`,
 		&config.CalcSums, false)
