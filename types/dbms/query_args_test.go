@@ -104,12 +104,12 @@ func TestParseMtimes(t *testing.T) {
 
 	// Slice to collect prepared values of times
 	tsFormats := []string{}
-	for i, layout := range TsFormats() {
+	for i, layout := range TSFormats() {
 		tsFormats = append(tsFormats, time.Unix(refTS + int64(i), 0).Format(layout))
 	}
 	// Slice to collect TSes created by standard time package functions as references
 	refTSs := make([]int64, 0, len(tsFormats))
-	for i, layout := range TsFormats() {
+	for i, layout := range TSFormats() {
 		ts, err := time.Parse(layout, tsFormats[i])
 		if err != nil {
 			// This must NOT happen

@@ -52,6 +52,7 @@ func TestDBOperatorString(t *testing.T) {
 	} {
 		{ Update, "Update" },
 		{ Delete, "Delete" },
+		{ DeletePrefix, "DeletePrefix" },
 	}
 
 	for _, test := range tests {

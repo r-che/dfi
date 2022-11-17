@@ -22,11 +22,11 @@ var tests = []struct{
 		modeOk:		true,
 	},
 	{	// Incorrect owner/mode
-		wantErr:	&ErrOwner{ErrOwnership{errors.New("incorrect owner")}},
+		wantErr:	&ErrOwner{OwnerError{errors.New("incorrect owner")}},
 	},
 	{	// Incorrect mode
 		ownerOk:	true,
-		wantErr:	&ErrPerm{ErrOwnership{errors.New("incorrect access mode")}},
+		wantErr:	&ErrPerm{OwnerError{errors.New("incorrect access mode")}},
 	},
 }
 
@@ -84,11 +84,11 @@ func TestPrivOwnershipStatFail(t *testing.T) {
 	}
 }
 
-func TestErrOwnership(t *testing.T) {
-	const testEO = "test ErrOwnership error"
-	err := &ErrOwnership{errors.New(testEO)}
+func TestOwnerError(t *testing.T) {
+	const testEO = "test OwnerError error"
+	err := &OwnerError{errors.New(testEO)}
 	if err.Error() != testEO {
-		t.Errorf("ErrOwnership.String() returned %q, want - %q", testEO, testEO)
+		t.Errorf("OwnerError.String() returned %q, want - %q", testEO, testEO)
 	}
 }
 
@@ -127,7 +127,7 @@ func Test_sysStat_fail(t *testing.T) {
 
 	// Replace sysStat by function that always retunrs error
 	sysStat = func(fi os.FileInfo) (*syscall.Stat_t, error) {
-		return nil, &ErrGetOwner{ErrOwnership{fmt.Errorf("negative case testing")}}
+		return nil, &ErrGetOwner{OwnerError{fmt.Errorf("negative case testing")}}
 	}
 
 	// Now, test ownership of this file
