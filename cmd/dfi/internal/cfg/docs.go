@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/r-che/dfi/types"
 	"github.com/r-che/dfi/types/dbms"
 )
 
@@ -97,7 +98,7 @@ by command line arguments. The displayed information includes:
  * Object identifier (see the "Object identification" section below)
  * Host where the object was found
  * Absolute path to the object on the host
- * Type of the object, one of: ` + strings.Join(knownTypes, ", ")  + `
+ * Type of the object, one of: ` + strings.Join(types.ObjTypes(), ", ")  + `
  * Size of the object in bytes
  * Modification time in human-readable and in Unix timestamp formats
  * Additional information if set:

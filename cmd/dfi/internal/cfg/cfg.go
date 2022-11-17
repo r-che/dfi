@@ -18,10 +18,8 @@ const authors = "Roman Chebotarev"
 var config *progConfig
 
 // Defaults
-var knownTypes = []string{types.ObjRegular, types.ObjDirectory, types.ObjSymlink}
 var progConfigSuff = filepath.Join(".dfi", "cli.json")
 var progConfigDefault = filepath.Join("${HOME}", progConfigSuff)
-var aiiFields = []string{dbms.AIIFieldTags, dbms.AIIFieldDescr}
 
 func Init(name, nameLong, vers string) {
 	// Create new parser
@@ -56,12 +54,12 @@ func Init(name, nameLong, vers string) {
 		&config.strSize, anyVal)
 	p.AddString(`type`,
 		`set of object types, possible values: ` +
-		strings.Join(knownTypes, ", "), &config.oTypes, anyVal)
+		strings.Join(types.ObjTypes(), ", "), &config.oTypes, anyVal)
 	p.AddString(`checksum`, `set of objects checksums`, &config.csums, anyVal)
 	p.AddString(`host`, `set of hosts when object may be located`, &config.hosts, anyVal)
 	p.AddString(`aii-filled|F`,
 		`set of filled additional information item fields, possible values: ` +
-		strings.Join(aiiFields, ", "), &config.aiiFields, anyVal)
+		strings.Join(dbms.UVAIIFields(), ", "), &config.aiiFields, anyVal)
 	p.AddBool(`only-name|N`,
 		`use only object names to match search phrases, use --docs to get detailed explanation`,
 		&config.QA.OnlyName, false)

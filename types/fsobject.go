@@ -23,10 +23,19 @@ const FSObjectFieldsNum = 7
 
 // Supported object types
 const (
+	// XXX Do not forget to update ObjTypes() when you change this list
 	ObjRegular		=	"reg"
 	ObjDirectory	=	"dir"
 	ObjSymlink		=	"sym"
 )
+
+func ObjTypes() []string {
+	return []string {
+		ObjRegular,
+		ObjDirectory,
+		ObjSymlink,
+	}
+}
 
 //
 // Filesystem object key

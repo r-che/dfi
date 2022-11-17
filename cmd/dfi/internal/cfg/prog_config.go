@@ -263,7 +263,7 @@ func (pc *progConfig) prepareSearchOptsArgs() error {
 	}
 
 	if pc.oTypes != anyVal {
-		if err := pc.QA.ParseTypes(pc.oTypes, knownTypes); err != nil {
+		if err := pc.QA.ParseTypes(pc.oTypes, types.ObjTypes()); err != nil {
 			return err
 		}
 	}
