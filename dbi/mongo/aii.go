@@ -119,11 +119,13 @@ func (mc *MongoClient) ModifyAII(op dbms.DBOperator, args *dbms.AIIArgs, ids []s
 
 	// 2. Select modification operator
 
+	//nolint:exhaustive	// panic uncovers any forgotten operators
 	switch op {
 	case dbms.Update:
 		return mc.updateAII(args, idkm, add)
 	case dbms.Delete:
 		return mc.deleteAII(args, idkm)
+	// No mo operators supported on AII
 	default:
 		panic(fmt.Sprintf("Unsupported AAI modification operator %v", op))
 	}

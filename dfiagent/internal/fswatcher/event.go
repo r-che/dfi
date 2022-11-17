@@ -17,6 +17,7 @@ func (et eventType) String() string {
 	case EvCreate: return "Create"
 	case EvWrite: return "Write"
 	case EvRemove: return "Remove"
+	case EvRemovePrefix: return "RemovePrefix"
 	default:
 		panic(fmt.Sprintf("Unhandled filesystem event type %d", et))
 	}
