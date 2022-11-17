@@ -35,6 +35,9 @@ func (rc *RedisClient) ModifyAII(op dbms.DBOperator, args *dbms.AIIArgs, ids []s
 		return 0, 0, fmt.Errorf("(RedisCli:ModifyAII) search failed: %w", err)
 	}
 
+	// Create IDs set, which should keep the not found identifiers
+	nf := tools.NewStrSet(ids...)
+
 	// Create map indentifiers found in DB
 	fids := make(types.IdKeyMap, len(ids))
 	for k, v := range qr {
@@ -45,26 +48,23 @@ func (rc *RedisClient) ModifyAII(op dbms.DBOperator, args *dbms.AIIArgs, ids []s
 		}
 
 		// Convert ID to string representation
-		if sid, ok := id.(string); ok {
-			fids[sid] = k
-		} else {
+		sid, ok := id.(string)
+		if !ok {
 			log.E("(RedisCli:ModifyAII) Loaded invalid object from DB - " +
 				"ID field (%q) cannot be converted to string: %s:%s => %v", dbms.FieldID, k.Host, k.Path, id)
 		}
+
+		// Save key associated with the ID
+		fids[sid] = k
+		// Remove this ID from the set of not-found identifiers
+		nf.Del(sid)
 	}
 
-	// Check for all ids were found
-	var nf []string
-	for _, id := range ids {
-		if _, ok := fids[id]; !ok {
-			nf = append(nf, id)
-		}
-	}
-	if nf != nil {
-		return 0, 0, fmt.Errorf("(RedisCli:ModifyAII) the following identifiers do not exist in DB: %s", strings.Join(nf, " "))
+	if len(*nf) != 0 {
+		return 0, 0, fmt.Errorf("(RedisCli:ModifyAII) the following identifiers do not exist in DB: %s", strings.Join(nf.List(), " "))
 	}
 
-	// 2. Select modification operator
+	// 2. Run modification operator
 
 	switch op {
 	case dbms.Update:
@@ -442,69 +442,21 @@ func (rc *RedisClient) delTags(tags []string, ids types.IdKeyMap) (int64, error)
 }
 
 func (rc *RedisClient) clearAIIField(field string, ids []string) (int64, error) {
-	// List of keys that can be safely deleted to clearing field
-	toDelKey := make([]string, 0, len(ids))
-	// List of keys on which only the field should be deleted
-	toDelField := make([]string, 0, len(ids))
-
-	// Total cleared
-	tc := int64(0)
-
-	// List of identifiers to remove from index
-	idxRm := make([]any, 0, len(ids))
-
-	log.D("(RedisCli:clearAIIField) Collecting AII info to clearing field %q...", field)
-	// Do for each identifier
-	for _, id := range ids {
-		// Make a key
-		key := RedisAIIPrefix + id
-
-		// Get list of keys of this hash
-		keys, err := rc.c.HKeys(rc.Ctx, key).Result()
-		if err != nil {
-			return tc, fmt.Errorf("RedisCli:clearAIIField) cannot get number of keys for %q: %w", key, err)
-		}
-
-		// Count number of fields that are not OID or cleared field
-		nOther := 0
-		ff := false	// Field found
-		for _, f := range keys {
-			// Check for field name selected from DB (f) is cleared field name
-			if field == f {
-				ff = true
-			} else if f != dbms.AIIFieldOID {
-				// Selected name f is not cleared field name
-				// and not OID field name - this is some other field
-				nOther++
-			}
-		}
-
-		// Check for cleared field was not found
-		if !ff {
-			// Skip this ID
-			continue
-		}
-
-		// Check number of other fields
-		if nOther == 0 {
-			// This key can be deleted because does not contain something other
-			// that OID and the cleared field which has to be deleted
-			toDelKey = append(toDelKey, key)
-		} else {
-			// Need to delete only the cleared field
-			toDelField = append(toDelField, key)
-		}
-
-		// Add id to list of identifiers to remove from index
-		idxRm = append(idxRm, id)
+	// Prepare sets of identifiers that should be cleared
+	toDelKey, toDelField, idxRm, err := rc.prepClearAIISets(field, ids)
+	if err != nil {
+		return 0, fmt.Errorf("(RedisCli:clearAIIField) cannot prepare datasets to clear: %w", err)
 	}
 
 	// Check for nothing to delete
 	if len(toDelKey) == 0 && len(toDelField) == 0 {
 		log.D("(RedisCli:clearAIIField) Field %q are not set for these objects", field)
 		// OK
-		return tc, nil
+		return 0, nil
 	}
+
+	// Total cleared
+	tc := int64(0)
 
 	// Check for keys to delete
 	if len(toDelKey) != 0 {
@@ -542,4 +494,63 @@ func (rc *RedisClient) clearAIIField(field string, ids []string) (int64, error) 
 
 	// OK
 	return tc, nil
+}
+
+func (rc *RedisClient) prepClearAIISets(field string, ids[]string) (toDelKey, toDelField []string, idxRm []any, err error) {
+	// List of keys that can be safely deleted to clearing field
+	toDelKey = make([]string, 0, len(ids))
+	// List of keys on which only the field should be deleted
+	toDelField = make([]string, 0, len(ids))
+
+	// List of identifiers to remove from index
+	idxRm = make([]any, 0, len(ids))
+
+	log.D("(RedisCli:prepClearAIISets) Collecting AII info to clearing field %q...", field)
+	// Do for each identifier
+	for _, id := range ids {
+		// Make a key
+		key := RedisAIIPrefix + id
+
+		// Get list of keys of this hash
+		keys, err := rc.c.HKeys(rc.Ctx, key).Result()
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("cannot get number of keys for %q: %w", key, err)
+		}
+
+		// Flag the presence of fields that are not OIDs and are not in the field set for cleaning
+		other := false
+		ff := false	// Field found
+		for _, f := range keys {
+			// Check for field name selected from DB (f) is cleared field name
+			if field == f {
+				ff = true
+			} else if f != dbms.AIIFieldOID {
+				// Selected name f is not cleared field name
+				// and not OID field name - this is some other field
+				other = true
+			}
+		}
+
+		// Check for cleared field was not found
+		if !ff {
+			// Skip this ID
+			continue
+		}
+
+		// Check number of other fields
+		if other {
+			// Other fields found, need to delete only the cleared field
+			toDelField = append(toDelField, key)
+		} else {
+			// This key can be deleted because does not contain something other
+			// that OID and the cleared field which has to be deleted
+			toDelKey = append(toDelKey, key)
+		}
+
+		// Add id to list of identifiers to remove from index
+		idxRm = append(idxRm, id)
+	}
+
+	// OK
+	return toDelKey, toDelField, idxRm, nil
 }

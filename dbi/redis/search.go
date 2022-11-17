@@ -311,6 +311,45 @@ func makeSetRangeQuery(field string, min, max int64, set []int64) string {
 // Additional "deep" search mechanism
 //
 
+func (rc *RedisClient) loadIDsByPatterns(qa *dbms.QueryArgs, qrTop dbms.QueryResults) ([]string, error) {
+	// Search for all matching keys
+	var matched []string
+
+	for _, pattern := range scanSearchPatterns(qa) {
+		log.D("(RedisCli:loadIDsByPatterns) Do SCAN search for: %s", pattern)
+
+		// Perform scan with filter
+		m, err := rc.scanKeyMatch(pattern,
+			// Match condition to filter keys matched by patterns
+			func(val string) bool {
+				// Split identifier without object prefix from host:path format to separate values
+				host, path, ok := strings.Cut(val[len(RedisObjPrefix):], ":")
+				if !ok {
+					return false
+				}
+
+				// Check for key does not exist in the query results
+				if _, ok := qrTop[types.ObjKey{Host: host, Path: path}]; !ok {
+					// Then - need to append it
+					return true
+				}
+				// Skip this key otherwise
+				return false
+			})
+
+		if err != nil {
+			return nil, fmt.Errorf("(RedisCli:loadIDsByPatterns) scan with pattern %q failed: %w", pattern, err)
+		}
+
+		// Append summary result
+		matched = append(matched, m...)
+	}
+
+	log.D("(RedisCli:loadIDsByPatterns) %d keys matched by SCAN operation", len(matched))
+
+	return matched, nil
+}
+
 func (rc *RedisClient) scanSearch(rsc *rsh.Client, qa *dbms.QueryArgs, retFields []string, qrTop dbms.QueryResults) (int, error) {
 	// Check for empty search phrases
 	if len(qa.SP) == 0 {
@@ -318,90 +357,77 @@ func (rc *RedisClient) scanSearch(rsc *rsh.Client, qa *dbms.QueryArgs, retFields
 		return 0, nil
 	}
 
-	// 1. Prepare matches list for all search phrases
-	matches := make([]string, 0, len(qa.SP) * len(qa.Hosts))
-	for _, sp := range qa.SP {
-		if !strings.HasPrefix(sp, "*") {
-			sp = "*" + sp
-		}
-		if !strings.HasSuffix(sp, "*") {
-			sp += "*"
-		}
-
-		if len(qa.Hosts) == 0 {
-			// All hosts match
-			matches = append(matches, RedisObjPrefix + sp)
-		} else {
-			// Prepare search phrases for each host separately
-			for _, host := range qa.Hosts {
-				matches = append(matches, RedisObjPrefix + host + ":" + sp)
-			}
-		}
+	// 1. Search for all matching keys
+	matched, err := rc.loadIDsByPatterns(qa, qrTop)
+	if err != nil {
+		return 0, fmt.Errorf("(RedisCli:scanSearch) fail to load identifiers of matched keys: %w", err)
 	}
 
-	// 2. Search for all matching keys
-	var matched []string
-	for _, match := range matches {
-		log.D("(RedisCli:scanSearch) Do SCAN search for: %s", match)
-		m, err := rc.scanKeyMatch(match, func(val string) bool {
-			// Split identifier without object prefix from host:path format to separate values
-			host, path, ok := strings.Cut(val[len(RedisObjPrefix):], ":")
-			if !ok {
-				return false
-			}
-
-			// Check for key does not exist in the query results
-			if _, ok := qrTop[types.ObjKey{Host: host, Path: path}]; !ok {
-				// Then - need to append it
-				return true
-			}
-			// Skip this key otherwise
-			return false
-		})
-
-		if err != nil {
-			return 0, err
-		}
-
-		// Append summary result
-		matched = append(matched, m...)
-	}
-
-	log.D("(RedisCli:scanSearch) %d keys matched by SCAN operation", len(matched))
-
-	// Check for nothing to do
+	// Check that no matching keys were found
 	if len(matched) == 0 {
 		return 0, nil
 	}
 
-	// 3. Get ID for each matched key
+	// 2. Get ID for each matched key
 	log.D("(RedisCli:scanSearch) Loading identifiers for all matched keys...")
 	ids := make([]string, 0, len(matched))
 	for _, k := range matched {
+		// Load the identifier field from the hash associated with key k
 		id, err := rc.c.HGet(rc.Ctx, k, dbms.FieldID).Result()
 		if err != nil {
 			if errors.Is(err, RedisNotFound) {
 				return 0, fmt.Errorf("identificator field %q does not exist for key %q", dbms.FieldID, k)
 			}
+
 			return 0, fmt.Errorf("cannot get ID for key %q: %w", k, err)
 		}
+
 		// Append extracted ID
 		ids = append(ids, id)
 	}
 	log.D("(RedisCli:scanSearch) Identifiers of found objects extracted")
 
-	// 4. Run RediSearch with extracted ID and provided query arguments
+	// 3. Run RediSearch with extracted IDs and provided query arguments
 
-	// Make redisearch initial query
-	q := rsh.NewQuery(rshQueryByIds(ids, qa))
 	// Run search to get results by IDs
-	qr, err := rshSearch(rsc, q, retFields)
-	// Merge selected results with the previous results
+	qr, err := rshSearch(rsc, rsh.NewQuery(rshQueryByIds(ids, qa)), retFields)
+
+	// 4. Merge selected results with the previous results
 	for k, v := range qr {
 		qrTop[k] = v
 	}
 
+	// Return length of found results and error if occurred
 	return len(qr), err
+}
+
+func scanSearchPatterns(qa *dbms.QueryArgs) []string {
+	// Prepare patterns list for all search phrases
+	patterns := make([]string, 0, len(qa.SP) * len(qa.Hosts))
+
+	for _, sp := range qa.SP {
+		// Prepend by asterisk
+		if !strings.HasPrefix(sp, "*") {
+			sp = "*" + sp
+		}
+		// Append asterisk at the end
+		if !strings.HasSuffix(sp, "*") {
+			sp += "*"
+		}
+
+		// Is hosts list is empty?
+		if len(qa.Hosts) == 0 {
+			// All hosts match
+			patterns = append(patterns, RedisObjPrefix + sp)
+		} else {
+			// Prepare search phrases for each host separately
+			for _, host := range qa.Hosts {
+				patterns = append(patterns, RedisObjPrefix + host + ":" + sp)
+			}
+		}
+	}
+
+	return patterns
 }
 
 func (rc *RedisClient) scanKeyMatch(match string, filter dbms.MatchStrFunc) ([]string, error) {
