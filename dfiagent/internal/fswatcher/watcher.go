@@ -390,7 +390,7 @@ func (w *Watcher) eventRemoveRename(event *fsn.Event) error {
 	if event.Op & fsn.Rename != 0 {
 		// Remove watcher from the directory itself and from all directories in the dir hierarchy
 		if err := w.unwatchDir(event.Name); err != nil {
-			return fmt.Errorf("cannot remove watchers from directory %q with its subdirectories: %v", event.Name, err)
+			return fmt.Errorf("cannot remove watchers from directory %q with its subdirectories: %w", event.Name, err)
 		}
 	} // else:
 		// Nothing to do in this case, because the path removed from
@@ -407,7 +407,7 @@ func (w *Watcher) eventCreate(event *fsn.Event) error {
 	// Check that the created object is a directory
 	oi, err := os.Lstat(event.Name)
 	if err != nil {
-		return fmt.Errorf("cannot stat() for created object %q: %v", event.Name, err)
+		return fmt.Errorf("cannot stat() for created object %q: %w", event.Name, err)
 	}
 
 	isDir := oi.IsDir()
@@ -421,7 +421,7 @@ func (w *Watcher) eventCreate(event *fsn.Event) error {
 
 	// Need to add watcher for newly created directory
 	if err = w.w.Add(event.Name); err != nil {
-		return fmt.Errorf("cannot add watcher to directory %q: %v", event.Name, err)
+		return fmt.Errorf("cannot add watcher to directory %q: %w", event.Name, err)
 	}
 
 	// Register directory
@@ -432,7 +432,7 @@ func (w *Watcher) eventCreate(event *fsn.Event) error {
 	// Do recursive scan and add watchers to all subdirectories
 	_, err = w.scanDir(event.Name, DoReindex)
 	if err != nil {
-		return fmt.Errorf("cannot scan newly created directory %q: %v", event.Name, err)
+		return fmt.Errorf("cannot scan newly created directory %q: %w", event.Name, err)
 	}
 
 	return nil
@@ -446,7 +446,7 @@ func (w *Watcher) unwatchDir(dir string) error {
 
 	// Need to remove watcher from the directory self
 	if err := w.w.Remove(dir); err != nil {
-		return fmt.Errorf("(Watcher:%s) unwatch faield for %q: %v", w.path, dir, err)
+		return fmt.Errorf("(Watcher:%s) unwatch faield for %q: %w", w.path, dir, err)
 	}
 
 	// At least one watcher were removed
@@ -487,7 +487,7 @@ func (w *Watcher) unwatchDir(dir string) error {
 		}
 
 		// Unexpected system error, break removal operation
-		return fmt.Errorf("(Watcher:%s) unwatch of %q faield: %v", w.path, dir, err)
+		return fmt.Errorf("(Watcher:%s) unwatch of %q faield: %w", w.path, dir, err)
 	}
 
 	log.D("(Watcher:%s) Total %d watchers were removed from %s", w.path, removed, dir)

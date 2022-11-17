@@ -227,7 +227,7 @@ func (mc *MongoClient) deleteDryRun(filter bson.D) (int64, error) {
 	cursor, err := coll.Find(mc.Ctx, filter, options.Find().SetReturnKey(true))
 	if err != nil {
 		// Unexpected error
-		return 0, fmt.Errorf("(MongoCli:Commit:deleteDryRun) find on %s.%s for identifiers %v failed: %v",
+		return 0, fmt.Errorf("(MongoCli:Commit:deleteDryRun) find on %s.%s for identifiers %v failed: %w",
 			coll.Database().Name(), coll.Name(), mc.toDelete, err)
 	}
 

@@ -108,7 +108,7 @@ func (mc *MongoClient) aggregateSearch(collName string, filter *Filter, retField
 	cursor, err := coll.Aggregate(mc.Ctx, aggrPipeline)
 	if err != nil {
 		// Unexpected error
-		return nil, fmt.Errorf("(MongoCli:aggregateSearch) aggregate on %s.%s with filter %v failed: %v",
+		return nil, fmt.Errorf("(MongoCli:aggregateSearch) aggregate on %s.%s with filter %v failed: %w",
 			coll.Database().Name(), coll.Name(), filter, err)
 	}
 	defer func() {

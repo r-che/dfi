@@ -464,7 +464,7 @@ func (rc *RedisClient) clearAIIField(field string, ids []string) (int64, error) 
 
 		res := rc.c.Del(rc.Ctx, toDelKey...)
 		if res.Err() != nil {
-			return tc, fmt.Errorf("(RedisCli:clearAIIField) cannot delete AII keys %v: %v", toDelKey, res.Err())
+			return tc, fmt.Errorf("(RedisCli:clearAIIField) cannot delete AII keys %v: %w", toDelKey, res.Err())
 		}
 
 		tc += res.Val()
