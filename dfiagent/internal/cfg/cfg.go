@@ -126,6 +126,6 @@ func Init(name, nameLong, vers string) {
 
 // Config returns a new configuration structure as a copy
 // of existing to avoid accidentally modifications
-func Config() *progConfig {
+func Config() *progConfig {	//nolint:revive	// Currently, I prefer to keep it unexported
 	return config.clone()
 }

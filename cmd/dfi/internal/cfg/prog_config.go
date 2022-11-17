@@ -71,7 +71,7 @@ type progConfig struct {
 	fConf		fileCfg
 }
 
-func NewConfig() *progConfig {
+func NewConfig() *progConfig {	//nolint:revive	// Currently, I prefer to keep it unexported
 	return &progConfig{
 		QA: &dbms.QueryArgs{},
 	}
