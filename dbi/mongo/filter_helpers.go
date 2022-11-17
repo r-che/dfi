@@ -4,15 +4,10 @@ import (
 	"regexp"
 	"strings"
 
-//	"github.com/r-che/dfi/types"
 	"github.com/r-che/dfi/types/dbms"
-//	"github.com/r-che/dfi/dbi/common"
-
-	//"github.com/r-che/log"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	//"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // filterMakeByArgs makes filter expression to use search arguments like mtime, type of object and so on

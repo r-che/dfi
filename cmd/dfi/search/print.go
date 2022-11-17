@@ -26,16 +26,18 @@ func printDupes(refObjs map[string]*types.FSObject, dm map[string][]dupeInfo) {
 		i++
 	}
 
+	// Print results
+	switch {
 	// JSON output
-	if c.JSONOut {
+	case c.JSONOut:
 		printJSONDupes(ids, refObjs, dm)
-	} else
+
 	// Single-lined output
-	if c.OneLine {
-		// Produce oneline output
+	case c.OneLine:
 		printDupesOL(ids, dm)
-	} else {
-		// Normal verbose multiline output
+
+	// Normal verbose multiline output
+	default:
 		printDupesVerb(ids, refObjs, dm)
 	}
 }

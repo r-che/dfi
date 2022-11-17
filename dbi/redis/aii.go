@@ -191,12 +191,15 @@ func (rc *RedisClient) addTags(tags []string, ids types.IdKeyMap) (int64, error)
 
 		// Load existing values of tags field
 		tagsStr, err := rc.c.HGet(rc.Ctx, key, dbms.AIIFieldTags).Result()
-		if err == nil {
+		switch {
+		case err == nil:
 			// Tags field extracted, make union between extracted existing tags and new tags
 			allTags.Add(strings.Split(tagsStr, ",")...)
-		} else if errors.Is(err, RedisNotFound) {
+
+		case errors.Is(err, RedisNotFound):
 			// Ok, currently no tags for this object, nothing to do
-		} else {
+
+		default:
 			// Something went wrong
 			return tu, fmt.Errorf("(RedisCli:addTags) cannot get tags field %q for key %q: %w", dbms.AIIFieldTags, key, err)
 		}
@@ -261,18 +264,20 @@ func (rc *RedisClient) addDescr(descr string, ids types.IdKeyMap, noNL bool) (in
 		var fullDescr string
 
 		// Load existing values of description field
-		if oldDescr, err := rc.c.HGet(rc.Ctx, key, dbms.AIIFieldDescr).Result(); err == nil {
+		oldDescr, err := rc.c.HGet(rc.Ctx, key, dbms.AIIFieldDescr).Result()
+		switch {
+		// HGet successful
+		case err == nil:
 			// Append new description line to existing
-			if noNL {
-				fullDescr = oldDescr + "; " + descr
-			} else {
-				fullDescr = oldDescr + "\n" + descr
-			}
-		} else if errors.Is(err, RedisNotFound) {
-			// Ok, currently no description for this object
+			fullDescr = oldDescr + tools.Tern(noNL, "; ", "\n") + descr
+
+		// Object does not have description
+		case errors.Is(err, RedisNotFound):
+			// Set the new description value as the full description
 			fullDescr = descr
-		} else {
-			// Something went wrong
+
+		// Something went wrong
+		default:
 			return tu, fmt.Errorf("(RedisCli:addDescr) cannot get description field %q for key %q: %w", dbms.AIIFieldDescr, key, err)
 		}
 

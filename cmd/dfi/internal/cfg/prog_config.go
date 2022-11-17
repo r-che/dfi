@@ -99,9 +99,9 @@ func (pc *progConfig) clone() *progConfig {
 	return &rv
 }
 
-func (pc *progConfig) prepare(CmdArgs []string) error {
+func (pc *progConfig) prepare(cmdArgs []string) error {
 	// Keep search phrases
-	pc.CmdArgs = CmdArgs
+	pc.CmdArgs = cmdArgs
 
 	// Check and prepare mode options
 	if err := pc.prepareMode(); err != nil {

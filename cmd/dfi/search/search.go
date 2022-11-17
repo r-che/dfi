@@ -69,15 +69,17 @@ func Do(dbc dbms.Client) *types.CmdRV {
 	//
 
 	// Select output format
-	if c.JSONOut {
-		// JSON results
+	switch {
+	// JSON results
+	case c.JSONOut:
 		printJSON(qr)
-	} else
-	if c.HostGroups {
-		// Results grouped by host
+
+	// Results grouped by host
+	case c.HostGroups:
 		printResHG(qr)
-	} else {
-		// Single-line sorted output
+
+	// Single-line sorted output
+	default:
 		printResSingle(qr)
 	}
 
@@ -185,23 +187,39 @@ func printResHG(qr dbms.QueryResults) {
 
 		fmt.Printf("%s(%d):\n", host, len(paths))
 
-		if c.ShowOnlyIds {
-			for _, path := range paths {
-				fmt.Printf("  %v\n", qr[types.ObjKey{Host: host, Path: path}][dbms.FieldID])
-			}
-		} else
-		if c.ShowID {
-			for _, path := range paths {
-				fmt.Printf("  %v %s\n", qr[types.ObjKey{Host: host, Path: path}][dbms.FieldID], path)
-			}
-		} else {
-			for _, path := range paths {
-				fmt.Printf("  %s\n", path)
-			}
+		switch {
+		// Print only identifiers
+		case c.ShowOnlyIds:
+			printResHGOnlyIds(host, paths, qr)
+
+		// Print identifiers + paths
+		case c.ShowID:
+			printResHGShowID(host, paths, qr)
+
+		// Default - print only path because other part of key (host) already printed above
+		default:
+			printResHGOnlyPaths(paths)
 		}
 	}
 }
 
+func printResHGOnlyIds(host string, paths []string, qr dbms.QueryResults) {
+	for _, path := range paths {
+		fmt.Printf("  %v\n", qr[types.ObjKey{Host: host, Path: path}][dbms.FieldID])
+	}
+}
+
+func printResHGShowID(host string, paths []string, qr dbms.QueryResults) {
+	for _, path := range paths {
+		fmt.Printf("  %v %s\n", qr[types.ObjKey{Host: host, Path: path}][dbms.FieldID], path)
+	}
+}
+
+func printResHGOnlyPaths(paths []string) {
+	for _, path := range paths {
+		fmt.Printf("  %s\n", path)
+	}
+}
 func printResSingle(qr dbms.QueryResults) {
 	// Get configuration
 	c := cfg.Config()

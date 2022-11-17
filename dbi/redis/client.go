@@ -6,11 +6,9 @@ import (
 	"strings"
 
 	"github.com/r-che/dfi/types/dbms"
-	//"github.com/r-che/dfi/common/tools"
 
 	"github.com/r-che/log"
 
-	//"github.com/go-redis/redis/v8"
     rsh "github.com/RediSearch/redisearch-go/redisearch"
 )
 
