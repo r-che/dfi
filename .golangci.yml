@@ -1,0 +1,80 @@
+# https://golangci-lint.run/usage/configuration/#linters-configuration
+linters:
+  #enable-all: true
+  disable:
+    # Disabled due to inconvenient rules
+    - exhaustivestruct
+    - funlen
+    - gci
+    - godot
+    - gofmt
+    - gofumpt
+    - goimports
+    - nlreturn
+    - testpackage
+    - varcheck
+    - forbidigo
+    - nonamedreturns
+    # Disabled because deprecated
+    - deadcode
+    - scopelint
+    - maligned
+    - nosnakecase
+    - interfacer
+    - ifshort
+    - golint
+    # Disabled because of generics. You can track the evolution of the generics support
+    # by following the https://github.com/golangci/golangci-lint/issues/2649
+    - rowserrcheck
+    - sqlclosecheck
+    - structcheck
+    - wastedassign
+
+    #
+    # Need to run manually to review
+    #
+    - exhaustruct
+    - goerr113
+    - wsl
+    - gochecknoglobals
+    - forcetypeassert
+
+    # TODO Temporary disabled
+    - wrapcheck
+    - varnamelen
+    - dupl
+    - godox
+    - ireturn
+    - gomoddirectives
+    - containedctx
+
+linters-settings:
+  # https://github.com/blizzy78/varnamelen#golangci-lint-integration
+  varnamelen:
+    max-distance: 20
+
+  # https://golangci-lint.run/usage/linters/#govet
+  govet:
+    settings:
+      printf:
+        funcs:
+          - (github.com/r-che/log).D
+          - (github.com/r-che/log).I
+          - (github.com/r-che/log).W
+          - (github.com/r-che/log).E
+          - (github.com/r-che/log).F
+          - (github.com/r-che/log).Debug
+          - (github.com/r-che/log).Info
+          - (github.com/r-che/log).Warn
+          - (github.com/r-che/log).Err
+          - (github.com/r-che/log).Fatal
+    disable:
+      # Disabled to keep from going crazy in packages working with MongoDB
+      - composites
+
+  # https://golangci-lint.run/usage/linters/#gosec
+  gosec:
+    excludes:
+      # Allow to use SHA1 - currently, we not needed to strong cryptography
+      - G401
+      - G505
