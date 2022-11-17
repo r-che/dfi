@@ -30,7 +30,7 @@ func printDupes(refObjs map[string]*types.FSObject, dm map[string][]dupeInfo) {
 	switch {
 	// JSON output
 	case c.JSONOut:
-		printJSONDupes(ids, refObjs, dm)
+		printJSONDupes(ids, dm)
 
 	// Single-lined output
 	case c.OneLine:
@@ -92,7 +92,7 @@ func printDupesVerb(ids []string, refObjs map[string]*types.FSObject, dm map[str
 	}
 }
 
-func printJSONDupes(ids []string, refObjs map[string]*types.FSObject, dm map[string][]dupeInfo) {
+func printJSONDupes(ids []string, dm map[string][]dupeInfo) {
 	// Get configuration
 	c := cfg.Config()
 

@@ -184,7 +184,7 @@ func (mc *MongoClient) makeAggrPipeline(filter *Filter, retFields []string, vari
 			}
 		}
 
-		// Add $project stage to pipeline to to set the requested fields set
+		// Add $project stage to pipeline to set the requested fields set
 		aggrPipeline = append(aggrPipeline, bson.D{{ `$project`, fields }})
 	}
 

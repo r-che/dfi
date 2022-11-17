@@ -315,7 +315,7 @@ func (w *Watcher) scanDir(dir string, doIndexing bool) (int, error) {
 			w.eMap[objName] = &FSEvent{Type: EvCreate}
 		}
 
-		// Check that the the entry is a directory
+		// Check that the entry is a directory
 		if entry.IsDir() {
 			// Do recursively call to scan all directory subentries
 			nw, err := w.scanDir(objName, doIndexing)

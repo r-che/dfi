@@ -20,7 +20,7 @@ func filterMakeByArgs(qa *dbms.QueryArgs) *Filter {
 	//
 
 	/*
-	 * Here wa have a set of conditions in the filter filter list, they looks like:
+	 * Here we have a set of conditions in the filter list, they looks like:
 	 *  $cond1, $cond2, $cond3, ...
 	 *
 	 * Need to consider the following cases:

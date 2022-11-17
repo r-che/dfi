@@ -7,15 +7,15 @@ import (
 	"syscall"
 )
 
-type ErrOwnership struct {
+type OwnerError struct {
 	err error
 }
-func (e *ErrOwnership) Error() string {
+func (e *OwnerError) Error() string {
 	return e.err.Error()
 }
-type ErrGetOwner struct { ErrOwnership }
-type ErrOwner struct { ErrOwnership }
-type ErrPerm struct { ErrOwnership }
+type ErrGetOwner struct { OwnerError }
+type ErrOwner struct { OwnerError }
+type ErrPerm struct { OwnerError }
 
 func PrivOwnership(file string) error {
 	// Check ownership and permissions of the private file:
@@ -36,7 +36,7 @@ func PrivOwnership(file string) error {
 
 	// Check ownership
 	if uint32(uid) != stat.Uid {
-		return &ErrOwner{ErrOwnership{fmt.Errorf(
+		return &ErrOwner{OwnerError{fmt.Errorf(
 			"UID of the user running the application is %d, but the UID of the owner of the file %q is %d - " +
 			"refusing to use this file because of a security breach, the file must belong to the application user",
 			uid, file, stat.Uid)}}
@@ -44,7 +44,7 @@ func PrivOwnership(file string) error {
 
 	// Check the file access mode
 	if mode := fi.Mode().Perm(); mode & 0o066 != 0 {
-		return &ErrPerm{ErrOwnership{fmt.Errorf(
+		return &ErrPerm{OwnerError{fmt.Errorf(
 			"file %q must NOT be read/write accessible by the group/all users, " +
 			"only the application user must have read access to it, current permission mode is: %o",
 			file, mode)}}
@@ -58,7 +58,7 @@ func PrivOwnership(file string) error {
 var sysStat = func(fi os.FileInfo) (*syscall.Stat_t, error) {
 	stat, ok := fi.Sys().(*syscall.Stat_t)
 	if !ok {
-		return nil, &ErrGetOwner{ErrOwnership{fmt.Errorf(
+		return nil, &ErrGetOwner{OwnerError{fmt.Errorf(
 				"fails to retrieve the UID of the owner of %q from %T structure," +
 				" possible the platform is not supported", fi.Name(), fi)}}
 	}
