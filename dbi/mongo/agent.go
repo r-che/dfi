@@ -27,7 +27,7 @@ const (
 // Agent client interface
 //
 
-func (mc *MongoClient) UpdateObj(fso *types.FSObject) error {
+func (mc *Client) UpdateObj(fso *types.FSObject) error {
 	// Push object to update queue
 
 	if mc.ReadOnly {
@@ -104,7 +104,7 @@ func (mc *MongoClient) UpdateObj(fso *types.FSObject) error {
 	return nil
 }
 
-func (mc *MongoClient) DeleteObj(fso *types.FSObject) error {
+func (mc *Client) DeleteObj(fso *types.FSObject) error {
 	mongoID := common.MakeID(mc.Cfg.CliHost, fso)
 
 	if mc.ReadOnly {
@@ -122,7 +122,7 @@ func (mc *MongoClient) DeleteObj(fso *types.FSObject) error {
 	return nil
 }
 
-func (mc *MongoClient) DeleteFPathPref(fso *types.FSObject) (int64, error) {
+func (mc *Client) DeleteFPathPref(fso *types.FSObject) (int64, error) {
 	// Create a filter to load identifiers of documents belonging to this host, prefixed with fso.FPath
 	filter := NewFilter().Append(
 		bson.E{dbms.FieldHost, mc.Cfg.CliHost},
@@ -162,7 +162,7 @@ func (mc *MongoClient) DeleteFPathPref(fso *types.FSObject) (int64, error) {
 	return int64(len(delIds)), nil
 }
 
-func (mc *MongoClient) Commit() (int64, int64, error) {
+func (mc *Client) Commit() (int64, int64, error) {
 	// Reset state on return
 	defer func() {
 		// Reset counters
@@ -197,7 +197,7 @@ func (mc *MongoClient) Commit() (int64, int64, error) {
 	return ru, rd, nil
 }
 
-func (mc *MongoClient) performDelete(filter bson.D) (int64, error) {
+func (mc *Client) performDelete(filter bson.D) (int64, error) {
 	if mc.ReadOnly {
 		// Simulate deletion by filter
 		return mc.deleteDryRun(filter)
@@ -223,7 +223,7 @@ func (mc *MongoClient) performDelete(filter bson.D) (int64, error) {
 	return deleted, fmt.Errorf("delete from %s.%s failed: %w", coll.Database().Name(), coll.Name(), err)
 }
 
-func (mc *MongoClient) deleteDryRun(filter bson.D) (int64, error) {
+func (mc *Client) deleteDryRun(filter bson.D) (int64, error) {
 	// Only load identifiers for all object that queued to deletion
 	nd := []string{}	// will not be deleted
 	wd := []string{}	// would be deleted
@@ -312,7 +312,7 @@ func (mc *MongoClient) deleteDryRun(filter bson.D) (int64, error) {
 	return int64(len(wd)), nil
 }
 
-func (mc *MongoClient) LoadHostPaths(match dbms.MatchStrFunc) ([]string, error) {
+func (mc *Client) LoadHostPaths(match dbms.MatchStrFunc) ([]string, error) {
 	// Output list of paths belong to the host
 	hostPaths := []string{}
 
@@ -351,7 +351,7 @@ func (mc *MongoClient) LoadHostPaths(match dbms.MatchStrFunc) ([]string, error) 
 }
 
 // loadFieldByPref append to caller output using value of the field from objects matched by filter
-func (mc *MongoClient) loadFieldByFilter(field string, filter *Filter, appendFunc func(any) error) error {
+func (mc *Client) loadFieldByFilter(field string, filter *Filter, appendFunc func(any) error) error {
 	// Get collection handler
 	coll := mc.c.Database(mc.Cfg.ID).Collection(MongoObjsColl)
 

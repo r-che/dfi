@@ -17,7 +17,7 @@ import (
 // CLI/Web/REST clients interface
 //
 
-func (mc *MongoClient) Query(qa *dbms.QueryArgs, retFields []string) (dbms.QueryResults, error) {
+func (mc *Client) Query(qa *dbms.QueryArgs, retFields []string) (dbms.QueryResults, error) {
 	searchType := tools.Tern(len(qa.SP) == 0, "only arguments-based", "full-text")
 
 	log.D("(MongoCli:Query) Running %s search ...", searchType)
@@ -61,7 +61,7 @@ func (mc *MongoClient) Query(qa *dbms.QueryArgs, retFields []string) (dbms.Query
 	return qr, nil
 }
 
-func (mc *MongoClient) GetObjects(ids, retFields []string) (dbms.QueryResults, error) {
+func (mc *Client) GetObjects(ids, retFields []string) (dbms.QueryResults, error) {
 	qr, err := mc.runSearch(MongoObjsColl, &dbms.QueryArgs{}, filterMakeIDs(ids), retFields)
 	if err != nil {
 		return nil, fmt.Errorf("(MongoCli:GetObjects) regex search failed with: %w", err)
@@ -71,7 +71,7 @@ func (mc *MongoClient) GetObjects(ids, retFields []string) (dbms.QueryResults, e
 	return qr, nil
 }
 
-func (mc *MongoClient) runSearch(collName string, qa *dbms.QueryArgs, spFilter *Filter, retFields []string) (dbms.QueryResults, error) {
+func (mc *Client) runSearch(collName string, qa *dbms.QueryArgs, spFilter *Filter, retFields []string) (dbms.QueryResults, error) {
 	// Create a new filter as a clone of the filter with search phrases
 	filter := spFilter.Clone()
 
@@ -96,7 +96,7 @@ func (mc *MongoClient) runSearch(collName string, qa *dbms.QueryArgs, spFilter *
 	return qr, nil
 }
 
-func (mc *MongoClient) aggregateSearch(collName string, filter *Filter, retFields []string,
+func (mc *Client) aggregateSearch(collName string, filter *Filter, retFields []string,
 										variadic ...any) (dbms.QueryResults, error) {
 	// Make pipline for aggregate operation
 	aggrPipeline := mc.makeAggrPipeline(filter, retFields, variadic)
@@ -162,7 +162,7 @@ func (mc *MongoClient) aggregateSearch(collName string, filter *Filter, retField
 	return qr, nil
 }
 
-func (mc *MongoClient) makeAggrPipeline(filter *Filter, retFields []string, variadic []any) mongo.Pipeline {
+func (mc *Client) makeAggrPipeline(filter *Filter, retFields []string, variadic []any) mongo.Pipeline {
 	// Filter-replace pipeline
 	aggrPipeline := mongo.Pipeline{
 		bson.D{{ `$match`, filter.Expr() }},	// apply filter
@@ -198,7 +198,7 @@ func (mc *MongoClient) makeAggrPipeline(filter *Filter, retFields []string, vari
 	return pipelineConfVariadic(filter, aggrPipeline, variadic)
 }
 
-func (mc *MongoClient) delFieldByID(collName, field string, ids []string) (int64, error) {
+func (mc *Client) delFieldByID(collName, field string, ids []string) (int64, error) {
 	// Get collection handler
 	coll := mc.c.Database(mc.Cfg.ID).Collection(collName)
 

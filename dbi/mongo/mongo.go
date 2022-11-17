@@ -32,7 +32,7 @@ var (
 	errNoPrivCfg		=	errors.New("no private configuration")
 )
 
-type MongoClient struct {
+type Client struct {
 	*dbms.CommonClient
 
 	c	*mongo.Client
@@ -46,9 +46,9 @@ type MongoClient struct {
 // Once object to execute Ping only once at client creation
 var ping = &sync.Once{}
 
-func NewClient(dbCfg *dbms.DBConfig) (*MongoClient, error) {
+func NewClient(dbCfg *dbms.DBConfig) (*Client, error) {
 	// Initialize Mongo client
-	mc := &MongoClient{
+	mc := &Client{
 		CommonClient: dbms.NewCommonClient(dbCfg),
 	}
 
