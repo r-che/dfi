@@ -13,7 +13,7 @@ import (
 	"github.com/r-che/log"
 )
 
-func (rc *RedisClient) UpdateObj(fso *types.FSObject) error {
+func (rc *Client) UpdateObj(fso *types.FSObject) error {
 	// Make a key
 	key := RedisObjPrefix + rc.Cfg.CliHost + ":" + fso.FPath
 
@@ -35,7 +35,7 @@ func (rc *RedisClient) UpdateObj(fso *types.FSObject) error {
 	return nil
 }
 
-func (rc *RedisClient) DeleteObj(fso *types.FSObject) error {
+func (rc *Client) DeleteObj(fso *types.FSObject) error {
 	// Make a key
 	key := RedisObjPrefix + rc.Cfg.CliHost + ":" + fso.FPath
 
@@ -52,7 +52,7 @@ func (rc *RedisClient) DeleteObj(fso *types.FSObject) error {
 	return nil
 }
 
-func (rc *RedisClient) DeleteFPathPref(fso *types.FSObject) (int64, error) {
+func (rc *Client) DeleteFPathPref(fso *types.FSObject) (int64, error) {
 	// Make prefix of objects keys
 	pref := RedisObjPrefix + rc.Cfg.CliHost + ":" + fso.FPath + "*"
 
@@ -91,7 +91,7 @@ func (rc *RedisClient) DeleteFPathPref(fso *types.FSObject) (int64, error) {
 	return int64(len(toDel)), nil
 }
 
-func (rc *RedisClient) Commit() (int64, int64, error) {
+func (rc *Client) Commit() (int64, int64, error) {
 	// Reset state on return
 	defer func() {
 		// Reset counters
@@ -124,7 +124,7 @@ func (rc *RedisClient) Commit() (int64, int64, error) {
 	return ru, rd, err
 }
 
-func (rc *RedisClient) performDelete() (int64, error) {
+func (rc *Client) performDelete() (int64, error) {
 	if rc.ReadOnly {
 		return rc.deleteDryRun()
 	}
@@ -142,7 +142,7 @@ func (rc *RedisClient) performDelete() (int64, error) {
 	return res.Val(), nil
 }
 
-func (rc *RedisClient) deleteDryRun() (int64, error) {
+func (rc *Client) deleteDryRun() (int64, error) {
 	// Read-only database mode, count numbers of keys that would have been deleted on normal mode
 	wd := []string{}	// would be deleted
 	nd := []string{}	// will not be deleted
@@ -200,7 +200,7 @@ func (rc *RedisClient) deleteDryRun() (int64, error) {
 		fmt.Errorf("total %d errors occurred during R/O deletion", eCtr))
 }
 
-func (rc *RedisClient) LoadHostPaths(match dbms.MatchStrFunc) ([]string, error) {
+func (rc *Client) LoadHostPaths(match dbms.MatchStrFunc) ([]string, error) {
 	// Make prefix of objects keys
 	pref := RedisObjPrefix + rc.Cfg.CliHost + ":*"
 

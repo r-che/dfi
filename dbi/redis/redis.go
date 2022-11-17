@@ -27,7 +27,7 @@ const (
 	RedisNotFound	=	redis.Nil
 )
 
-type RedisClient struct {
+type Client struct {
 	*dbms.CommonClient
 
 	c	*redis.Client
@@ -38,7 +38,7 @@ type RedisClient struct {
 	deleted		int64
 }
 
-func NewClient(dbCfg *dbms.DBConfig) (*RedisClient, error) {
+func NewClient(dbCfg *dbms.DBConfig) (*Client, error) {
 	// Convert string representation of database identifier to numeric database index
 	dbid, err := strconv.ParseUint(dbCfg.ID, 10, 64)
 	if err != nil {
@@ -52,7 +52,7 @@ func NewClient(dbCfg *dbms.DBConfig) (*RedisClient, error) {
 	}
 
 	// Initialize Redis client
-	rc := &RedisClient{
+	rc := &Client{
 		CommonClient: dbms.NewCommonClient(dbCfg),
 		c: redis.NewClient(&redis.Options{
 			Addr:		dbCfg.HostPort,

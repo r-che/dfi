@@ -79,7 +79,7 @@ func rshSearchAII(cli *rsh.Client, q *rsh.Query) ([]string, error) {
 	return ids, nil
 }
 
-func (rc *RedisClient) rschInit(rschIdx string) (*rsh.Client, error) {
+func (rc *Client) rschInit(rschIdx string) (*rsh.Client, error) {
 	// Read username/password from private data if set
 	user, passw, err := userPasswd(rc.Cfg.PrivCfg)
 	if err != nil {
@@ -314,7 +314,7 @@ func makeSetRangeQuery(field string, min, max int64, set []int64) string {
 // Additional "deep" search mechanism
 //
 
-func (rc *RedisClient) loadIDsByPatterns(qa *dbms.QueryArgs, qrTop dbms.QueryResults) ([]string, error) {
+func (rc *Client) loadIDsByPatterns(qa *dbms.QueryArgs, qrTop dbms.QueryResults) ([]string, error) {
 	// Search for all matching keys
 	var matched []string
 
@@ -353,7 +353,7 @@ func (rc *RedisClient) loadIDsByPatterns(qa *dbms.QueryArgs, qrTop dbms.QueryRes
 	return matched, nil
 }
 
-func (rc *RedisClient) scanSearch(rsc *rsh.Client, qa *dbms.QueryArgs, retFields []string, qrTop dbms.QueryResults) (int, error) {
+func (rc *Client) scanSearch(rsc *rsh.Client, qa *dbms.QueryArgs, retFields []string, qrTop dbms.QueryResults) (int, error) {
 	// Check for empty search phrases
 	if len(qa.SP) == 0 {
 		// Nothing to search using SCAN
@@ -433,7 +433,7 @@ func scanSearchPatterns(qa *dbms.QueryArgs) []string {
 	return patterns
 }
 
-func (rc *RedisClient) scanKeyMatch(match string, filter dbms.MatchStrFunc) ([]string, error) {
+func (rc *Client) scanKeyMatch(match string, filter dbms.MatchStrFunc) ([]string, error) {
 	// Output slice
 	out := []string{}
 

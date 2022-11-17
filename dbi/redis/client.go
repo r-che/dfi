@@ -12,7 +12,7 @@ import (
     rsh "github.com/RediSearch/redisearch-go/redisearch"
 )
 
-func (rc *RedisClient) Query(qa *dbms.QueryArgs, retFields []string) (dbms.QueryResults, error) {
+func (rc *Client) Query(qa *dbms.QueryArgs, retFields []string) (dbms.QueryResults, error) {
 	// Get RediSearch client
 	rsc, err := rc.rschInit(metaRschIdx)
 	if err != nil {
@@ -42,7 +42,7 @@ func (rc *RedisClient) Query(qa *dbms.QueryArgs, retFields []string) (dbms.Query
 	return qr, nil
 }
 
-func (rc *RedisClient) QueryAIIIds(qa *dbms.QueryArgs) ([]string, error) {
+func (rc *Client) QueryAIIIds(qa *dbms.QueryArgs) ([]string, error) {
 	// Get RediSearch client to search by additional information items
 	rsc, err := rc.rschInit(aiiRschIdx)
 	if err != nil {
@@ -78,7 +78,7 @@ func (rc *RedisClient) QueryAIIIds(qa *dbms.QueryArgs) ([]string, error) {
 	return ids, nil
 }
 
-func (rc *RedisClient) GetObjects(ids, retFields []string) (dbms.QueryResults, error) {
+func (rc *Client) GetObjects(ids, retFields []string) (dbms.QueryResults, error) {
 	// Get RediSearch client
 	rsc, err := rc.rschInit(metaRschIdx)
 	if err != nil {

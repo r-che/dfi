@@ -13,7 +13,7 @@ import (
 	"github.com/r-che/log"
 )
 
-func (rc *RedisClient) loadKeysByPrefix(prefix string, appendFunc func(any) error) error {
+func (rc *Client) loadKeysByPrefix(prefix string, appendFunc func(any) error) error {
 	// Keep current termLong value to have ability to compare during long-term operations
 	initTermLong := rc.TermLongVal
 
