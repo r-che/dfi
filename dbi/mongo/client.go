@@ -71,7 +71,8 @@ func (mc *Client) GetObjects(ids, retFields []string) (dbms.QueryResults, error)
 	return qr, nil
 }
 
-func (mc *Client) runSearch(collName string, qa *dbms.QueryArgs, spFilter *Filter, retFields []string) (dbms.QueryResults, error) {
+func (mc *Client) runSearch(collName string, qa *dbms.QueryArgs,
+							spFilter *Filter, retFields []string) (dbms.QueryResults, error) {
 	// Create a new filter as a clone of the filter with search phrases
 	filter := spFilter.Clone()
 
@@ -85,8 +86,8 @@ func (mc *Client) runSearch(collName string, qa *dbms.QueryArgs, spFilter *Filte
 	// query aruments (such mtime, type and so on) using logical AND
 	filter = filter.JoinWithOthers(useAnd, filterMakeByArgs(qa))
 
-	// TODO
-	log.D("(MongoCli:runSearch) Prepared Mongo filter for search in %q: %v", collName, filter)	// XXX Raw query may be too long
+	// XXX Raw query may be too long
+	// log.D("(MongoCli:runSearch) Prepared Mongo filter for search in %q: %v", collName, filter)
 
 	qr, err := mc.aggregateSearch(collName, filter, retFields, qa)
 	if err != nil {

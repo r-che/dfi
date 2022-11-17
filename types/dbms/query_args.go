@@ -203,7 +203,6 @@ func (qa *QueryArgs) parseMtimesRange(mtimeRange string) error {
 }
 
 func (qa *QueryArgs) parseMtimeSet(mtimeSet string) error {
-
 	// Replace each escaped comma by fake delimiter to avoid wrong split of TS containing a comma
 	const fakeDelim = "\u0000|\u0000"
 	mtimeSet = strings.ReplaceAll(mtimeSet, `\,`, fakeDelim)

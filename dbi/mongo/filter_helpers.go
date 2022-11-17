@@ -120,7 +120,6 @@ func filterMakeRegexSP(qa *dbms.QueryArgs) *Filter {
 				)
 			}
 		}
-
 	}
 
 	return spFilter.JoinByOr()
