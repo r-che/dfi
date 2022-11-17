@@ -107,68 +107,12 @@ func (rc *RedisClient) Commit() (int64, int64, error) {
 	if nDel := len(rc.toDelete); nDel != 0 {
 		log.D("(RedisCli:Commit) Need to delete %d keys", nDel)
 
-		if rc.ReadOnly {
-			// Read-only database mode, count numbers of keys that would have been deleted on normal mode
-			wd := []string{}	// would be deleted
-			nd := []string{}	// will not be deleted
-
-			for _, key := range rc.toDelete {
-				res := rc.c.HGet(rc.Ctx, key, dbms.FieldID)
-				err := res.Err()
-				if err == nil {
-					// Ok, key will be deleted
-					wd = append(wd, key)
-					// Try to check the next key
-					continue
-				}
-
-				//
-				// Cannot delete this key, inspect why
-				//
-
-				// Check kind of error
-				if errors.Is(err, RedisNotFound) {
-					log.E("(RedisCli:Commit) HGET (used instead of DEL on R/O mode) for key %q failed: key is not found", key)
-				} else {
-					// Unknown error
-					log.E("(RedisCli:Commit) HGET (used instead of DEL on R/O mode) for key %q failed: %v", key, err)
-				}
-
-				// Anyway - key will NOT be deleted
-				nd = append(nd, key)
-			}
-
-			// Update deleted counter by number of selected keys that would be deleted
-			rc.deleted = int64(len(wd))
-
-			// Check for keys that would be deleted
-			if len(wd) != 0 {
-				// Print warning message about these keys
-				log.W("(RedisCli:Commit) %d key(s) should be deleted but would NOT because R/O mode: %v",
-						len(wd), strings.Join(wd, ", "))
-			}
-
-			// Check for keys that would not be deleted
-			if len(nd) != 0 {
-				// Print warning
-				log.W("(RedisCli:Commit) R/O mode - DEL could NOT delete %d keys because not exist or other errors: %v",
-					len(nd), strings.Join(nd, ", "))
-			}
-
-		} else {
-			// Delete all keys from rc.toDelete slice
-			res := rc.c.Del(rc.Ctx, rc.toDelete...)
-
-			// Check for deletion error
-			// XXX Need to use external err variable here to pass error to the function return values
-			if err = res.Err(); err != nil {
-				// Save error value
-				err = fmt.Errorf("(RedisCli:Commit) DEL operation failed: %w", err)
-			}
-
-			// Update deleted value
-			rc.deleted = res.Val()
+		deleted, err := rc.performDelete()
+		if err != nil {
+			return 0, deleted, fmt.Errorf("(RedisCli:Commit) delete failed: %w", err)
 		}
+
+		rc.deleted += deleted
 
 		log.D("(RedisCli:Commit) Done deletion operation with results: %v",
 			tools.Tern[any](err == nil, "no errors", err))
@@ -178,6 +122,82 @@ func (rc *RedisClient) Commit() (int64, int64, error) {
 	ru, rd := rc.updated, rc.deleted
 
 	return ru, rd, err
+}
+
+func (rc *RedisClient) performDelete() (int64, error) {
+	if rc.ReadOnly {
+		return rc.deleteDryRun()
+	}
+
+	// Delete all keys from rc.toDelete slice
+	res := rc.c.Del(rc.Ctx, rc.toDelete...)
+
+	// Check for deletion error
+	if err := res.Err(); err != nil {
+		// Return error description
+		return res.Val(), fmt.Errorf("(RedisCli:Commit) DEL operation failed: %w", err)
+	}
+
+	// OK, return number of deleted keys
+	return res.Val(), nil
+}
+
+func (rc *RedisClient) deleteDryRun() (int64, error) {
+	// Read-only database mode, count numbers of keys that would have been deleted on normal mode
+	wd := []string{}	// would be deleted
+	nd := []string{}	// will not be deleted
+
+	// Errors counter
+	var eCtr int
+
+	for _, key := range rc.toDelete {
+		res := rc.c.HGet(rc.Ctx, key, dbms.FieldID)
+		err := res.Err()
+		if err == nil {
+			// Ok, key will be deleted
+			wd = append(wd, key)
+			// Try to check the next key
+			continue
+		}
+
+		//
+		// Cannot delete this key, inspect why
+		//
+
+		// Check kind of error
+		if errors.Is(err, RedisNotFound) {
+			log.E("(RedisCli:Commit) HGET (used instead of DEL on R/O mode) for key %q failed: key is not found", key)
+		} else {
+			// Unknown error
+			log.E("(RedisCli:Commit) HGET (used instead of DEL on R/O mode) for key %q failed: %v", key, err)
+
+			// Increase errors counter
+			eCtr++
+		}
+
+		// Anyway - key will NOT be deleted
+		nd = append(nd, key)
+	}
+
+	// Resulted number of keys that would be deleted
+	deleted := int64(len(wd))
+
+	// Check for keys that would be deleted
+	if deleted != 0 {
+		// Print warning message about these keys
+		log.W("(RedisCli:Commit) %d key(s) should be deleted but would NOT because R/O mode: %v",
+				deleted, strings.Join(wd, ", "))
+	}
+
+	// Check for keys that would not be deleted
+	if len(nd) != 0 {
+		// Print warning
+		log.W("(RedisCli:Commit) R/O mode - DEL could NOT delete %d keys because not exist or other errors: %v",
+			len(nd), strings.Join(nd, ", "))
+	}
+
+	return deleted, tools.Tern(eCtr == 0, nil,
+		fmt.Errorf("total %d errors occurred during R/O deletion", eCtr))
 }
 
 func (rc *RedisClient) LoadHostPaths(match dbms.MatchStrFunc) ([]string, error) {
