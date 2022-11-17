@@ -198,7 +198,7 @@ func (mc *MongoClient) makeAggrPipeline(filter *Filter, retFields []string, vari
 	return pipelineConfVariadic(filter, aggrPipeline, variadic)
 }
 
-func (mc *MongoClient) delFieldById(collName, field string, ids []string) (int64, error) {
+func (mc *MongoClient) delFieldByID(collName, field string, ids []string) (int64, error) {
 	// Get collection handler
 	coll := mc.c.Database(mc.Cfg.ID).Collection(collName)
 
@@ -206,11 +206,11 @@ func (mc *MongoClient) delFieldById(collName, field string, ids []string) (int64
 		filterMakeIDs(ids).Expr(),					// set filter
 		bson.D{{`$unset`, bson.D{{field, nil}}}})	// unset field value
 	if err != nil {
-			return 0, fmt.Errorf("(MongoCli:delFieldById) cannot remove field %q from %q: %w", field, ids, err)
+			return 0, fmt.Errorf("(MongoCli:delFieldByID) cannot remove field %q from %q: %w", field, ids, err)
 	}
 
 	if res.MatchedCount == 0 && res.ModifiedCount == 0 {
-		return 0, fmt.Errorf("(MongoCli:delFieldById) updateMany (ids: %v) on %s.%s returned success," +
+		return 0, fmt.Errorf("(MongoCli:delFieldByID) updateMany (ids: %v) on %s.%s returned success," +
 			" but no documents were changed", ids, coll.Database().Name(), coll.Name())
 	}
 

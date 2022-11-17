@@ -261,7 +261,7 @@ The option --mtime accepts a range (see "--docs ranges") bounded by timestamps.
 Allowed timestamp formats are:
 
   * UNIX_TIMESTAMP - unsigned integer value
-  * ` + strings.Join(dbms.TsFormats(), "\n  * ") + `
+  * ` + strings.Join(dbms.TSFormats(), "\n  * ") + `
 
 You can use different formats for the beginning and the end of the range:
 

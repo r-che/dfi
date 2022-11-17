@@ -98,7 +98,7 @@ func (mc *MongoClient) ModifyAII(op dbms.DBOperator, args *dbms.AIIArgs, ids []s
 
 	// Check for all ids were found and create a map with correspondence between the object key and its ID
 	sIds := tools.NewStrSet(ids...)
-	idkm := make(types.IdKeyMap, len(ids))
+	idkm := make(types.IDKeyMap, len(ids))
 	for objKey, r := range qr {
 		id := r[dbms.FieldID].(string)
 
@@ -131,7 +131,7 @@ func (mc *MongoClient) ModifyAII(op dbms.DBOperator, args *dbms.AIIArgs, ids []s
 	}
 }
 
-func (mc *MongoClient) updateAII(args *dbms.AIIArgs, idkm types.IdKeyMap, add bool) (int64, int64, error) {
+func (mc *MongoClient) updateAII(args *dbms.AIIArgs, idkm types.IDKeyMap, add bool) (int64, int64, error) {
 	// Check for no fields required to set
 	if args.Tags == nil && args.Descr == "" {
 		return 0, 0, fmt.Errorf("(MongoCli:updateAII) no fields required to set")
@@ -186,7 +186,7 @@ func (mc *MongoClient) updateAII(args *dbms.AIIArgs, idkm types.IdKeyMap, add bo
 	return mc.setAII(args, idkm, qr)
 }
 
-func (mc *MongoClient) appendAII(args *dbms.AIIArgs, idkm types.IdKeyMap, qr dbms.QueryResults) (int64, int64, error) {
+func (mc *MongoClient) appendAII(args *dbms.AIIArgs, idkm types.IDKeyMap, qr dbms.QueryResults) (int64, int64, error) {
 	var ttu, tdu int64 // total tags/decription updates counters
 
 	// Get collection handler
@@ -252,7 +252,7 @@ func (mc *MongoClient) appendAII(args *dbms.AIIArgs, idkm types.IdKeyMap, qr dbm
 	return ttu, tdu, nil
 }
 
-func (mc *MongoClient) setAII(args *dbms.AIIArgs, idkm types.IdKeyMap, qr dbms.QueryResults) (int64, int64, error) {
+func (mc *MongoClient) setAII(args *dbms.AIIArgs, idkm types.IDKeyMap, qr dbms.QueryResults) (int64, int64, error) {
 	// Need to set tags/descr field to all items
 
 	var ttu, tdu int64	// total tags/total descriptions updated
@@ -325,7 +325,7 @@ func (mc *MongoClient) setAII(args *dbms.AIIArgs, idkm types.IdKeyMap, qr dbms.Q
 	return ttu, tdu, nil
 }
 
-func (mc *MongoClient) setAIIsVals(idkm types.IdKeyMap, fields bson.D) error {
+func (mc *MongoClient) setAIIsVals(idkm types.IDKeyMap, fields bson.D) error {
 	// Get collection handler
 	coll := mc.c.Database(mc.Cfg.ID).Collection(MongoAIIColl)
 
@@ -349,7 +349,7 @@ func (mc *MongoClient) setAIIsVals(idkm types.IdKeyMap, fields bson.D) error {
 	// OK
 	return nil
 }
-func (mc *MongoClient) insertAII(id string, idkm types.IdKeyMap, fields bson.D) error {
+func (mc *MongoClient) insertAII(id string, idkm types.IDKeyMap, fields bson.D) error {
 	// Create a new document
 	doc := bson.D{{`$set`, bson.D{
 		{MongoFieldID,			id},
@@ -384,7 +384,7 @@ func (mc *MongoClient) insertAII(id string, idkm types.IdKeyMap, fields bson.D) 
 	return nil
 }
 
-func (mc *MongoClient) deleteAII(args *dbms.AIIArgs, idkm types.IdKeyMap) (int64, int64, error) {
+func (mc *MongoClient) deleteAII(args *dbms.AIIArgs, idkm types.IDKeyMap) (int64, int64, error) {
 	var err error
 
 	td := int64(0)	// Tags deleted
@@ -419,7 +419,7 @@ func (mc *MongoClient) deleteAII(args *dbms.AIIArgs, idkm types.IdKeyMap) (int64
 	return td, dd, nil
 }
 
-func (mc *MongoClient) delTags(tags []string, idkm types.IdKeyMap) (int64, error) {
+func (mc *MongoClient) delTags(tags []string, idkm types.IDKeyMap) (int64, error) {
 	// Convert list of tags to set to check existing tags for need to be deleted
 	toDelTags := tools.NewStrSet(tags...)
 
@@ -537,7 +537,7 @@ func (mc *MongoClient) clearAIIField(field string, ids []string) (int64, error) 
 	if len(toDelField) != 0 {
 		// Delete them
 		log.D("(MongoClient:clearAIIField) Clearing field %q in: %v", field, toDelField)
-		td, err := mc.delFieldById(MongoAIIColl, field, toDelField)
+		td, err := mc.delFieldByID(MongoAIIColl, field, toDelField)
 		if err != nil {
 			return tc, fmt.Errorf("(MongoClient:clearAIIField) cannot clear: %w", err)
 		}

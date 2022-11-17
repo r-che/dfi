@@ -258,17 +258,17 @@ func showObjMtime(fields dbms.QRItem) {
 		return
 	}
 
-	var mtimeTs int64
+	var mtimeTS int64
 	var err error
 
 	// Type of mtime field is DBMS dependent
 	switch mtime := mtime.(type) {
 	case int64:
-		// Assign value to mtimeTs as is - it is already Unix timestamp
-		mtimeTs = mtime
+		// Assign value to mtimeTS as is - it is already Unix timestamp
+		mtimeTS = mtime
 	case string:
 		// Convert string Unix timestamp to integer value
-		mtimeTs, err = strconv.ParseInt(mtime, 10, 64)
+		mtimeTS, err = strconv.ParseInt(mtime, 10, 64)
 	default:
 		err = fmt.Errorf("unexpected mtime type %T", mtime)
 	}
@@ -276,12 +276,12 @@ func showObjMtime(fields dbms.QRItem) {
 
 	var mtimeStr string	// human-readable representation
 	if err == nil {
-		mtimeStr = time.Unix(mtimeTs, 0).Format("2006-01-02 15:04:05 MST")
+		mtimeStr = time.Unix(mtimeTS, 0).Format("2006-01-02 15:04:05 MST")
 	} else {
 		mtimeStr = fmt.Sprintf(invalidMtimeValueFmt, mtime, err)
-		mtimeTs = -1
+		mtimeTS = -1
 	}
 
 	// Produce output
-	fmt.Printf("MTime:     %s (Unix: %d)\n", mtimeStr, mtimeTs)
+	fmt.Printf("MTime:     %s (Unix: %d)\n", mtimeStr, mtimeTS)
 }

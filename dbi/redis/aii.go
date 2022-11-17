@@ -39,7 +39,7 @@ func (rc *RedisClient) ModifyAII(op dbms.DBOperator, args *dbms.AIIArgs, ids []s
 	nf := tools.NewStrSet(ids...)
 
 	// Create map indentifiers found in DB
-	fids := make(types.IdKeyMap, len(ids))
+	fids := make(types.IDKeyMap, len(ids))
 	for k, v := range qr {
 		id, ok := v[dbms.FieldID]
 		if !ok {
@@ -144,7 +144,7 @@ func (rc *RedisClient) GetAIIs(ids, retFields []string) (dbms.QueryResultsAII, e
 	return result, nil
 }
 
-func (rc *RedisClient) updateAII(args *dbms.AIIArgs, ids types.IdKeyMap, add bool) (int64, int64, error) {
+func (rc *RedisClient) updateAII(args *dbms.AIIArgs, ids types.IDKeyMap, add bool) (int64, int64, error) {
 	var err error
 
 	ttu := int64(0)	// Total tags updated
@@ -180,7 +180,7 @@ func (rc *RedisClient) updateAII(args *dbms.AIIArgs, ids types.IdKeyMap, add boo
 	return ttu, tdu, nil
 }
 
-func (rc *RedisClient) addTags(tags []string, ids types.IdKeyMap) (int64, error) {
+func (rc *RedisClient) addTags(tags []string, ids types.IDKeyMap) (int64, error) {
 	tu := int64(0)	// Total updated tags fields
 
 	// Do for each identifier
@@ -214,7 +214,7 @@ func (rc *RedisClient) addTags(tags []string, ids types.IdKeyMap) (int64, error)
 		}
 
 		// Set tags for the current identifier
-		if _, err := rc.setTags(allTags.List(), types.IdKeyMap{id: objKey}); err != nil {
+		if _, err := rc.setTags(allTags.List(), types.IDKeyMap{id: objKey}); err != nil {
 			return tu, err
 		}
 
@@ -225,7 +225,7 @@ func (rc *RedisClient) addTags(tags []string, ids types.IdKeyMap) (int64, error)
 	return tu, nil
 }
 
-func (rc *RedisClient) setTags(tags []string, ids types.IdKeyMap) (int64, error) {
+func (rc *RedisClient) setTags(tags []string, ids types.IDKeyMap) (int64, error) {
 	// Make tags field value
 	tagsVal := strings.Join(tags, ",")
 
@@ -254,7 +254,7 @@ func (rc *RedisClient) setTags(tags []string, ids types.IdKeyMap) (int64, error)
 	return ts, nil
 }
 
-func (rc *RedisClient) addDescr(descr string, ids types.IdKeyMap, noNL bool) (int64, error) {
+func (rc *RedisClient) addDescr(descr string, ids types.IDKeyMap, noNL bool) (int64, error) {
 	tu := int64(0)	// Total updated description fields
 
 	// Do for each identifier
@@ -284,7 +284,7 @@ func (rc *RedisClient) addDescr(descr string, ids types.IdKeyMap, noNL bool) (in
 		}
 
 		// Set description for the current identifier
-		n, err := rc.setDescr(fullDescr, types.IdKeyMap{id: objKey})
+		n, err := rc.setDescr(fullDescr, types.IDKeyMap{id: objKey})
 		if err != nil {
 			return tu, err
 		}
@@ -296,7 +296,7 @@ func (rc *RedisClient) addDescr(descr string, ids types.IdKeyMap, noNL bool) (in
 	return tu, nil
 }
 
-func (rc *RedisClient) setDescr(descr string, ids types.IdKeyMap) (int64, error) {
+func (rc *RedisClient) setDescr(descr string, ids types.IDKeyMap) (int64, error) {
 	tu := int64(0)	// Total updated description fields
 
 	// Do for each identifier
@@ -342,7 +342,7 @@ func (rc *RedisClient) setAIIField(id, field, value string, objKey types.ObjKey)
 	return nil
 }
 
-func (rc *RedisClient) deleteAII(args *dbms.AIIArgs, ids types.IdKeyMap) (int64, int64, error) {
+func (rc *RedisClient) deleteAII(args *dbms.AIIArgs, ids types.IDKeyMap) (int64, int64, error) {
 	var err error
 
 	td := int64(0)	// Tags deleted
@@ -377,7 +377,7 @@ func (rc *RedisClient) deleteAII(args *dbms.AIIArgs, ids types.IdKeyMap) (int64,
 	return td, dd, nil
 }
 
-func (rc *RedisClient) delTags(tags []string, ids types.IdKeyMap) (int64, error) {
+func (rc *RedisClient) delTags(tags []string, ids types.IDKeyMap) (int64, error) {
 	// Convert list of tags to map to check existing tags for need to be deleted
 	toDelTags := tools.NewStrSet(tags...)
 
@@ -425,7 +425,7 @@ func (rc *RedisClient) delTags(tags []string, ids types.IdKeyMap) (int64, error)
 		}
 
 		// Need to set new value of the tags field without removed tags
-		n, err := rc.setTags(keepTags.List(), types.IdKeyMap{id: objKey})
+		n, err := rc.setTags(keepTags.List(), types.IDKeyMap{id: objKey})
 		if err != nil {
 			return tu, fmt.Errorf("(RedisCli:delTags) cannot remove tags %v from %q: %w", tags, id, err)
 		}

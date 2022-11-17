@@ -60,7 +60,7 @@ func searchDupes(dbc dbms.Client, qa *dbms.QueryArgs) *types.CmdRV {
 	cdm := dupesMapByCSum(refsCSums, qr, rv)
 
 	// Create resulted map with referred object<=>duplicates list pairs
-	objDupes, nd := dupesMapById(refObjs, cdm)
+	objDupes, nd := dupesMapByID(refObjs, cdm)
 
 	// Make an output
 	printDupes(refObjs, objDupes)
@@ -220,8 +220,8 @@ func dupesMapByCSum(refsCSums map[string]csData, qr dbms.QueryResults, rv *types
 	return dm
 }
 
-// dupesMapById creates resulted map with referred object<=>duplicates list pairs
-func dupesMapById(refObjs map[string]*types.FSObject, dm map[string][]dupeInfo) (map[string][]dupeInfo, int64) {
+// dupesMapByID creates resulted map with referred object<=>duplicates list pairs
+func dupesMapByID(refObjs map[string]*types.FSObject, dm map[string][]dupeInfo) (map[string][]dupeInfo, int64) {
 	objDupes := make(map[string][]dupeInfo)
 	// Dupes counter
 	var nd int64

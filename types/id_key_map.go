@@ -6,9 +6,9 @@ import (
 	"strings"
 )
 
-type IdKeyMap map[string]ObjKey
+type IDKeyMap map[string]ObjKey
 
-func (ikm IdKeyMap) String() string {
+func (ikm IDKeyMap) String() string {
 	ids := make([]string, 0, len(ikm))
 	for id := range ikm {
 		ids = append(ids, id)
@@ -18,7 +18,7 @@ func (ikm IdKeyMap) String() string {
 	return "[" + strings.Join(ids, " ") + "]"
 }
 
-func (ikm IdKeyMap) Keys() []string {
+func (ikm IDKeyMap) Keys() []string {
 	ids := make([]string, 0, len(ikm))
 	for id := range ikm {
 		ids = append(ids, id)
@@ -28,7 +28,7 @@ func (ikm IdKeyMap) Keys() []string {
 	return ids
 }
 
-func (ikm IdKeyMap) KeysAny() []any {
+func (ikm IDKeyMap) KeysAny() []any {
 	ids := make([]any, 0, len(ikm))
 	for id := range ikm {
 		ids = append(ids, id)

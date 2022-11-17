@@ -227,7 +227,7 @@ func (qa *QueryArgs) parseMtimeSet(mtimeSet string) error {
 }
 
 // Supported formats of timestamps
-func TsFormats() []string {
+func TSFormats() []string {
 	return []string{
 		// "01/02 03:04:05PM '06 -0700" // The reference time, in numerical order.
 
@@ -281,7 +281,7 @@ func parseTime(timeStr string) (int64, error) {
 	}
 
 	// Try to convert as string representations
-	for _, format := range TsFormats() {
+	for _, format := range TSFormats() {
 		if ts, err := time.Parse(format, timeStr); err == nil {
 			// OK, parsed
 			return ts.Unix(), nil
