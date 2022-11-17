@@ -75,21 +75,24 @@ func tagsUsageMap(qr dbms.QueryResultsAII, tags *tools.StrSet, quiet bool) map[s
 				tt[tag]++
 			}
 		}
-	} else {
-		// Add only specified tags
-		for _, aii := range qr {
-			for _, tag := range aii.Tags {
-				if (*tags)[tag] {
-					tt[tag]++
-				}
+
+		// Return resulted map
+		return tt
+	}
+
+	// Add only specified tags
+	for _, aii := range qr {
+		for _, tag := range aii.Tags {
+			if (*tags)[tag] {
+				tt[tag]++
 			}
 		}
-		// If not quiet mode - need to add any not found but requested tags with zero values
-		if !quiet {
-			for _, tag := range tags.List() {
-				if _, ok := tt[tag]; !ok {
-					tt[tag] = 0
-				}
+	}
+	// If not quiet mode - need to add any not found but requested tags with zero values
+	if !quiet {
+		for _, tag := range tags.List() {
+			if _, ok := tt[tag]; !ok {
+				tt[tag] = 0
 			}
 		}
 	}

@@ -95,17 +95,20 @@ func printStatus(rv *types.CmdRV) int {
 	}
 
 	if !c.Quiet {
+		// All modes except show and search are edit modes
+		editMode := !(c.Show || c.Search)
+		// The show mode can work in special modes: one-line output and show-tags (instead of objects)
+		showSpecialMode := c.Show && (c.OneLine || c.UseTags)
+
+		// Define status prefix
 		pref := tools.Tern(rv.OK(), "OK - ", "")
 
-		if c.Show || c.Search {
-			// Skip status output in show mode with --one-line or --tags keys
-			if c.Show && (c.OneLine || c.UseTags) {
-				// Print nothing
-			} else {
-				fmt.Printf("%s%d objects found\n", pref, rv.Found())
-			}
-		} else {
+		if editMode {
 			fmt.Printf("%s%d changed\n", pref, rv.Changed())
+		} else
+		// Read-only mode - search or show, skip output in the show special mode
+		if !showSpecialMode {
+			fmt.Printf("%s%d objects found\n", pref, rv.Found())
 		}
 	}
 
