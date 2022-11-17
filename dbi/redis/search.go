@@ -52,7 +52,8 @@ func rshSearchAII(cli *rsh.Client, q *rsh.Query) ([]string, error) {
 			return ids, fmt.Errorf("(RedisCli:rshSearchAII) RediSearch returned %d records and failed: %w", len(ids), err)
 		}
 
-		log.D("(RedisCli) Scanned offset: %d .. %d, selected %d (total matched %d)", offset, offset + objsPerQuery, len(docs), total)
+		log.D("(RedisCli) Scanned offset: %d .. %d, selected %d (total matched %d)",
+				offset, offset + objsPerQuery, len(docs), total)
 
 		// Convert scanned documents to output result
 		for _, doc := range docs {
@@ -152,7 +153,8 @@ func rshSearch(cli *rsh.Client, q *rsh.Query, retFields []string) (dbms.QueryRes
 			return qr, fmt.Errorf("(RedisCli:rshSearch) RediSearch returned %d records and failed: %w", len(qr), err)
 		}
 
-		log.D("(RedisCli) Scanned offset: %d .. %d, selected %d (total matched %d)", offset, offset + objsPerQuery, len(docs), total)
+		log.D("(RedisCli) Scanned offset: %d .. %d, selected %d (total matched %d)",
+				offset, offset + objsPerQuery, len(docs), total)
 
 		// Convert scanned documents to output result
 		for _, doc := range docs {
@@ -353,7 +355,8 @@ func (rc *Client) loadIDsByPatterns(qa *dbms.QueryArgs, qrTop dbms.QueryResults)
 	return matched, nil
 }
 
-func (rc *Client) scanSearch(rsc *rsh.Client, qa *dbms.QueryArgs, retFields []string, qrTop dbms.QueryResults) (int, error) {
+func (rc *Client) scanSearch(rsc *rsh.Client, qa *dbms.QueryArgs,
+							retFields []string, qrTop dbms.QueryResults) (int, error) {
 	// Check for empty search phrases
 	if len(qa.SP) == 0 {
 		// Nothing to search using SCAN

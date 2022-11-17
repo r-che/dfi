@@ -55,7 +55,6 @@ func TestStringsSet(t *testing.T) {
 	}
 
 	for testN, test := range tests {
-//func StringsSet(fp *[]string, setName, vals string, allowed ...string) error {
 		// Slice to save result
 		res := []string{}
 		// Run function

@@ -43,7 +43,8 @@ func (rc *Client) ModifyAII(op dbms.DBOperator, args *dbms.AIIArgs, ids []string
 	for k, v := range qr {
 		id, ok := v[dbms.FieldID]
 		if !ok {
-			log.E("(RedisCli:ModifyAII) Loaded invalid object from DB - no ID field (%q) was found: %s:%s", dbms.FieldID, k.Host, k.Path)
+			log.E("(RedisCli:ModifyAII) Loaded invalid object from DB - no ID field (%q) was found: %s:%s",
+					dbms.FieldID, k.Host, k.Path)
 			continue
 		}
 
@@ -61,7 +62,8 @@ func (rc *Client) ModifyAII(op dbms.DBOperator, args *dbms.AIIArgs, ids []string
 	}
 
 	if len(*nf) != 0 {
-		return 0, 0, fmt.Errorf("(RedisCli:ModifyAII) the following identifiers do not exist in DB: %s", strings.Join(nf.List(), " "))
+		return 0, 0, fmt.Errorf("(RedisCli:ModifyAII) the following identifiers do not exist in DB: %s",
+								strings.Join(nf.List(), " "))
 	}
 
 	// 2. Run modification operator
@@ -94,7 +96,8 @@ func (rc *Client) GetAIIIds(withFields []string) ([]string, error) {
 
 		set, err := rc.c.SMembers(rc.Ctx, setKey).Result()
 		if err != nil {
-			return nil, fmt.Errorf("(RedisCli:GetAIIIds) cannot load identifiers of objects with filled %q field: %w", field, err)
+			return nil, fmt.Errorf("(RedisCli:GetAIIIds) cannot load identifiers of objects with filled %q field: %w",
+									field, err)
 		}
 
 		ids.Add(set...)
@@ -280,7 +283,8 @@ func (rc *Client) addDescr(descr string, ids types.IDKeyMap, noNL bool) (int64, 
 
 		// Something went wrong
 		default:
-			return tu, fmt.Errorf("(RedisCli:addDescr) cannot get description field %q for key %q: %w", dbms.AIIFieldDescr, key, err)
+			return tu, fmt.Errorf("(RedisCli:addDescr) cannot get description field %q for key %q: %w",
+									dbms.AIIFieldDescr, key, err)
 		}
 
 		// Set description for the current identifier
@@ -467,7 +471,8 @@ func (rc *Client) clearAIIField(field string, ids []string) (int64, error) {
 
 	// Check for keys to delete
 	if len(toDelKey) != 0 {
-		log.D("(RedisCli:clearAIIField) AII will be deleted because there are no valuable fields than %q: %v", field, toDelKey)
+		log.D("(RedisCli:clearAIIField) AII will be deleted because there are no valuable fields than %q: %v",
+				field, toDelKey)
 
 		res := rc.c.Del(rc.Ctx, toDelKey...)
 		if res.Err() != nil {
@@ -475,7 +480,6 @@ func (rc *Client) clearAIIField(field string, ids []string) (int64, error) {
 		}
 
 		tc += res.Val()
-
 	}
 
 	if len(toDelField) != 0 {

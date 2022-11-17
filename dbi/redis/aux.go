@@ -22,7 +22,8 @@ func (rc *Client) loadKeysByPrefix(prefix string, appendFunc func(any) error) er
 	var sKeys []string
 	var err error
 
-	log.D("(RedisCli:loadKeysByPrefix) Scanning DB for keys with prefix %q, using %d as COUNT value for SCAN operation", prefix, RedisMaxScanKeys)
+	log.D("(RedisCli:loadKeysByPrefix) Scanning DB for keys with prefix %q," +
+									" using %d as COUNT value for SCAN operation", prefix, RedisMaxScanKeys)
 	// Scan keys space prefixed with pref
 	for i := 0; ; i++ {
 		// If value of the termLong was updated - need to terminate long-term operation

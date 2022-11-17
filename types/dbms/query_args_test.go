@@ -99,7 +99,7 @@ func TestParseMtimes(t *testing.T) {
 	const refTS = int64(1136239445)	// "01/02 03:04:05PM '06 -0700"
 
 	//
-	// Test setting of set timestamps, use all avalable formats
+	// Test setting of set timestamps, use all available formats
 	//
 
 	// Slice to collect prepared values of times

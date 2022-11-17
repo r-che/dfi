@@ -47,6 +47,7 @@ linters:
     - ireturn
     - gomoddirectives
     - containedctx
+    - paralleltest
 
 linters-settings:
   # https://github.com/blizzy78/varnamelen#golangci-lint-integration

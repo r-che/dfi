@@ -44,17 +44,20 @@ func TestPrivOwnership(t *testing.T) {
 		}
 
 		// Run function
-		if err = PrivOwnership(testFile); err == nil {
+		err = PrivOwnership(testFile)
+		switch {
+		case err == nil:
 			// Check that no errors wanted
 			if test.wantErr == nil {
 				// Ok, go to the next test
 				continue
 			}
-			//
 			t.Errorf("[%d] case successed, but must not, want error %T (%v)", testN, test.wantErr, test.wantErr)
-		} else if fmt.Sprintf("%T", err) == fmt.Sprintf("%T", test.wantErr) {
+
+		case fmt.Sprintf("%T", err) == fmt.Sprintf("%T", test.wantErr):
 			// Success, expected error
-		} else {
+
+		default:
 			t.Errorf("unexpected error: got - %T (%v), want - %T (%v)", err, err, test.wantErr, test.wantErr)
 		}
 	}
@@ -74,10 +77,11 @@ func TestPrivOwnershipStatFail(t *testing.T) {
 	nxFile := filepath.Join(testFile, "this-file-does-not-exist")
 
 	// Call PrivOwnership
-	switch err := PrivOwnership(nxFile); err.(type) {
-	case nil:
+	err = PrivOwnership(nxFile)
+	switch {
+	case err == nil:
 		t.Errorf("case successed, but must not - returned success for non-existing file %q", nxFile)
-	case *fs.PathError:
+	case errors.As(err, new(*fs.PathError)):
 		// Success, expected error
 	default:
 		t.Errorf("case returned unexpected error type %T (%v), want *fs.PathError", err, err)
@@ -104,10 +108,11 @@ func (ffi *fakeFI) IsDir() bool { return false }
 func (ffi *fakeFI) Sys() any { return nil }
 
 func Test_sysStat(t *testing.T) {
-	switch _, err := sysStat(&fakeFI{}); err.(type) {
-	case *ErrGetOwner:
+	_, err := sysStat(&fakeFI{})
+	switch {
+	case errors.As(err, new(*ErrGetOwner)):
 		// Success, expected error
-	case nil:
+	case err == nil:
 		t.Errorf("no errors on fake interface")
 		t.FailNow()
 	default:
@@ -131,10 +136,11 @@ func Test_sysStat_fail(t *testing.T) {
 	}
 
 	// Now, test ownership of this file
-	switch err := PrivOwnership(testFile); err.(type) {
-	case nil:
+	err = PrivOwnership(testFile)
+	switch {
+	case err == nil:
 		t.Errorf("PrivOwnership does not catch invalid file ownership")
-	case *ErrGetOwner:
+	case errors.As(err, new(*ErrGetOwner)):
 		// Success, expected error
 	default:
 		t.Errorf("want the incorrect ownership error, got - %T (%v)", err, err)
@@ -145,6 +151,7 @@ func Test_sysStat_fail(t *testing.T) {
 // Auxiliary functions
 //
 
+//nolint:cyclop // Simplifying the code will not make it clearer
 func getTestFile(ownerOk, modeOk bool) (string, bool, error) {
 	// Need to get current effective user ID
 	uid := os.Geteuid()

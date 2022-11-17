@@ -81,8 +81,8 @@ func userPasswd(pcf map[string]any) (string, string, error) {
 		if user, ok := v.(string); ok {
 			return user, nil
 		}
-		return "", fmt.Errorf(`(RedisCli:userPasswd) invalid type of %q field in private configuration, got %T, wanted string`,
-			field, v)
+		return "", fmt.Errorf(`(RedisCli:userPasswd) invalid type of %q field in private configuration,` +
+								` got %T, wanted string`, field, v)
 	}
 
 	// Extract username/password values
