@@ -172,9 +172,6 @@ func (mc *MongoClient) Commit() (int64, int64, error) {
 		mc.toDelete = nil
 	}()
 
-	// Get collection handler
-	coll := mc.c.Database(mc.Cfg.ID).Collection(MongoObjsColl)
-
 	// Create filter by identifiers
 	filter := bson.D{{
 		MongoFieldID, bson.D{{ `$in`, mc.toDelete }},
@@ -184,28 +181,12 @@ func (mc *MongoClient) Commit() (int64, int64, error) {
 	if nDel := len(mc.toDelete); nDel != 0 {
 		log.D("(MongoCli:Commit) Need to delete %d keys", nDel)
 
-		if mc.ReadOnly {
-			// Simulate deletion by filter
-			toDel, err := mc.deleteDryRun(filter)
-
-			// Check for error
-			if err != nil {
-				return 0, toDel, fmt.Errorf("(MongoCli:Commit) deletion simulation (R/O mode) failed: %w", err)
-			}
-		} else {
-			// Perform deletion
-			res, err := coll.DeleteMany(mc.Ctx, filter)
-			if err != nil {
-				deleted := int64(0)
-				if res != nil {
-					deleted = res.DeletedCount
-				}
-				return 0, deleted, fmt.Errorf("(MongoCli:Commit) Delete from %s.%s failed: %w",
-					coll.Database().Name(), coll.Name(), err)
-			}
-
-			mc.deleted = res.DeletedCount
+		deleted, err := mc.performDelete(filter)
+		if err != nil {
+			return 0, deleted, fmt.Errorf("(MongoCli:Commit) delete failed: %w", err)
 		}
+
+		mc.deleted += deleted
 
 		log.D("(MongoCli:Commit) Done deletion operation")
 	}
@@ -214,6 +195,32 @@ func (mc *MongoClient) Commit() (int64, int64, error) {
 	ru, rd := mc.updated, mc.deleted
 
 	return ru, rd, nil
+}
+
+func (mc *MongoClient) performDelete(filter bson.D) (int64, error) {
+	if mc.ReadOnly {
+		// Simulate deletion by filter
+		return mc.deleteDryRun(filter)
+	}
+
+	// Get collection handler
+	coll := mc.c.Database(mc.Cfg.ID).Collection(MongoObjsColl)
+
+	// Perform deletion
+	res, err := coll.DeleteMany(mc.Ctx, filter)
+
+	// Is operation successful?
+	if err == nil {
+		return res.DeletedCount, nil
+	}
+
+	// Operation is not successful, try to extract number of deleted documents
+	deleted := int64(0)
+	if res != nil {
+		deleted = res.DeletedCount
+	}
+
+	return deleted, fmt.Errorf("delete from %s.%s failed: %w", coll.Database().Name(), coll.Name(), err)
 }
 
 func (mc *MongoClient) deleteDryRun(filter bson.D) (int64, error) {
@@ -236,7 +243,7 @@ func (mc *MongoClient) deleteDryRun(filter bson.D) (int64, error) {
 	//
 	defer func() {
 		if err := cursor.Close(mc.Ctx); err != nil {
-			log.E("(MongoCli:Commit) cannot close cursor: %v", err)
+			log.E("(MongoCli:Commit:deleteDryRun) cannot close cursor: %v", err)
 		}
 	}()
 
@@ -266,7 +273,7 @@ func (mc *MongoClient) deleteDryRun(filter bson.D) (int64, error) {
 		// Extract ID field
 		id, ok := item[MongoFieldID]
 		if !ok {
-			log.E("(MongoCli:Commit) Cannot convert object identifier to string, skip: %#v", item)
+			log.E("(MongoCli:Commit:deleteDryRun) Cannot convert object identifier to string, skip: %#v", item)
 			continue
 		}
 
