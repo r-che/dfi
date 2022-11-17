@@ -137,10 +137,7 @@ func (qa *QueryArgs) UseAII() bool {
 	return qa.UseTags || qa.UseDescr
 }
 
-func (qa *QueryArgs) ParseMtimes(notSet, mtimeLine string) error {
-	if mtimeLine == notSet {
-		return nil
-	}
+func (qa *QueryArgs) ParseMtimes(mtimeLine string) error {
 	// Possible variants:
 	// * ts1[,ts2,ts3...]
 	// * ts1..ts2
@@ -294,10 +291,7 @@ func parseTime(timeStr string) (int64, error) {
 	return -1, fmt.Errorf("cannot parse time %q", timeStr)
 }
 
-func (qa *QueryArgs) ParseSizes(notSet, sizeLine string) error {
-	if sizeLine == notSet {
-		return nil
-	}
+func (qa *QueryArgs) ParseSizes(sizeLine string) error {
 	// Possible variants:
 	// * size1[,size2,size3...]
 	// * size1..size2
@@ -415,35 +409,19 @@ func parseSize(sizeStr string) (int64, error) {
 	return size * multiplier, nil
 }
 
-func (qa *QueryArgs) ParseTypes(notSet, val string, allowed []string) error {
-	if val == notSet {
-		return nil
-	}
-
+func (qa *QueryArgs) ParseTypes(val string, allowed []string) error {
 	return parse.StringsSet(&qa.Types, "type", val, allowed...)
 }
 
-func (qa *QueryArgs) ParseSums(notSet, val string) error {
-	if val == notSet {
-		return nil
-	}
-
+func (qa *QueryArgs) ParseSums(val string) error {
 	return parse.StringsSet(&qa.CSums, "checksum", val)
 }
 
-func (qa *QueryArgs) ParseHosts(notSet, val string) error {
-	if val == notSet {
-		return nil
-	}
-
+func (qa *QueryArgs) ParseHosts(val string) error {
 	return parse.StringsSet(&qa.Hosts, "host", val)
 }
 
-func (qa *QueryArgs) ParseAIIFields(notSet, val string, allowed []string) error {
-	if val == notSet {
-		return nil
-	}
-
+func (qa *QueryArgs) ParseAIIFields(val string, allowed []string) error {
 	return parse.StringsSet(&qa.AIIFields, "field name", val, allowed...)
 }
 

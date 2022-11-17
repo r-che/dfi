@@ -246,32 +246,45 @@ func (pc *progConfig) prepareSearchCmdArgs() error {
 	return nil
 }
 
+//nolint:cyclop	// Simplifying the code here makes it harder to support
 func (pc *progConfig) prepareSearchOptsArgs() error {
-	if err := pc.QA.ParseMtimes(anyVal, pc.strMtime); err != nil {
-		return err
+	if pc.strMtime != anyVal {
+		if err := pc.QA.ParseMtimes(pc.strMtime); err != nil {
+			return err
+		}
 	}
 
-	if err := pc.QA.ParseSizes(anyVal, pc.strSize); err != nil {
-		return err
+	if pc.strSize != anyVal {
+		if err := pc.QA.ParseSizes(pc.strSize); err != nil {
+			return err
+		}
 	}
 
-	if err := pc.QA.ParseTypes(anyVal, pc.oTypes, knownTypes); err != nil {
-		return err
+	if pc.oTypes != anyVal {
+		if err := pc.QA.ParseTypes(pc.oTypes, knownTypes); err != nil {
+			return err
+		}
 	}
 
-	if err := pc.QA.ParseSums(anyVal, pc.csums); err != nil {
-		return err
+	if pc.csums != anyVal {
+		if err := pc.QA.ParseSums(pc.csums); err != nil {
+			return err
+		}
 	}
 
-	if err := pc.QA.ParseHosts(anyVal,
-		// Convert hostname to lower case to avoid the need for a case-insensitive search in DB
-		strings.ToLower(pc.hosts),
-	); err != nil {
-		return err
+	if pc.hosts != anyVal {
+		if err := pc.QA.ParseHosts(
+			// Convert hostname to lower case to avoid the need for a case-insensitive search in DB
+			strings.ToLower(pc.hosts),
+		); err != nil {
+			return err
+		}
 	}
 
-	if err := pc.QA.ParseAIIFields(anyVal, pc.aiiFields, dbms.UVAIIFields()); err != nil {
-		return err
+	if pc.aiiFields != anyVal {
+		if err := pc.QA.ParseAIIFields(pc.aiiFields, dbms.UVAIIFields()); err != nil {
+			return err
+		}
 	}
 
 	// OK
