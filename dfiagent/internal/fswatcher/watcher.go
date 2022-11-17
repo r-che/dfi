@@ -29,7 +29,11 @@ const (
 
 	// OS dependent path separator
 	pathSeparator	=	string(os.PathSeparator)
+
 )
+
+// FS object of unsupported type
+var errUnsupportedType = errors.New("unsupported type of object")
 
 type Watcher struct {
 	// Startup variables
@@ -234,7 +238,7 @@ func (w *Watcher) flushCached() error {
 		case EvCreate, EvWrite:
 			// Get filesystem information about an object
 			oInfo, err := getObjectInfo(ePath)
-			if err != nil {
+			if err != nil && !errors.Is(err, errUnsupportedType) {
 				log.E("(Watcher:%s) Skip object %q due to an error in obtaining information about it: %v",
 					w.path, ePath, err)
 				continue

@@ -60,8 +60,7 @@ func getObjectInfo(name string) (*types.FSObject, error) {
 
 	// Unsupported filesystem object type
 	default:
-		// Skip it without notifications/errors
-		return nil, nil
+		return nil, errUnsupportedType
 	}
 
 	return &fso, nil

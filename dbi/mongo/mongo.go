@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"strings"
 	"sync"
+	"errors"
 
 //	"github.com/r-che/dfi/types"
 	"github.com/r-che/dfi/types/dbms"
@@ -22,7 +23,14 @@ const (
 	MongoAIIColl		=	"aii"
 )
 
-var objMandatoryFields = []string{dbms.FieldHost, dbms.FieldFPath}
+
+var (
+	// Mandatory fields that should be present in all query results
+	objMandatoryFields = []string{dbms.FieldHost, dbms.FieldFPath}
+
+	// Sentinel error to return when no private configuration provided
+	errNoPrivCfg		=	errors.New("no private configuration")
+)
 
 type MongoClient struct {
 	*dbms.CommonClient
@@ -44,17 +52,21 @@ func NewClient(dbCfg *dbms.DBConfig) (*MongoClient, error) {
 		CommonClient: dbms.NewCommonClient(dbCfg),
 	}
 
+	// Create client options to connect
+	opts := options.Client().
+		ApplyURI(dbCfg.HostPort)
+
 	// Check for credentials options
-	creds, err := parsePrivCfg(dbCfg.PrivCfg)
-	if err != nil {
+	if creds, err := parsePrivCfg(dbCfg.PrivCfg); err == nil {
+		opts.SetAuth(*creds)
+	} else
+	// Check error is not - no private configuration
+	if !errors.Is(err, errNoPrivCfg) {
+		// Some critical error
 		return nil, err
 	}
 
-	// Create client options to connect
-	opts := options.Client().
-		ApplyURI(dbCfg.HostPort).
-		SetAuth(*creds)
-
+	var err error
 	if mc.c, err = mongo.Connect(mc.Ctx, opts); err != nil {
 		return nil, fmt.Errorf("(MongoCli:NewClient) cannot create new client to %s: %w", dbCfg.HostPort, err)
 	}
@@ -83,7 +95,7 @@ func parsePrivCfg(pcf map[string]any) (creds *options.Credential, err error) {
 	// Check for empty configuration
 	if pcf == nil {
 		// OK, just return nothing
-		return nil, nil
+		return nil, errNoPrivCfg
 	}
 
 	// Setting configuration parameter using reflect.Set may raise panic, need to handle it
