@@ -263,7 +263,7 @@ func (mc *Client) deleteDryRun(filter bson.D) (int64, error) {
 		var item map[string]string
 		// Try to decode next cursor value to the item
 		if err := cursor.Decode(&item); err != nil {
-			log.E("(MongoCli:Commit) R/O mode, loading suitable to deletion object - cannot decode cursor item: %w", err)
+			log.E("(MongoCli:Commit) R/O mode, loading suitable to deletion object - cannot decode cursor item: %v", err)
 			// All identifers will NOT be deleted
 			nd = append(nd, mc.toDelete...)
 			// Break cursor loop

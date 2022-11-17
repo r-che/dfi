@@ -56,19 +56,6 @@ linters-settings:
 
   # https://golangci-lint.run/usage/linters/#govet
   govet:
-    settings:
-      printf:
-        funcs:
-          - (github.com/r-che/log).D
-          - (github.com/r-che/log).I
-          - (github.com/r-che/log).W
-          - (github.com/r-che/log).E
-          - (github.com/r-che/log).F
-          - (github.com/r-che/log).Debug
-          - (github.com/r-che/log).Info
-          - (github.com/r-che/log).Warn
-          - (github.com/r-che/log).Err
-          - (github.com/r-che/log).Fatal
     disable:
       # Disabled to keep from going crazy in packages working with MongoDB
       - composites
