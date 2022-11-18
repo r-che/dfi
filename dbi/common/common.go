@@ -1,8 +1,8 @@
 package common
 
 import (
-	"fmt"
 	"crypto/sha1"
+	"fmt"
 
 	"github.com/r-che/dfi/types"
 )

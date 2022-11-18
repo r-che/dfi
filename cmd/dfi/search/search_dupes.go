@@ -3,9 +3,9 @@ package search
 import (
 	"strings"
 
+	"github.com/r-che/dfi/cmd/dfi/internal/cfg"
 	"github.com/r-che/dfi/types"
 	"github.com/r-che/dfi/types/dbms"
-	"github.com/r-che/dfi/cmd/dfi/internal/cfg"
 )
 
 // Data corresponding to checksum of some object

@@ -3,12 +3,12 @@ package redis
 
 import (
 	"fmt"
-	"strings"
 	"strconv"
+	"strings"
 
+	"github.com/r-che/dfi/dbi/common"
 	"github.com/r-che/dfi/types"
 	"github.com/r-che/dfi/types/dbms"
-	"github.com/r-che/dfi/dbi/common"
 
 	"github.com/r-che/log"
 )

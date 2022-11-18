@@ -7,9 +7,10 @@ import (
 	"errors"
 
 	"github.com/r-che/dfi/common/tools"
-	"github.com/r-che/log"
 	"github.com/r-che/dfi/types"
 	"github.com/r-che/dfi/types/dbms"
+
+	"github.com/r-che/log"
 
     rsh "github.com/RediSearch/redisearch-go/redisearch"
 )

@@ -2,15 +2,16 @@
 package redis
 
 import (
-	"fmt"
-	"strings"
-	"strconv"
 	"errors"
+	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/r-che/dfi/types"
 	"github.com/r-che/dfi/types/dbms"
 
 	"github.com/r-che/log"
+
 	"github.com/gomodule/redigo/redis"
     rsh "github.com/RediSearch/redisearch-go/redisearch"
 )

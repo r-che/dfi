@@ -3,13 +3,14 @@ package cfg
 import (
 	"fmt"
 	stdLog "log"
-	"strings"
-	"path/filepath"
 	"os"
+	"path/filepath"
+	"strings"
 
-	"github.com/r-che/log"
 	"github.com/r-che/dfi/types"
 	"github.com/r-che/dfi/types/dbms"
+
+	"github.com/r-che/log"
 	"github.com/r-che/optsparser"
 )
 

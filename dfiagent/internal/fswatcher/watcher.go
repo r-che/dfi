@@ -1,16 +1,16 @@
 package fswatcher
 
 import (
-	"fmt"
-	"path/filepath"
-	"time"
-	"os"
-	"strings"
 	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
 
+	"github.com/r-che/dfi/common/tools"
 	"github.com/r-che/dfi/types"
 	"github.com/r-che/dfi/types/dbms"
-	"github.com/r-che/dfi/common/tools"
 
 	"github.com/r-che/log"
 

@@ -2,8 +2,8 @@ package cfg
 
 import (
 	"fmt"
-	"time"
 	"os"
+	"time"
 
 	"github.com/r-che/dfi/types/dbms"
 

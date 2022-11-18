@@ -1,17 +1,17 @@
 package cleanup
 
 import (
-	"fmt"
-	"strings"
 	"errors"
-	"os"
+	"fmt"
 	"io/fs"
+	"os"
+	"strings"
 
-	"github.com/r-che/log"
-	"github.com/r-che/dfi/types"
-	"github.com/r-che/dfi/types/dbms"
 	"github.com/r-che/dfi/dbi"
 	"github.com/r-che/dfi/dfiagent/internal/cfg"
+	"github.com/r-che/dfi/types"
+	"github.com/r-che/dfi/types/dbms"
+	"github.com/r-che/log"
 )
 
 func Run() error {

@@ -1,9 +1,9 @@
 package tools
 
 import (
-	"testing"
 	"reflect"
 	"sort"
+	"testing"
 )
 
 // stp - "set test prameters"

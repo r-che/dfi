@@ -1,11 +1,11 @@
 package cfg
 
 import (
-	"fmt"
-	"os"
-	"errors"
-	"io/fs"
 	"encoding/json"
+	"errors"
+	"fmt"
+	"io/fs"
+	"os"
 
 	"github.com/r-che/dfi/common/fschecks"
 	"github.com/r-che/dfi/types/dbms"

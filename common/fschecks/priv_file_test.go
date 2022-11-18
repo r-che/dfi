@@ -2,14 +2,14 @@
 package fschecks
 
 import (
-	"fmt"
-	"testing"
-	"os"
-	"io/fs"
-	"time"
-	"syscall"
 	"errors"
+	"fmt"
+	"io/fs"
+	"os"
 	"path/filepath"
+	"syscall"
+	"testing"
+	"time"
 )
 
 var tests = []struct{

@@ -1,14 +1,14 @@
 package fswatcher
 
 import (
-	"fmt"
-	"os"
-	"io/fs"
 	"crypto/sha1"
+	"fmt"
 	"io"
+	"io/fs"
+	"os"
 
-	"github.com/r-che/dfi/types"
 	"github.com/r-che/dfi/dfiagent/internal/cfg"
+	"github.com/r-che/dfi/types"
 
 	"github.com/r-che/log"
 )

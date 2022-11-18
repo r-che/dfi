@@ -1,9 +1,9 @@
 package dbms
 
 import (
-	"testing"
-	"sort"
 	"reflect"
+	"sort"
+	"testing"
 )
 
 func TestUVObjFields(t *testing.T) {

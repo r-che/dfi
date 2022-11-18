@@ -3,8 +3,9 @@ package dbms
 import (
 	"fmt"
 	"strings"
-	"github.com/r-che/dfi/types"
+
 	"github.com/r-che/dfi/common/parse"
+	"github.com/r-che/dfi/types"
 )
 
 // Agent client interface

@@ -2,8 +2,8 @@
 package dbi
 
 import (
-	"github.com/r-che/dfi/types/dbms"
 	"github.com/r-che/dfi/dbi/redis"
+	"github.com/r-che/dfi/types/dbms"
 )
 
 func NewClientController(dbCfg *dbms.DBConfig) (dbms.ClientController, error) {

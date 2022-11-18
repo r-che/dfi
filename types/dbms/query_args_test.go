@@ -2,9 +2,9 @@ package dbms
 
 import (
 	"fmt"
-	"testing"
 	"reflect"
 	"strings"
+	"testing"
 	"time"
 
 	"github.com/r-che/dfi/types"

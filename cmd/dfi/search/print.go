@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/r-che/dfi/types"
 	"github.com/r-che/dfi/cmd/dfi/internal/cfg"
+	"github.com/r-che/dfi/types"
 )
 
 func printDupes(refObjs map[string]*types.FSObject, dm map[string][]dupeInfo) {

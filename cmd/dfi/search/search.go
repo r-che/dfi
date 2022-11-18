@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/r-che/dfi/cmd/dfi/internal/cfg"
 	"github.com/r-che/dfi/types"
 	"github.com/r-che/dfi/types/dbms"
-	"github.com/r-che/dfi/cmd/dfi/internal/cfg"
 )
 
 //nolint:cyclop // Here simplification of the code does not make it clear

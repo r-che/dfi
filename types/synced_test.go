@@ -1,10 +1,10 @@
 package types
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"testing"
-	"errors"
 )
 
 func makeSyncMap() (*SyncMap, map[string]any) {

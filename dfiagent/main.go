@@ -3,10 +3,10 @@ package main
 import (
 	stdLog "log"
 
+	"github.com/r-che/dfi/dbi"
 	"github.com/r-che/dfi/dfiagent/internal/cfg"
 	"github.com/r-che/dfi/dfiagent/internal/cleanup"
 	"github.com/r-che/dfi/dfiagent/internal/fswatcher"
-	"github.com/r-che/dfi/dbi"
 
 	"github.com/r-che/log"
 )

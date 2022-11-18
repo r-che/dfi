@@ -1,14 +1,14 @@
 package cfg
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 	"time"
-	"os"
-	"encoding/json"
 
-	"github.com/r-che/dfi/types/dbms"
 	"github.com/r-che/dfi/common/fschecks"
+	"github.com/r-che/dfi/types/dbms"
 )
 
 type progConfig struct {

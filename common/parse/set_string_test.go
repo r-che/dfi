@@ -1,8 +1,8 @@
 package parse
 
 import (
-	"testing"
 	"reflect"
+	"testing"
 )
 
 func TestStringsSet(t *testing.T) {
