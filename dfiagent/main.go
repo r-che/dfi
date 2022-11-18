@@ -14,7 +14,8 @@ import (
 const (
 	ProgName		=	`dfiagent`
 	ProgNameLong	=	`Distributed File Indexer agent`
-	ProgVers		=	`0.1`
+	versMilestone	=	`-alpha.1`
+	ProgVers		=	`0.1` + versMilestone
 )
 
 func main() {
