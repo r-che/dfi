@@ -248,7 +248,7 @@ func (mc *Client) deleteDryRun(filter bson.D) (int64, error) {
 	}()
 
 	// Make a set from keys that should be deleted
-	dset := tools.NewStrSet(mc.toDelete...)
+	dset := tools.NewSet(mc.toDelete...)
 
 	// Keep current termLong value to have ability to compare during long-term operations
 	initTermLong := mc.TermLongVal
@@ -285,12 +285,12 @@ func (mc *Client) deleteDryRun(filter bson.D) (int64, error) {
 		} else {
 			// Something strange - unexpected ID would be deleted
 			log.E("(MongoCli:Commit) Delete (R/O mode) unexpected object would be deleted - id: %s, expected list: %v",
-				id, dset.List())
+				id, dset.Sorted())
 		}
 	}
 
 	// All identifiers from dset - would NOT be deleted
-	nd = append(nd, dset.List()...)
+	nd = append(nd, dset.Sorted()...)
 
 	// Update deleted counter by number of selected keys that would be deleted
 	mc.deleted += int64(len(wd))

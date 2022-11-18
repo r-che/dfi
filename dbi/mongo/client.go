@@ -178,9 +178,9 @@ func (mc *Client) makeAggrPipeline(filter *Filter, retFields []string, variadic 
 	// Is requested fields not empty?
 	if len(fields) != 0 {
 		// Check for some field required to creation of object key was not added
-		if kfSet := tools.NewStrSet(objMandatoryFields...).Del(retFields...); !kfSet.Empty() {
+		if kfSet := tools.NewSet(objMandatoryFields...).Del(retFields...); !kfSet.Empty() {
 			// Add these fields to request
-			for _, field := range kfSet.List() {
+			for _, field := range kfSet.Sorted() {
 				fields = append(fields, bson.E{Key: field, Value: 1})
 			}
 		}

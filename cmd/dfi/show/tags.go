@@ -15,7 +15,7 @@ func showTags(dbc dbms.Client) *types.CmdRV {
 	// Get configuration
 	c := cfg.Config()
 	// Get tags list specified from command line
-	tags := tools.NewStrSet(c.CmdArgs...)
+	tags := tools.NewSet(c.CmdArgs...)
 
 	// Function's return value
 	rv := types.NewCmdRV()
@@ -63,7 +63,7 @@ func showTags(dbc dbms.Client) *types.CmdRV {
 	return rv.AddFound(int64(len(tt)))
 }
 
-func tagsUsageMap(qr dbms.QueryResultsAII, tags *tools.StrSet, quiet bool) map[string]int {
+func tagsUsageMap(qr dbms.QueryResultsAII, tags tools.Set[string], quiet bool) map[string]int {
 	// Map with tag<=>times
 	tt := map[string]int{}
 
@@ -83,14 +83,14 @@ func tagsUsageMap(qr dbms.QueryResultsAII, tags *tools.StrSet, quiet bool) map[s
 	// Add only specified tags
 	for _, aii := range qr {
 		for _, tag := range aii.Tags {
-			if (*tags)[tag] {
+			if tags[tag] {
 				tt[tag]++
 			}
 		}
 	}
 	// If not quiet mode - need to add any not found but requested tags with zero values
 	if !quiet {
-		for _, tag := range tags.List() {
+		for _, tag := range tags.Sorted() {
 			if _, ok := tt[tag]; !ok {
 				tt[tag] = 0
 			}

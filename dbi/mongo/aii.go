@@ -97,7 +97,7 @@ func (mc *Client) ModifyAII(op dbms.DBOperator, args *dbms.AIIArgs, ids []string
 	}
 
 	// Check for all ids were found and create a map with correspondence between the object key and its ID
-	sIds := tools.NewStrSet(ids...)
+	sIds := tools.NewSet(ids...)
 	idkm := make(types.IDKeyMap, len(ids))
 	for objKey, r := range qr {
 		id := r[dbms.FieldID].(string)
@@ -109,10 +109,10 @@ func (mc *Client) ModifyAII(op dbms.DBOperator, args *dbms.AIIArgs, ids []string
 		idkm[id] = objKey
 	}
 
-	if len(*sIds) != 0 {
+	if !sIds.Empty() {
 		// Some identifiers were not found
 		return 0, 0, fmt.Errorf("(MongoCli:ModifyAII) the following identifiers do not exist in DB: %s",
-			strings.Join(sIds.List(), " "))
+			strings.Join(sIds.Sorted(), " "))
 	}
 
 	log.D("(MongoCli:ModifyAII) OK - all required objects exist")
@@ -258,7 +258,7 @@ func (mc *Client) setAII(args *dbms.AIIArgs, idkm types.IDKeyMap, qr dbms.QueryR
 	var ttu, tdu int64	// total tags/total descriptions updated
 
 	// Make a set with identifiers for which no records were found in the AII collection
-	needInsert := tools.NewStrSet(idkm.Keys()...)	// put all identifiers scheduled to update
+	needInsert := tools.NewSet(idkm.Keys()...)	// put all identifiers scheduled to update
 	// Then remove the existing ones in the AII collection
 	for _, v := range qr {
 		needInsert.Del(v[dbms.FieldID].(string))
@@ -274,7 +274,7 @@ func (mc *Client) setAII(args *dbms.AIIArgs, idkm types.IDKeyMap, qr dbms.QueryR
 		// Append tags
 		fields = append(fields, bson.E{`$set`, bson.D{{dbms.AIIFieldTags, args.Tags}}})
 		// Update counter
-		ttu = int64(len(idkm) - len(*needInsert))
+		ttu = int64(len(idkm) - needInsert.Len())
 	}
 
 	// Is description provided?
@@ -282,20 +282,20 @@ func (mc *Client) setAII(args *dbms.AIIArgs, idkm types.IDKeyMap, qr dbms.QueryR
 		// Append description
 		fields = append(fields, bson.E{`$set`, bson.D{{dbms.AIIFieldDescr, args.Descr}}})
 		// Update counter
-		tdu = int64(len(idkm) - len(*needInsert))
+		tdu = int64(len(idkm) - needInsert.Len())
 	}
 
 	// Check that NOT all AII have to be inserted - some need to be updated
-	if len(*needInsert) != len(idkm) {
+	if needInsert.Len() != len(idkm) {
 		if err := mc.setAIIsVals(idkm, fields); err != nil {
 			return 0, 0, fmt.Errorf("(MongoCli:setAII) %w", err)
 		}
 	}
 
-	log.D("(MongoCli:setAII) %d AII record(s) were successfully set", len(idkm) - len(*needInsert))
+	log.D("(MongoCli:setAII) %d AII record(s) were successfully set", len(idkm) - needInsert.Len())
 
 	// Check for nothing to insert
-	if len(*needInsert) == 0 {
+	if needInsert.Empty() {
 		// OK, no insertions required
 		return ttu, tdu, nil
 	}
@@ -307,7 +307,7 @@ func (mc *Client) setAII(args *dbms.AIIArgs, idkm types.IDKeyMap, qr dbms.QueryR
 	log.D("(MongoCli:setAII) Inserting new AII records...")
 
 	// Update/Insert AII, do this one by one because UpdateMany() does not support SetUpsert(true) option
-	for _, id := range needInsert.List() {
+	for _, id := range needInsert.Sorted() {
 		// Insert one document
 		if err := mc.insertAII(id, idkm, fields); err != nil {
 			return ttu, tdu, fmt.Errorf("(MongoCli:setAII) %w", err)
@@ -319,7 +319,7 @@ func (mc *Client) setAII(args *dbms.AIIArgs, idkm types.IDKeyMap, qr dbms.QueryR
 		tdu += tools.Tern(args.Descr != "", int64(1), 0)
 	}
 
-	log.D("(MongoCli:setAII) %d AII record(s) were successfully inserted", len(*needInsert))
+	log.D("(MongoCli:setAII) %d AII record(s) were successfully inserted", needInsert.Len())
 
 	// OK
 	return ttu, tdu, nil
@@ -421,7 +421,7 @@ func (mc *Client) deleteAII(args *dbms.AIIArgs, idkm types.IDKeyMap) (int64, int
 
 func (mc *Client) delTags(tags []string, idkm types.IDKeyMap) (int64, error) {
 	// Convert list of tags to set to check existing tags for need to be deleted
-	toDelTags := tools.NewStrSet(tags...)
+	toDelTags := tools.NewSet(tags...)
 
 	tu := int64(0) // Total changed values of tags fields
 
@@ -513,7 +513,7 @@ func (mc *Client) clearAIIField(field string, ids []string) (int64, error) {
 	// Enumerate all resuts to check that all fields except identifier + required fields need to be deleted
 	for _, aii := range qr {
 		// Get all fields from AII
-		fields := tools.NewStrSet()
+		fields := tools.NewSet[string]()
 		for field := range aii {
 			fields.Add(field)
 		}

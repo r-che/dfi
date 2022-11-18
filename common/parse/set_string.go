@@ -13,7 +13,7 @@ import (
 // variable is used to specify the name of the set in returned error
 func StringsSet(fp *[]string, setName, vals string, allowed ...string) error {
 	// Make list of unique values from vals
-	*fp = tools.NewStrSet(strings.Split(vals, ",")...).List()
+	*fp = tools.NewSet(strings.Split(vals, ",")...).Sorted()
 
 	// If no allowed values provided
 	if len(allowed) == 0 {

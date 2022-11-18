@@ -119,7 +119,7 @@ func mergeTags(args *dbms.AIIArgs, aii dbms.QRItem) ([]string, error) {
 	}
 
 	// Make a set of existing tags
-	tags := tools.NewStrSet()
+	tags := tools.NewSet[string]()
 	// Check and convert each tag from loaded tags data, then add to resulting set
 	for _, tagVal := range tagsArr {
 		tag, ok := tagVal.(string)
@@ -141,7 +141,7 @@ func mergeTags(args *dbms.AIIArgs, aii dbms.QRItem) ([]string, error) {
 	}
 
 	// Return merged list of tags
-	return tags.List(), nil
+	return tags.Sorted(), nil
 }
 
 func mergeDescr(args *dbms.AIIArgs, aii dbms.QRItem) (string, error) {

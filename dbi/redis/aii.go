@@ -36,7 +36,7 @@ func (rc *Client) ModifyAII(op dbms.DBOperator, args *dbms.AIIArgs, ids []string
 	}
 
 	// Create IDs set, which should keep the not found identifiers
-	nf := tools.NewStrSet(ids...)
+	nf := tools.NewSet(ids...)
 
 	// Create map indentifiers found in DB
 	fids := make(types.IDKeyMap, len(ids))
@@ -61,9 +61,9 @@ func (rc *Client) ModifyAII(op dbms.DBOperator, args *dbms.AIIArgs, ids []string
 		nf.Del(sid)
 	}
 
-	if len(*nf) != 0 {
+	if !nf.Empty() {
 		return 0, 0, fmt.Errorf("(RedisCli:ModifyAII) the following identifiers do not exist in DB: %s",
-								strings.Join(nf.List(), " "))
+								strings.Join(nf.Sorted(), " "))
 	}
 
 	// 2. Run modification operator
@@ -82,7 +82,7 @@ func (rc *Client) ModifyAII(op dbms.DBOperator, args *dbms.AIIArgs, ids []string
 
 func (rc *Client) GetAIIIds(withFields []string) ([]string, error) {
 	// Set of unique identifiers
-	ids := tools.NewStrSet()
+	ids := tools.NewSet[string]()
 
 	// If no particular fields were requested
 	if len(withFields) == 0 {
@@ -103,7 +103,7 @@ func (rc *Client) GetAIIIds(withFields []string) ([]string, error) {
 		ids.Add(set...)
 	}
 
-	return ids.List(), nil
+	return ids.Sorted(), nil
 }
 
 func (rc *Client) GetAIIs(ids, retFields []string) (dbms.QueryResultsAII, error) {
@@ -192,7 +192,7 @@ func (rc *Client) addTags(tags []string, ids types.IDKeyMap) (int64, error) {
 		key := RedisAIIPrefix + id
 
 		// Make a set of tags that should be set to the id
-		allTags := tools.NewStrSet(tags...)
+		allTags := tools.NewSet(tags...)
 
 		// Load existing values of tags field
 		tagsStr, err := rc.c.HGet(rc.Ctx, key, dbms.AIIFieldTags).Result()
@@ -210,14 +210,14 @@ func (rc *Client) addTags(tags []string, ids types.IDKeyMap) (int64, error) {
 		}
 
 		// Compare existing tags and new set
-		if tagsStr == strings.Join(allTags.List(), ",") {
+		if tagsStr == strings.Join(allTags.Sorted(), ",") {
 			// Skip update
 			log.D("(RedisCli:addTags) No tags update required for %s", id)
 			continue
 		}
 
 		// Set tags for the current identifier
-		if _, err := rc.setTags(allTags.List(), types.IDKeyMap{id: objKey}); err != nil {
+		if _, err := rc.setTags(allTags.Sorted(), types.IDKeyMap{id: objKey}); err != nil {
 			return tu, err
 		}
 
@@ -383,12 +383,12 @@ func (rc *Client) deleteAII(args *dbms.AIIArgs, ids types.IDKeyMap) (int64, int6
 
 func (rc *Client) delTags(tags []string, ids types.IDKeyMap) (int64, error) {
 	// Convert list of tags to map to check existing tags for need to be deleted
-	toDelTags := tools.NewStrSet(tags...)
+	toDelTags := tools.NewSet(tags...)
 
 	tu := int64(0) // Total changed values of tags fields
 
 	// Set of AII when tags field should be cleared
-	clearTags := tools.NewStrSet()
+	clearTags := tools.NewSet[string]()
 
 	log.D("(RedisCli:delTags) Collecting AII existing tags")
 	// Do for each identifier
@@ -407,11 +407,11 @@ func (rc *Client) delTags(tags []string, ids types.IDKeyMap) (int64, error) {
 		}
 
 		// Create set of tags which need to keep
-		keepTags := tools.NewStrSet(
+		keepTags := tools.NewSet(
 			// Split string by comma to create a list of tags
 			strings.Split(aiiTagsStr, ",")...).
 			// Remove toDelTags from full set of tags belonging to id
-			Del(toDelTags.List()...)
+			Del(toDelTags.Sorted()...)
 
 		// Check for nothing to keep
 		if keepTags.Empty() {
@@ -422,14 +422,14 @@ func (rc *Client) delTags(tags []string, ids types.IDKeyMap) (int64, error) {
 		}
 
 		// Compare value of keepTags and existing tags
-		if strings.Join(keepTags.List(), ",") == aiiTagsStr {
+		if strings.Join(keepTags.Sorted(), ",") == aiiTagsStr {
 			// No tags should be removed from this item, skip
 			log.D("(RedisCli:delTags) No tags update required for %s", id)
 			continue
 		}
 
 		// Need to set new value of the tags field without removed tags
-		n, err := rc.setTags(keepTags.List(), types.IDKeyMap{id: objKey})
+		n, err := rc.setTags(keepTags.Sorted(), types.IDKeyMap{id: objKey})
 		if err != nil {
 			return tu, fmt.Errorf("(RedisCli:delTags) cannot remove tags %v from %q: %w", tags, id, err)
 		}
@@ -440,7 +440,7 @@ func (rc *Client) delTags(tags []string, ids types.IDKeyMap) (int64, error) {
 	// Check for AII from which need to remove the tags field
 	if !clearTags.Empty() {
 		// Call clear tags for this AII
-		n, err := rc.clearAIIField(dbms.AIIFieldTags, clearTags.List())
+		n, err := rc.clearAIIField(dbms.AIIFieldTags, clearTags.Sorted())
 		if err != nil {
 			return tu, fmt.Errorf("(RedisCli:delTags) cannot clear tags: %w", err)
 		}
