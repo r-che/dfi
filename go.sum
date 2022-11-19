@@ -105,5 +105,5 @@ services-code.local/log.git v0.1.12 h1:UeIaUIPHJXgXF84RCgiWkeCwuaePkDNrT82EP70LT
 services-code.local/log.git v0.1.12/go.mod h1:9wX8Wku2qv8zAuRuRDY0/yOHz+qQ4E5S6ZbktAzrm50=
 services-code.local/optsparser.git v0.1.10 h1:O7no6zs5n1JdXwSQmXmXVcQIGKs8gbzMazrIyYj1VSc=
 services-code.local/optsparser.git v0.1.10/go.mod h1:UEa7o3pBav+bj6/nkjNMGt5x5cNSUPfNu0u/J/OGtdI=
-services-code.local/testing.git v0.1.1 h1:qWfQK4Uc467uJRAt2VF4mkadXyBq9VqHtcDfd0ctEPQ=
-services-code.local/testing.git v0.1.1/go.mod h1:jE1X79FKpdJH1NnBwg4/4EOc0TukcJpyPoa1YOw+nW0=
+services-code.local/testing.git v0.1.3 h1:jExD+x5aqjCij8cwK7u6JIM/NUB2F7pIvSKRKn0iwys=
+services-code.local/testing.git v0.1.3/go.mod h1:jE1X79FKpdJH1NnBwg4/4EOc0TukcJpyPoa1YOw+nW0=
