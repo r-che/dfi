@@ -1,4 +1,3 @@
-//go:build dbi_redis
 package redis
 
 import (
