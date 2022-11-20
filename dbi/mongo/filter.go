@@ -146,11 +146,11 @@ func (f *Filter) JoinWithOthers(qjt queryJoinType, filters ...*Filter) *Filter {
 }
 
 // NegFilter converts list of filter conditions from:
-// { { $cond1 }, { $cond2 }, { $cond3 } }
+//   { { $cond1 }, { $cond2 }, { $cond3 } }
 // to:
-// {$not: $cond1 }, {$not: $cond2 }, {$not: $cond3}
+//   {$not: $cond1 }, {$not: $cond2 }, {$not: $cond3}
 // but (!) Mongo does not support $not as the first-level operator, need to use $nor
-// { {$nor: [{ $cond1 }] }, {$nor: [{ $cond2 }], {$nor: [{ $cond3 }]} }
+//   { {$nor: [{ $cond1 }] }, {$nor: [{ $cond2 }], {$nor: [{ $cond3 }]} }
 func (f *Filter) NegFilter() *Filter {
 	neg := bson.D{}
 	for _, cond := range f.expr {

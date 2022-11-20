@@ -1,4 +1,3 @@
-// Map with a correspondence between the object key and its ID
 package types
 
 import (
@@ -6,6 +5,7 @@ import (
 	"strings"
 )
 
+// Map with a correspondence between the object key and its ID
 type IDKeyMap map[string]ObjKey
 
 func (ikm IDKeyMap) String() string {
