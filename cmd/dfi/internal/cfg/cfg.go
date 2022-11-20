@@ -14,7 +14,10 @@ import (
 	"github.com/r-che/optsparser"
 )
 
-const authors = "Roman Chebotarev"
+const authors		=	"Roman Chebotarev"
+const generalDescr	=	`
+  %[1]s [Operating mode] { [Options] | [Search phrases...] }
+`
 
 var config *progConfig
 
@@ -26,7 +29,9 @@ func Init(name, nameLong, vers string) {
 	// Create new parser
 	p := optsparser.NewParser(name,
 		// List of required options
-	).SetUsageOnFail(false)
+	).
+		SetUsageOnFail(false).
+		SetGeneralDescr(fmt.Sprintf(generalDescr, name))
 
 	config = NewConfig()
 

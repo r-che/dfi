@@ -1,6 +1,6 @@
 # https://golangci-lint.run/usage/configuration/#linters-configuration
 linters:
-  #enable-all: true
+  enable-all: true
   disable:
     # Disabled due to inconvenient rules
     - exhaustivestruct
