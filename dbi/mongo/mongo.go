@@ -1,3 +1,27 @@
+/*
+Package mongo provides a driver to work with the Mongo DBMS.
+
+# Authentication configuration
+
+DFI components which use MongoDB server that requires authentication must
+provide authentication data (user, password, method, etc.). This is done using
+component-specific configuration files. In general, these files contain a
+section with MongoDB-specific authentication data in a common format
+represented as JSON object.
+
+For example, to authenticate using SCRAM-SHA-1 you must provide the following object:
+
+  {
+      "AuthMechanism": "SCRAM-SHA-1",
+      "Username": "USER-NAME",
+      "Password": "USER-PASSWORD"
+  }
+
+See the component's README file, the [official reference], and the [Go-example].
+
+[official reference]: https://www.mongodb.com/docs/manual/core/authentication/
+[Go-example]: https://www.mongodb.com/docs/drivers/go/current/fundamentals/auth/
+*/
 package mongo
 
 import (

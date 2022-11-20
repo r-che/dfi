@@ -1,3 +1,23 @@
+/*
+Package redis provides a driver to work with the Redis DBMS.
+
+# Authentication configuration
+
+DFI components which use Redis server that requires authentication must provide
+authentication data (user and password values). This is done using
+component-specific configuration files. In general, these files contain a
+section with a JSON object that contains the "user" and "password" fields.
+
+For example:
+
+  {
+    "user": "redis-username",
+    "password": "redis-password"
+  }
+
+See the component's README file for more information.
+
+*/
 package redis
 
 import (

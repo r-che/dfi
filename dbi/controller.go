@@ -1,3 +1,4 @@
+// Package dbi provides a common interface to the DBMS used by DFI components.
 package dbi
 
 import (
