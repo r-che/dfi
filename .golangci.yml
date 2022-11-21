@@ -45,7 +45,6 @@ linters:
     - dupl
     - godox
     - ireturn
-    - gomoddirectives
     - containedctx
     - paralleltest
 

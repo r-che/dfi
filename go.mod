@@ -7,9 +7,9 @@ require (
 	github.com/fsnotify/fsnotify v1.6.0
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/gomodule/redigo v1.8.3
-	github.com/r-che/log v0.0.0-00010101000000-000000000000
-	github.com/r-che/optsparser v0.0.0-00010101000000-000000000000
-	github.com/r-che/testing v0.0.0-00010101000000-000000000000
+	github.com/r-che/log v0.1.12
+	github.com/r-che/optsparser v0.1.10
+	github.com/r-che/testing v0.1.3
 	go.mongodb.org/mongo-driver v1.10.3
 	golang.org/x/exp v0.0.0-20221114191408-850992195362
 )
@@ -30,12 +30,3 @@ require (
 	golang.org/x/sys v0.1.0 // indirect
 	golang.org/x/text v0.3.7 // indirect
 )
-
-//replace github.com/r-che/optsparser => ../optsparser
-replace github.com/r-che/optsparser => services-code.local/optsparser.git v0.1.10
-
-//replace github.com/r-che/log => ../log
-replace github.com/r-che/log => services-code.local/log.git v0.1.12
-
-//replace github.com/r-che/testing => ../testing
-replace github.com/r-che/testing => services-code.local/testing.git v0.1.3
