@@ -6,7 +6,9 @@ Detected changes are reported to the database, where they become available to
 the dfi utility. This provides the ability to fast search for files/directories
 on distributed system using a single interface.
 
-Note: for help with searching, see the dfi utility reference.
+Note: for help with searching, see the [dfi utility] reference.
+
+[dfi utility]: https://pkg.go.dev/github.com/r-che/dfi/cmd/dfi/
 
 # Configuration
 
@@ -61,7 +63,7 @@ To start reindexing by a resident process, use sending a proper signal to it. Se
 # Signals handling
 
   * TERM, INT - stop application
-  * HUP - reopen log
+  * HUP - reopen the log file, useful for the log rotation procedure
   * USR1 - run reindexing
   * USR2 - run cleanup
   * QUIT - stop long-term operations such reindexing, cleanup, etc.
