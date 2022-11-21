@@ -11,6 +11,7 @@ Usage:
 File system objects can be searched by criteria:
 
  * Names and fragments of the full path, including full-text search (the result depends on the used DBMS)
+ * Size and modification time of the object, search by ranges and sets of values is possible
  * Type - file, directory, symbolic link
  * Host where the object is located
  * File checksum
