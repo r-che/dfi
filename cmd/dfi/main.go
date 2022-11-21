@@ -21,7 +21,7 @@ const (
 	ProgName		=	`dfi`
 	ProgNameLong	=	`Distributed File Indexer client`
 	versMilestone	=	`-alpha.1`
-	ProgVers		=	`0.1` + versMilestone
+	ProgVers		=	`0.1.0` + versMilestone
 )
 
 // Exit codes
