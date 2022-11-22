@@ -20,7 +20,7 @@ import (
 const (
 	ProgName		=	`dfi`
 	ProgNameLong	=	`Distributed File Indexer client`
-	versMilestone	=	`-alpha.1`
+	versMilestone	=	`-alpha.3`
 	ProgVers		=	`0.1.0` + versMilestone
 )
 
